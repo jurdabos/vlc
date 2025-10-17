@@ -1,0 +1,138 @@
+# Backup files
+*.bak
+*.backup
+app_backup/
+# Byte-compiled/optimized/DLL files
+__pycache__/
+*.egg-info/
+*.py[cod]
+*$py.class
+*.pyo
+# C extensions
+*.so
+# celery beat schedule file
+celerybeat-schedule
+# Distribution / packaging
+*.egg
+.Python
+.eggs/
+.installed.cfg
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+lib/
+lib64/
+PIPFILE.lock
+parts/
+pip-wheel-metadata/
+sdist/
+share/python-wheels/
+state/
+var/
+wheels/
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+# Enving
+.env
+.python-version
+.venv
+.venv/
+ENV/
+env.bak/
+env/
+venv.bak/
+venv/
+Pipfile.lock
+# Flask stuff:
+instance/
+.webassets-cache
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+# IPython
+profile_default/
+ipython_config.py
+# mkdocs documentation
+/site
+# mypy
+.dmypy.json
+.mypy_cache/
+dmypy.json
+# Notebooks
+.ipynb_checkpoints/
+# OS
+Thumbs.db
+.DS_Store
+# Project specific/local data/models/dumps/exports
+*.csv
+*.db
+*.gz
+*.sql
+*.sqlite
+*.sqlite3
+*.parquet
+*.tar
+*.zip
+analytics/
+checkpoints/
+data/
+datasets/
+logs/
+models/
+temp/
+uploads/
+# PyBuilder
+target/
+# PyInstaller
+*.manifest
+*.spec
+# Pyre type checker
+.pyre/
+# Rope project settings
+.ropeproject
+# Ruff
+.ruff_cache/
+# SageMath parsed files
+*.sage.py
+# Scrapy stuff:
+.scrapy
+# Sphinx documentation
+docs/_build/
+# Spyder project settings
+.spyderproject
+.spyproject
+# Test/typing/coverage/caches
+*.cover
+.cache
+.coverage
+.coverage.*
+.hypothesis/
+.mypy_cache/
+.nox/
+.pytest_cache/
+.tox/
+coverage.xml
+htmlcov/
+nosetests.xml
+simple_test.*
+test*.jpg
+test*.png
+test*.svg
+test_output.*
+# Translations
+*.mo
+*.pot
+# WebDriver files
+webdrivers/
+.wdm/
