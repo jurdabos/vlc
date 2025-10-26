@@ -1,0 +1,203 @@
+{
+  "dataset_id": "estacions-atmosferiques-estaciones-atmosfericas",
+  "download_timestamp": "2025-10-25T22:27:34.757194+00:00",
+  "total_records": 5,
+  "api_total_count": 5,
+  "source_url": "https://valencia.opendatasoft.com/explore/dataset/estacions-atmosferiques-estaciones-atmosfericas",
+  "catalog": {
+    "url": "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/estacions-atmosferiques-estaciones-atmosfericas",
+    "fetched_at": "2025-10-25T22:27:34.499107+00:00",
+    "status": "ok",
+    "data": {
+      "visibility": "domain",
+      "dataset_id": "estacions-atmosferiques-estaciones-atmosfericas",
+      "dataset_uid": "da_4gt0qc",
+      "has_records": true,
+      "features": [
+        "analyze",
+        "geo",
+        "timeserie"
+      ],
+      "attachments": [],
+      "alternative_exports": [],
+      "data_visible": true,
+      "fields": [
+        {
+          "name": "objectid",
+          "description": null,
+          "annotations": {},
+          "label": "objectid",
+          "type": "int"
+        },
+        {
+          "name": "nombre",
+          "description": null,
+          "annotations": {},
+          "label": "Nom / Nombre",
+          "type": "text"
+        },
+        {
+          "name": "fecha_carg",
+          "description": null,
+          "annotations": {},
+          "label": "Data càrrega / Fecha Carga",
+          "type": "datetime"
+        },
+        {
+          "name": "direccion",
+          "description": null,
+          "annotations": {},
+          "label": "Adreça / Dirección",
+          "type": "text"
+        },
+        {
+          "name": "viento_dir",
+          "description": null,
+          "annotations": {},
+          "label": "Direcció Vent / Dirección Viento",
+          "type": "double"
+        },
+        {
+          "name": "viento_vel",
+          "description": null,
+          "annotations": {},
+          "label": "Velocitat Vent / Velocidat Viento",
+          "type": "double"
+        },
+        {
+          "name": "temperatur",
+          "description": null,
+          "annotations": {},
+          "label": "Temperatura",
+          "type": "double"
+        },
+        {
+          "name": "humedad_re",
+          "description": null,
+          "annotations": {},
+          "label": "Humitat Relativa / Humedad Relativa",
+          "type": "double"
+        },
+        {
+          "name": "presion_ba",
+          "description": null,
+          "annotations": {},
+          "label": "Pressió Bar / Presión Bar",
+          "type": "double"
+        },
+        {
+          "name": "precipitac",
+          "description": null,
+          "annotations": {},
+          "label": "Precipitacions / Precipitaciones",
+          "type": "double"
+        },
+        {
+          "name": "fiwareid",
+          "description": null,
+          "annotations": {},
+          "label": "fiwareid",
+          "type": "text"
+        },
+        {
+          "name": "geo_shape",
+          "description": null,
+          "annotations": {},
+          "label": "geo_shape",
+          "type": "geo_shape"
+        },
+        {
+          "name": "geo_point_2d",
+          "description": null,
+          "annotations": {},
+          "label": "geo_point_2d",
+          "type": "geo_point_2d"
+        }
+      ],
+      "metas": {
+        "default": {
+          "title": "Estacions Atmosfèriques / Estaciones Atmosféricas",
+          "description": "Información geográfica sobre las estaciones atmosféricas",
+          "theme": [
+            "Medio ambiente",
+            "Urbanismo e Infraestructuras"
+          ],
+          "keyword": [
+            "Instalaciones de observación del medio ambiente"
+          ],
+          "license": "https://creativecommons.org/licenses/by/4.0/",
+          "license_url": "https://creativecommons.org/licenses/by/4.0/",
+          "language": null,
+          "metadata_languages": [
+            "es",
+            "en",
+            "ca"
+          ],
+          "timezone": null,
+          "modified": "2025-10-25T22:20:16.721000+00:00",
+          "modified_updates_on_metadata_change": true,
+          "modified_updates_on_data_change": true,
+          "data_processed": "2025-10-25T22:20:16.721000+00:00",
+          "metadata_processed": "2025-10-25T22:20:16.775000+00:00",
+          "geographic_reference": null,
+          "geographic_reference_auto": null,
+          "territory": null,
+          "geometry_types": [
+            "Point"
+          ],
+          "bbox": {
+            "type": "Feature",
+            "geometry": {
+              "coordinates": [
+                [
+                  [
+                    -0.3332980815321207,
+                    39.489999962970614
+                  ],
+                  [
+                    -0.47000004909932613,
+                    39.489999962970614
+                  ],
+                  [
+                    -0.47000004909932613,
+                    39.4485309580341
+                  ],
+                  [
+                    -0.3332980815321207,
+                    39.4485309580341
+                  ],
+                  [
+                    -0.3332980815321207,
+                    39.489999962970614
+                  ]
+                ]
+              ],
+              "type": "Polygon"
+            },
+            "properties": {}
+          },
+          "publisher": "Ayuntamiento de València",
+          "references": null,
+          "records_count": 5,
+          "attributions": [
+            "Servicio de Mejora climática"
+          ],
+          "source_domain": null,
+          "source_domain_title": null,
+          "source_domain_address": null,
+          "source_dataset": null,
+          "shared_catalog": null,
+          "federated": false,
+          "parent_domain": null,
+          "update_frequency": null
+        },
+        "datos-de-alto-valor": {
+          "categoria-de-datos-de-alto-valor": [
+            "Datos de observación de la tierra y medio ambiente",
+            "Datos meteorológicos básicos"
+          ]
+        }
+      }
+    }
+  }
+}

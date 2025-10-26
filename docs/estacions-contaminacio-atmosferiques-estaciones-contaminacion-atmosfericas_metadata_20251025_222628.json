@@ -1,0 +1,236 @@
+{
+  "dataset_id": "estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas",
+  "download_timestamp": "2025-10-25T22:26:28.714069+00:00",
+  "total_records": 11,
+  "api_total_count": 11,
+  "source_url": "https://valencia.opendatasoft.com/explore/dataset/estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas",
+  "catalog": {
+    "url": "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas",
+    "fetched_at": "2025-10-25T22:26:28.450750+00:00",
+    "status": "ok",
+    "data": {
+      "visibility": "domain",
+      "dataset_id": "estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas",
+      "dataset_uid": "da_e1k1r8",
+      "has_records": true,
+      "features": [
+        "analyze",
+        "geo",
+        "timeserie"
+      ],
+      "attachments": [],
+      "alternative_exports": [],
+      "data_visible": true,
+      "fields": [
+        {
+          "name": "objectid",
+          "description": null,
+          "annotations": {},
+          "label": "objectid",
+          "type": "int"
+        },
+        {
+          "name": "nombre",
+          "description": null,
+          "annotations": {},
+          "label": "Nom / Nombre",
+          "type": "text"
+        },
+        {
+          "name": "direccion",
+          "description": null,
+          "annotations": {},
+          "label": "Adreça / Direccion",
+          "type": "text"
+        },
+        {
+          "name": "tipozona",
+          "description": null,
+          "annotations": {},
+          "label": "Tipus Zona / Tipo Zona",
+          "type": "text"
+        },
+        {
+          "name": "parametros",
+          "description": null,
+          "annotations": {},
+          "label": "Paràmetres / Parámetros",
+          "type": "text"
+        },
+        {
+          "name": "mediciones",
+          "description": null,
+          "annotations": {},
+          "label": "Mesuraments / Mediciones",
+          "type": "text"
+        },
+        {
+          "name": "so2",
+          "description": null,
+          "annotations": {},
+          "label": "so2",
+          "type": "double"
+        },
+        {
+          "name": "no2",
+          "description": null,
+          "annotations": {},
+          "label": "no2",
+          "type": "double"
+        },
+        {
+          "name": "o3",
+          "description": null,
+          "annotations": {},
+          "label": "o3",
+          "type": "double"
+        },
+        {
+          "name": "co",
+          "description": null,
+          "annotations": {},
+          "label": "co",
+          "type": "double"
+        },
+        {
+          "name": "pm10",
+          "description": null,
+          "annotations": {},
+          "label": "pm10",
+          "type": "double"
+        },
+        {
+          "name": "pm25",
+          "description": null,
+          "annotations": {},
+          "label": "pm25",
+          "type": "double"
+        },
+        {
+          "name": "tipoemisio",
+          "description": null,
+          "annotations": {},
+          "label": "tipoemision",
+          "type": "text"
+        },
+        {
+          "name": "fecha_carg",
+          "description": null,
+          "annotations": {},
+          "label": "fecha_carga",
+          "type": "datetime"
+        },
+        {
+          "name": "calidad_am",
+          "description": null,
+          "annotations": {},
+          "label": "calidad_ambiental",
+          "type": "text"
+        },
+        {
+          "name": "fiwareid",
+          "description": null,
+          "annotations": {},
+          "label": "fiwareid",
+          "type": "text"
+        },
+        {
+          "name": "geo_shape",
+          "description": null,
+          "annotations": {},
+          "label": "geo_shape",
+          "type": "geo_shape"
+        },
+        {
+          "name": "geo_point_2d",
+          "description": null,
+          "annotations": {},
+          "label": "geo_point_2d",
+          "type": "geo_point_2d"
+        }
+      ],
+      "metas": {
+        "default": {
+          "title": "Estacions contaminació atmosfèriques / Estaciones contaminación atmosféricas",
+          "description": "Ubicación de estaciones de contaminación atmosféricas.",
+          "theme": [
+            "Medio ambiente"
+          ],
+          "keyword": [
+            "Instalaciones de observación del medio ambiente"
+          ],
+          "license": "https://creativecommons.org/licenses/by/4.0/",
+          "license_url": "https://creativecommons.org/licenses/by/4.0/",
+          "language": null,
+          "metadata_languages": [
+            "es",
+            "en",
+            "ca"
+          ],
+          "timezone": null,
+          "modified": "2025-10-25T22:20:04.778000+00:00",
+          "modified_updates_on_metadata_change": true,
+          "modified_updates_on_data_change": true,
+          "data_processed": "2025-10-25T22:20:04.778000+00:00",
+          "metadata_processed": "2025-10-25T22:20:04.835000+00:00",
+          "geographic_reference": null,
+          "geographic_reference_auto": null,
+          "territory": null,
+          "geometry_types": [
+            "Point"
+          ],
+          "bbox": {
+            "type": "Feature",
+            "geometry": {
+              "coordinates": [
+                [
+                  [
+                    -0.3282895591109991,
+                    39.481112086214125
+                  ],
+                  [
+                    -0.4088099766522646,
+                    39.481112086214125
+                  ],
+                  [
+                    -0.4088099766522646,
+                    39.45039597339928
+                  ],
+                  [
+                    -0.3282895591109991,
+                    39.45039597339928
+                  ],
+                  [
+                    -0.3282895591109991,
+                    39.481112086214125
+                  ]
+                ]
+              ],
+              "type": "Polygon"
+            },
+            "properties": {}
+          },
+          "publisher": "Ayuntamiento de València",
+          "references": null,
+          "records_count": 11,
+          "attributions": [
+            "Servicio de Mejora climática"
+          ],
+          "source_domain": null,
+          "source_domain_title": null,
+          "source_domain_address": null,
+          "source_dataset": null,
+          "shared_catalog": null,
+          "federated": false,
+          "parent_domain": null,
+          "update_frequency": null
+        },
+        "datos-de-alto-valor": {
+          "categoria-de-datos-de-alto-valor": [
+            "Datos de observación de la tierra y medio ambiente"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,328 @@
+**Command Executed:**
+```bash
+# Round 1: Concept note
+cd "D:\tanul\iu\subjects\project_data_engineering\vlc"
+$BASE  = 'https://valencia.opendatasoft.com/api/explore/v2.1'
+$BASE2 = 'https://valencia.opendatasoft.com/api/v2'
+cd scripts
+# Round 2: Development
+cd "C:\acidvuca\vlc"
+cd scripts
+# Round 3: Finalization
+# Get into container
+# Research how to get PWSH in docker containers based on sg like "docker pull mcr.microsoft.com/azure-powershell:azurelinux-3.0"
+cd scripts
+curl -s "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas/records?limit=1"
+```
+**Output:**
+```
+{"total_count": 11, "results": [{"objectid": 21, "nombre": "Olivereta", "direccion": "OLIVERETA", "tipozona": "Urbana", "parametros": "\u00d3xidos de nitr\u00f3geno totales (NOx),Mon\u00f3xido de nitr\u00f3geno (NO),Di\u00f3xido de nitr\u00f3geno (NO2),Part\u00edculas PM10,Part\u00edculas PM2.5", "mediciones": null, "so2": null, "no2": 24.0, "o3": null, "co": null, "pm10": 16.0, "pm25": 7.0, "tipoemisio": "Tr\u00e1fico", "fecha_carg": "2025-10-18T17:00:00+00:00", "calidad_am": "Buena", "fiwareid": "A10_OLIVERETA_60m", "geo_shape": {"type": "Feature", "geometry": {"coordinates": [-0.40592344552906795, 39.46924423509195], "type": "Point"}, "properties": {}}, "geo_point_2d": {"lon": -0.40592344552906795, "lat": 39.46924423509195}}]}
+```
+
+**Command Executed:**
+```bash
+curl -s "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas/records?limit=1" | python -m json.tool --no-ensure-ascii
+```
+**Output:**
+```
+{
+    "total_count": 11,
+    "results": [
+        {
+            "objectid": 21,
+            "nombre": "Olivereta",
+            "direccion": "OLIVERETA",
+            "tipozona": "Urbana",
+            "parametros": "Óxidos de nitrógeno totales (NOx),Monóxido de nitrógeno (NO),Dióxido de nitrógeno (NO2),Partículas PM10,Partículas PM2.5",
+            "mediciones": null,
+            "so2": null,
+            "no2": 24.0,
+            "o3": null,
+            "co": null,
+            "pm10": 16.0,
+            "pm25": 7.0,
+            "tipoemisio": "Tráfico",
+            "fecha_carg": "2025-10-18T17:00:00+00:00",
+            "calidad_am": "Buena",
+            "fiwareid": "A10_OLIVERETA_60m",
+            "geo_shape": {
+                "type": "Feature",
+                "geometry": {
+                    "coordinates": [
+                        -0.40592344552906795,
+                        39.46924423509195
+                    ],
+                    "type": "Point"
+                },
+                "properties": {}
+            },
+            "geo_point_2d": {
+                "lon": -0.40592344552906795,
+                "lat": 39.46924423509195
+            }
+        }
+    ]
+}
+```
+
+We have keys within "results" as "objectid", "nombre", "direccion", "tipozona", "parametros", "mediciones", "so2", "no2", "o3", "co", "pm10", "pm25", "tipoemisio", "fecha_carg", "calidad_am", "fiwareid", "geo_shape", "geo_point_2d". We will use "objectid", "nombre", "so2", "no2", "o3", "co", "pm10", "pm25", "fecha_carg", "calidad_am", "fiwareid", "geo_point_2d"["lon" and "lat"].
+
+Now let's see the total count and get the station names associated with each objectid:
+
+**Command Executed:**
+```bash
+cd scripts
+uv run python analyze_stations.py
+```
+**Output:**
+```
+Unique stations: 11
+Station details:
+------------------------------------------------------------
+ObjectID 12: Dr. Lluch            (A08_DR_LLUCH_60m)
+ObjectID 13: Francia              (A01_AVFRANCIA_60m)
+ObjectID 14: Boulevar Sur         (A02_BULEVARDSUD_60m)
+ObjectID 15: Molí del Sol         (A03_MOLISOL_60m)
+ObjectID 16: Pista de Silla       (A04_PISTASILLA_60m)
+ObjectID 17: Universidad Politécnica (A05_POLITECNIC_60m)
+ObjectID 18: Viveros              (A06_VIVERS_60m)
+ObjectID 19: Centro               (A07_VALENCIACENTRE_60m)
+ObjectID 20: Cabanyal             (A09_CABANYAL_60m)
+ObjectID 21: Olivereta            (A10_OLIVERETA_60m)
+ObjectID 22: Patraix              (A11_PATRAIX_60m)
+```
+
+There are 11 unique air quality monitoring stations in this data set with objectids ranging from 12 to 22. Each station has a unique objectid, a descriptive name, + a FIWARE id following the pattern A##_STATIONNAME_60m.
+All 11 stations appear in every API response.
+
+Let's analyze what metrics each station actually reports, checking for null values versus actual measurements.
+
+**Command Executed:**
+
+```bash
+cd "D:\tanul\iu\subjects\project_data_engineering\vlc\scripts"
+uv run analyze_measurements.py
+```
+
+**Output:**
+```
+Station Environmental Metrics Report
+================================================================================
+ObjectID 12: Dr. Lluch                 (A08_DR_LLUCH_60m)
+  Measurements:
+    SO2   : null
+    NO2   :   34.0 µg/m³
+    O3    : null
+    CO    : null
+    PM10  :   19.0 µg/m³
+    PM25  :    6.0 µg/m³
+  Air Quality: Buena
+ObjectID 13: Francia                   (A01_AVFRANCIA_60m)
+  Measurements:
+    SO2   :    1.0 µg/m³
+    NO2   :   36.0 µg/m³
+    O3    :   47.0 µg/m³
+    CO    :    0.0 µg/m³
+    PM10  :   13.0 µg/m³
+    PM25  :    6.0 µg/m³
+  Air Quality: Buena
+ObjectID 14: Boulevar Sur              (A02_BULEVARDSUD_60m)
+  Measurements:
+    SO2   :    1.0 µg/m³
+    NO2   :   20.0 µg/m³
+    O3    :   85.0 µg/m³
+    CO    : null
+    PM10  : null
+    PM25  : null
+  Air Quality: Razonablemente Buena
+ObjectID 15: Molí del Sol              (A03_MOLISOL_60m)
+  Measurements:
+    SO2   :    3.0 µg/m³
+    NO2   :    8.0 µg/m³
+    O3    :   82.0 µg/m³
+    CO    :    0.0 µg/m³
+    PM10  :   10.0 µg/m³
+    PM25  :    5.0 µg/m³
+  Air Quality: Razonablemente Buena
+ObjectID 16: Pista de Silla            (A04_PISTASILLA_60m)
+  Measurements:
+    SO2   :    2.0 µg/m³
+    NO2   :   15.0 µg/m³
+    O3    :   61.0 µg/m³
+    CO    :    0.0 µg/m³
+    PM10  :   15.0 µg/m³
+    PM25  :    7.0 µg/m³
+  Air Quality: Razonablemente Buena
+ObjectID 17: Universidad Politécnica   (A05_POLITECNIC_60m)
+  Measurements:
+    SO2   :    2.0 µg/m³
+    NO2   :   10.0 µg/m³
+    O3    :   60.0 µg/m³
+    CO    : null
+    PM10  :   10.0 µg/m³
+    PM25  :    5.0 µg/m³
+  Air Quality: Razonablemente Buena
+ObjectID 18: Viveros                   (A06_VIVERS_60m)
+  Measurements:
+    SO2   :    2.0 µg/m³
+    NO2   :   23.0 µg/m³
+    O3    :   63.0 µg/m³
+    CO    : null
+    PM10  : null
+    PM25  : null
+  Air Quality: Razonablemente Buena
+ObjectID 19: Centro                    (A07_VALENCIACENTRE_60m)
+  Measurements:
+    SO2   : null
+    NO2   :   22.0 µg/m³
+    O3    : null
+    CO    : null
+    PM10  :   15.0 µg/m³
+    PM25  :    6.0 µg/m³
+  Air Quality: Buena
+ObjectID 20: Cabanyal                  (A09_CABANYAL_60m)
+  Measurements:
+    SO2   : null
+    NO2   :    9.0 µg/m³
+    O3    : null
+    CO    : null
+    PM10  :   13.0 µg/m³
+    PM25  :    5.0 µg/m³
+  Air Quality: Buena
+ObjectID 21: Olivereta                 (A10_OLIVERETA_60m)
+  Measurements:
+    SO2   : null
+    NO2   :   24.0 µg/m³
+    O3    : null
+    CO    : null
+    PM10  :   16.0 µg/m³
+    PM25  :    7.0 µg/m³
+  Air Quality: Buena
+ObjectID 22: Patraix                   (A11_PATRAIX_60m)
+  Measurements:
+    SO2   : null
+    NO2   :   11.0 µg/m³
+    O3    : null
+    CO    : null
+    PM10  :   29.0 µg/m³
+    PM25  :   11.0 µg/m³
+  Air Quality: Razonablemente Buena
+```
+
+I have checked this in different times, and I observed results of the same shape and distribution of nulls & valids.
+Now let us create a summary table showing which stations report which pollutants.
+
+**Command Executed:**
+```bash
+uv run print_air_measurements.py
+```
+**Output:**
+```
+SUMMARY: Which stations report which pollutants
+================================================================================
+Station                        SO2  NO2  O3   CO   PM10 PM2.5
+--------------------------------------------------------------------------------
+Dr. Lluch                      -    ✓    -    -    ✓    ✓   
+Francia                        ✓    ✓    ✓    ✓    ✓    ✓   
+Boulevar Sur                   ✓    ✓    ✓    -    -    -   
+Molí del Sol                   ✓    ✓    ✓    ✓    ✓    ✓   
+Pista de Silla                 ✓    ✓    ✓    ✓    ✓    ✓   
+Universidad Politécnica        ✓    ✓    ✓    -    ✓    ✓   
+Viveros                        ✓    ✓    ✓    -    -    -   
+Centro                         -    ✓    -    -    ✓    ✓   
+Cabanyal                       -    ✓    -    -    ✓    ✓   
+Olivereta                      -    ✓    -    -    ✓    ✓   
+Patraix                        -    ✓    -    -    ✓    ✓   
+================================================================================
+Pollutant coverage:
+  SO2   :  6/11 stations ( 54.5%)
+  NO2   : 11/11 stations (100.0%)
+  O3    :  6/11 stations ( 54.5%)
+  CO    :  3/11 stations ( 27.3%)
+  PM10  :  9/11 stations ( 81.8%)
+  PM25  :  9/11 stations ( 81.8%)
+Key insights:
+• ALL 11 stations measure NO2 (nitrogen dioxide)
+• 8 stations measure PM10 and PM2.5 (particulate matter)
+• 6 stations measure O3 (ozone) and SO2 (sulfur dioxide)
+• Only 3 stations measure CO (carbon monoxide)
+```
+
+## Environmental Metrics by Station
+The stations report **air pollutant concentrations** (in µg/m³):
+### Complete monitoring (all 6 pollutants):
+- **Francia** (A01): SO2, NO2, O3, CO, PM10, PM2.5
+- **Molí del Sol** (A03): SO2, NO2, O3, CO, PM10, PM2.5  
+- **Pista de Silla** (A04): SO2, NO2, O3, CO, PM10, PM2.5
+### Partial monitoring:
+- **Universidad Politécnica** (A05): SO2, NO2, O3, PM10, PM2.5 (no CO)
+- **Boulevar Sur** (A02): SO2, NO2, O3 (no CO, PM10, PM2.5)
+- **Viveros** (A06): SO2, NO2, O3 (no CO, PM10, PM2.5)
+- **Dr. Lluch** (A08): NO2, PM10, PM2.5 only
+- **Centro** (A07): NO2, PM10, PM2.5 only
+- **Cabanyal** (A09): NO2, PM10, PM2.5 only
+- **Olivereta** (A10): NO2, PM10, PM2.5 only
+- **Patraix** (A11): NO2, PM10, PM2.5 only
+## Key Findings:
+- **100%** of stations measure NO2 (nitrogen dioxide)
+- **82%** measure particulate matter (PM10 and PM2.5)
+- **55%** measure ozone (O3) and sulfur dioxide (SO2)
+- **27%** measure carbon monoxide (CO)
+
+**Command Executed:**
+```bash
+.\vlc_air_fields_dtype.ps1
+```
+**Output:**
+```
+name         type
+----         ----
+objectid     int
+nombre       text
+direccion    text
+tipozona     text
+parametros   text
+mediciones   text
+so2          double
+no2          double
+o3           double
+co           double
+pm10         double
+pm25         double
+tipoemisio   text
+fecha_carg   datetime
+calidad_am   text
+fiwareid     text
+geo_shape    geo_shape
+geo_point_2d geo_point_2d
+```
+
+What is the update frequency?
+Hourly.
+Cf.
+uv run check_frequency.py
+Snapshot tick: 2025-10-18 18:00:00 UTC  (rows=11, stations=11)
+No prior state → initialize without emitting.
+uv run check_frequency.py
+Snapshot tick: 2025-10-18 19:00:00 UTC  (rows=11, stations=11)
+Tick advanced by 1.00 h → emit all stations.
+uv run check_frequency.py
+Snapshot tick: 2025-10-18 20:00:00 UTC  (rows=11, stations=11)
+Tick advanced by 1.00 h → emit all stations.
+So 11 stations on average 4 measurements per hour.
+Approx. 1 056 measurements per day -> We would have around 60 000 measurements in 2 months.
+
+
+What are the station coordinates?
+uv run print_air_geo.py
+A08_DR_LLUCH_60m: 39.46668475546108, -0.3282894894027388
+A01_AVFRANCIA_60m: 39.45782688751831, -0.342986232422652
+A02_BULEVARDSUD_60m: 39.45039600550536, -0.3963375643758562
+A03_MOLISOL_60m: 39.48111211090413, -0.4088098969009376
+A04_PISTASILLA_60m: 39.45806095369672, -0.37664393657915707
+A05_POLITECNIC_60m: 39.47964449692915, -0.33740066052186946
+A06_VIVERS_60m: 39.47964092480533, -0.36964822314381013
+A07_VALENCIACENTRE_60m: 39.470547670260125, -0.37639765165532396
+A09_CABANYAL_60m: 39.47439078535677, -0.32853481349274394
+A10_OLIVERETA_60m: 39.46924423509195, -0.40592344552906795
+A11_PATRAIX_60m: 39.45918908999643, -0.4014113292191286

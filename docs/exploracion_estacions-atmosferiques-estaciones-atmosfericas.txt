@@ -1,0 +1,144 @@
+**Command Executed:**
+```bash
+# Round 1: Concept note
+cd "D:\tanul\iu\subjects\project_data_engineering\vlc"
+$BASE  = 'https://valencia.opendatasoft.com/api/explore/v2.1'
+$BASE2 = 'https://valencia.opendatasoft.com/api/v2'
+cd scripts
+# Round 2: Development
+cd "C:\acidvuca\vlc"
+cd scripts
+# Round 3: Finalization
+# Get into container
+# Research how to get PWSH in docker containers based on sg like "docker pull mcr.microsoft.com/azure-powershell:azurelinux-3.0"
+cd scripts
+curl -s "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/estacions-atmosferiques-estaciones-atmosfericas/records?limit=1"
+```
+**Output:**
+```
+{"total_count": 5, "results": [{"objectid": 15, "nombre": "ESTACI\u00d3N UPV", "fecha_carg": "2025-10-19T13:50:00+00:00", "direccion": null, "viento_dir": 100.0, "viento_vel": 0.4, "temperatur": 22.0, "humedad_re": 75.0, "presion_ba": null, "precipitac": 0.0, "fiwareid": "W05_VALENCIA_UPV_10m", "geo_shape": {"type": "Feature", "geometry": {"coordinates": [-0.3400000005661824, 39.48000000035075], "type": "Point"}, "properties": {}}, "geo_point_2d": {"lon": -0.3400000005661824, "lat": 39.48000000035075}}]}
+```
+
+**Command Executed:**
+```bash
+curl -s "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/estacions-atmosferiques-estaciones-atmosfericas/records?limit=1" | python -m json.tool --no-ensure-ascii
+```
+**Output:**
+```
+{
+    "total_count": 5,
+    "results": [
+        {
+            "objectid": 15,
+            "nombre": "ESTACIÓN UPV",
+            "fecha_carg": "2025-10-19T13:50:00+00:00",
+            "direccion": null,
+            "viento_dir": 100.0,
+            "viento_vel": 0.4,
+            "temperatur": 22.0,
+            "humedad_re": 75.0,
+            "presion_ba": null,
+            "precipitac": 0.0,
+            "fiwareid": "W05_VALENCIA_UPV_10m",
+            "geo_shape": {
+                "type": "Feature",
+                "geometry": {
+                    "coordinates": [
+                        -0.3400000005661824,
+                        39.48000000035075
+                    ],
+                    "type": "Point"
+                },
+                "properties": {}
+            },
+            "geo_point_2d": {
+                "lon": -0.3400000005661824,
+                "lat": 39.48000000035075
+            }
+        }
+    ]
+}
+```
+
+We have keys within "results" as "objectid", "nombre", "fecha_carg", "direccion", "viento_dir", "viento_vel", "temperatur", "humedad_re", "presion_ba", "precipitac", "fiwareid", "geo_shape", "geo_point_2d". We will use "objectid", "nombre", "fecha_carg", "viento_dir", "viento_vel", "temperatur", "humedad_re", "presion_ba", "precipitac", "fiwareid", "geo_point_2d"["lon" and "lat"].
+
+
+**Command Executed:**
+```bash
+cd scripts
+uv run python analyze_stations.py -u estacions-atmosferiques-estaciones-atmosfericas
+```
+**Output:**
+```
+Unique stations: 5
+Station details:
+------------------------------------------------------------
+ObjectID 11: ESTACIÓN AVD. FRANCIA (W01_AVFRANCIA_10m)
+ObjectID 12: ESTACIÓN NAZARET     (W02_NAZARET_10m)
+ObjectID 13: ESTACIÓN AEROPUERTO  (W03_VALENCIAAEROPUERTO_10m)
+ObjectID 14: ESTACIÓN JARDINES DE VIVEROS (W04_VALENCIADT_10m)
+ObjectID 15: ESTACIÓN UPV         (W05_VALENCIA_UPV_10m)
+Object IDs list: [11, 12, 13, 14, 15]
+```
+
+**Command Executed:**
+```bash
+.\vlc_weather_fields_dtype.ps1
+```
+**Output:**
+```
+name         type
+----         ----
+objectid     int
+nombre       text
+fecha_carg   datetime
+direccion    text
+viento_dir   double
+viento_vel   double
+temperatur   double
+humedad_re   double
+presion_ba   double
+precipitac   double
+fiwareid     text
+geo_shape    geo_shape
+geo_point_2d geo_point_2d
+```
+
+Let us now check the update frequency.
+
+**Command Executed:**
+```bash
+uv run python .\weather_frequency_check.py -i 300
+# stop with Ctrl+C & look at summary prints
+```
+**Output:**
+```
+[warn] Multiple tick values in snapshot: ['2025-10-20T13:50:00+00:00', '2025-10-20T15:10:00+00:00']; using max.
+Started 2025-10-20 15:39:53 UTC
+Initial tick: 2025-10-20 15:10:00 UTC  (rows=5, stations=5)
+[15:44:54] tick advanced by 0.17 h → 2025-10-20 15:20:00 UTC (rows=5, stations=5); advances=1
+[15:49:55] same tick (15:20:00 UTC); polls=3, advances=1
+[…]
+================================================================================
+Session summary
+  Duration        : 2.09 h (from 2025-10-20 15:39:53 to 2025-10-20 17:45:20 UTC)
+  Polls / Advances: 26 / 13
+  Last tick       : 2025-10-20T17:20:00+00:00
+  Tick gaps (h)   : 13 advances | mean 0.17 h | min 0.17 h | max 0.17 h
+  State file      : D:\tanul\iu\subjects\project_data_engineering\vlc\scripts\state\weather_last_tick.txt
+  CSV (advances)  : D:\tanul\iu\subjects\project_data_engineering\vlc\scripts\state\weather_ticks.csv
+================================================================================
+```
+
+This shows updates around every ten minutes in the case of 2 stations and updates around every hour for 3 stations.
+-> 20 new records/hour -> ~480/day -> ~15,000/month
+
+
+
+
+
+
+
+
+
+
