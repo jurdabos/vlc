@@ -1,0 +1,33 @@
+{
+  "name": "jdbc-sink-timescale-air",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "tasks.max": "1",
+
+    "connection.url": "${env:PG_JDBC_URL}",
+    "connection.user": "${env:PG_USER}",
+    "connection.password": "${env:PG_PASSWORD}",
+
+    "topics": "vlc.air",
+
+    "auto.create": "false",
+    "auto.evolve": "false",
+    "insert.mode": "upsert",
+    "pk.mode": "record_value",
+    "pk.fields": "fiwareid,ts",
+    "table.name.format": "air.hyper",
+
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+
+    "transforms": "tsToTimestamp",
+    "transforms.tsToTimestamp.type": "org.apache.kafka.connect.transforms.TimestampConverter$Value",
+    "transforms.tsToTimestamp.field": "ts",
+    "transforms.tsToTimestamp.target.type": "Timestamp",
+    "transforms.tsToTimestamp.format": "yyyy-MM-dd'T'HH:mm:ssX",
+
+    "batch.size": "3000",
+    "max.retries": "10",
+    "retry.backoff.ms": "2000"
+  }
+}

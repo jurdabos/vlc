@@ -1,0 +1,122 @@
+%% VLC – Streaming Data Pipeline (clean LR layout, air + weather wired through to Timescale)
+flowchart LR
+
+%% ─────────────────── Source layer ───────────────────
+subgraph SRC["Source APIs (València Opendatasoft Explore v2.1)"]
+  direction LR
+  airAPI["Air quality\nestacions-contaminacio-...\n• fecha_carg • geo_point_2d • NO₂/PM/O₃/…"]
+  weatherAPI["Weather\nestacions-atmosferiques-...\n• fecha_carg • geo_point_2d • T/RH/wind/…"]
+end
+
+%% ─────────────────── Ingestion layer ───────────────────
+subgraph INJ["Ingestion  ➜  Python-producer"]
+  direction LR
+  producer["Poll → Transform → Produce\n• where: fecha_carg > ${offset}\n• paginate limit/offset\n• flatten geo → lat/lon\n• fecha_carg→ts\n• persist offset → /state/offset.txt\n• ~5-min cadence"]:::docker
+end
+
+%% ─────────────────── Streaming platform ───────────────────
+subgraph KAFKA["Streaming  ➜  Apache Kafka"]
+  direction LR
+  topics["Topics\nvlc.air\nvlc.weather"]
+  broker["Kafka broker"]:::docker
+  sr["Schema Registry"]:::docker
+  kui["Kafka UI"]:::ui
+end
+
+%% ─────────────────── Integration layer ───────────────────
+subgraph INTEG["Integration  ➜  Kafka Connect"]
+  direction LR
+  connect["Connect worker"]:::docker
+  sinkAir["JDBC Sink → Timescale (air)\n• topics: vlc.air\n• table: air.hyper\n• PK: (fiwareid, ts)\n• TimestampConverter(ts)\n• upsert (INSERT/UPDATE)"]:::docker
+  sinkWeather["JDBC Sink → Timescale (weather)\n• topics: vlc.weather\n• table: weather.hyper\n• PK: (fiwareid, ts)\n• TimestampConverter(ts)\n• upsert (INSERT/UPDATE)"]:::docker
+end
+
+%% ─────────────────── Storage / serving ───────────────────
+subgraph TS["Storage  ➜  TimescaleDB + PostGIS"]
+  direction LR
+  tdb["TimescaleDB-HA (PostgreSQL)\nSchemas: air.*, weather.*\ngeom: geography(Point, 4326)"]:::db
+  airTables["air schema tables\n• air.hyper\n• air.daily\n• air.weekly"]:::db
+  weatherTables["weather schema tables\n• weather.hyper\n• weather.daily\n• weather.weekly"]:::db
+  cagg["Policies & Continuous Aggregates\n• air.*/daily/weekly\n• weather.*daily/weekly\n• compression • retention"]
+end
+
+%% ─────────────────── Output / analytics ───────────────────
+subgraph OUT["Analytics / Viz"]
+  direction LR
+  graf["Grafana (PostgreSQL data source)"]:::ui
+  psql["psql sanity checks\nSELECT count(*), latest ts, spatial queries…"]:::tool
+end
+
+%% ─────────────────── Backfill path ───────────────────
+subgraph BF["Historical backfill (one-off)"]
+  direction LR
+  exportAPI["Opendatasoft exports endpoint\n(CSV/JSON, no page cap)"]
+  loader["One-off loader\npsql \\copy"]:::tool
+end
+
+%% ─────────────────── Ops / packaging (side-rail) ───────────────────
+subgraph OPS["Ops / Packaging (Docker Compose on vlc_net)"]
+  direction LR
+  compose["docker-compose.yml\nservices: broker, schema-registry, kafka-ui,\nconnect, timescaledb, python-producer"]:::ops
+  bootscript["scripts/bootstrap_kafka.sh\n• create topics & Connect internals"]:::ops
+  postConnectorAir["curl POST connect/config/jdbc-sink.timescale.air.json
+→ CONNECT_URL/connectors
+(inside compose: http://connect:8083
+ on VM host:     http://127.0.0.1:8083
+ via tunnel:     http://127.0.0.1:8083)"]:::ops
+  postConnectorWeather["curl POST connect/config/jdbc-sink.timescale.weather.json
+→ CONNECT_URL/connectors
+(inside compose: http://connect:8083
+ on VM host:     http://127.0.0.1:8083
+ via tunnel:     http://127.0.0.1:8083)"]:::ops
+end
+
+%% ─────────────────── Main dataflow ───────────────────
+airAPI --> producer
+weatherAPI  --> producer
+
+producer --> topics
+topics  -. schemas .- sr
+producer -. Avro/JSON .- sr
+
+topics --> broker
+broker --> kui
+
+topics --> connect
+connect --> sinkAir
+connect --> sinkWeather
+
+sinkAir --> airTables
+sinkWeather  --> weatherTables
+airTables --> cagg
+weatherTables --> cagg
+
+tdb --> graf
+cagg --> graf
+tdb --> psql
+
+%% Backfill routing
+exportAPI --> loader
+loader --> topics
+%% (or) loader -. direct one-off .-> airTables
+%% (or) loader -. direct one-off .->weatherTables
+
+%% Ops wiring (dotted to avoid crowding the main path)
+compose -. deploys .-> producer
+compose -. deploys .-> broker
+compose -. deploys .-> sr
+compose -. deploys .-> kui
+compose -. deploys .-> connect
+compose -. deploys .-> tdb
+
+bootscript -. provisions .-> broker
+bootscript -. provisions .-> connect
+postConnectorAir -. creates .-> sinkAir
+postConnectorWeather  -. creates .-> sinkWeather
+
+%% ─────────────────── Styles ───────────────────
+classDef docker fill:#E0F7FA,stroke:#0288D1,stroke-width:2px,color:#01579B;
+classDef db     fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#1B5E20;
+classDef ui     fill:#FFF3E0,stroke:#EF6C00,stroke-width:2px,color:#E65100;
+classDef ops    fill:#ECEFF1,stroke:#455A64,stroke-width:1.5px,color:#263238,stroke-dasharray: 4 3;
+classDef tool   fill:#F3E5F5,stroke:#6A1B9A,stroke-width:1.5px,color:#4A148C;
