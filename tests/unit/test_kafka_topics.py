@@ -78,7 +78,7 @@ class TestKafkaConnectInternalTopics:
         bootstrap_script_path: Path,
         kafka_connect_internal_topic_config: Dict
     ):
-        """Verifies that _connect_configs topic is created with correct configuration."""
+        """Verifies that _connect-configs topic is created with correct configuration."""
         content = bootstrap_script_path.read_text()
 
         # Checking for topic name
@@ -86,14 +86,14 @@ class TestKafkaConnectInternalTopics:
 
         # Checking topic creation with single partition and compact policy
         pattern = r'create_topic "\$\{CFG_TOPIC\}" 1 "\$\{DATA_RF\}" "--config cleanup\.policy=compact"'
-        assert re.search(pattern, content), "_connect_configs topic not configured correctly"
+        assert re.search(pattern, content), "_connect-configs topic not configured correctly"
 
     def test_bootstrap_script_creates_connect_offset_topic(
         self,
         bootstrap_script_path: Path,
         kafka_connect_internal_topic_config: Dict
     ):
-        """Verifies that _connect_offsets topic is created with correct configuration."""
+        """Verifies that _connect-offsets topic is created with correct configuration."""
         content = bootstrap_script_path.read_text()
 
         # Checking for topic name
@@ -101,14 +101,14 @@ class TestKafkaConnectInternalTopics:
 
         # Checking topic creation with single partition and compact policy
         pattern = r'create_topic "\$\{OFF_TOPIC\}" 1 "\$\{DATA_RF\}" "--config cleanup\.policy=compact"'
-        assert re.search(pattern, content), "_connect_offsets topic not configured correctly"
+        assert re.search(pattern, content), "_connect-offsets topic not configured correctly"
 
     def test_bootstrap_script_creates_connect_status_topic(
         self,
         bootstrap_script_path: Path,
         kafka_connect_internal_topic_config: Dict
     ):
-        """Verifies that _connect_status topic is created with correct configuration."""
+        """Verifies that _connect-status topic is created with correct configuration."""
         content = bootstrap_script_path.read_text()
 
         # Checking for topic name
@@ -116,7 +116,7 @@ class TestKafkaConnectInternalTopics:
 
         # Checking topic creation with single partition and compact policy
         pattern = r'create_topic "\$\{STS_TOPIC\}" 1 "\$\{DATA_RF\}" "--config cleanup\.policy=compact"'
-        assert re.search(pattern, content), "_connect_status topic not configured correctly"
+        assert re.search(pattern, content), "_connect-status topic not configured correctly"
 
     def test_internal_topics_use_single_partition(self, bootstrap_script_path: Path):
         """Verifies that all Connect internal topics use a single partition."""
@@ -151,6 +151,6 @@ class TestKafkaConnectInternalTopics:
 
         connect_env = compose_config["services"]["connect"]["environment"]
 
-        assert connect_env["CONNECT_CONFIG_STORAGE_TOPIC"] == "_connect_configs"
-        assert connect_env["CONNECT_OFFSET_STORAGE_TOPIC"] == "_connect_offsets"
-        assert connect_env["CONNECT_STATUS_STORAGE_TOPIC"] == "_connect_status"
+        assert connect_env["CONNECT_CONFIG_STORAGE_TOPIC"] == "_connect-configs"
+        assert connect_env["CONNECT_OFFSET_STORAGE_TOPIC"] == "_connect-offsets"
+        assert connect_env["CONNECT_STATUS_STORAGE_TOPIC"] == "_connect-status"

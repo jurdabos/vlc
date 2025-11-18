@@ -58,7 +58,7 @@ def kafka_data_topic_config() -> Dict[str, any]:
 def kafka_connect_internal_topic_config() -> Dict[str, any]:
     """Returns expected configuration for Kafka Connect internal topics."""
     return {
-        "topics": ["_connect_configs", "_connect_offsets", "_connect_status"],
+        "topics": ["_connect-configs", "_connect-offsets", "_connect-status"],
         "partitions": 1,
         "replication_factor": 1,
         "cleanup_policy": "compact"
@@ -72,10 +72,10 @@ def kafka_connect_env() -> Dict[str, str]:
         "CONNECT_BOOTSTRAP_SERVERS": "kafka:9092",
         "CONNECT_REST_ADVERTISED_HOST_NAME": "connect",
         "CONNECT_REST_PORT": "8083",
-        "CONNECT_GROUP_ID": "connect-cluster",
-        "CONNECT_CONFIG_STORAGE_TOPIC": "_connect_configs",
-        "CONNECT_OFFSET_STORAGE_TOPIC": "_connect_offsets",
-        "CONNECT_STATUS_STORAGE_TOPIC": "_connect_status",
+        "CONNECT_GROUP_ID": "vlc-connect",
+        "CONNECT_CONFIG_STORAGE_TOPIC": "_connect-configs",
+        "CONNECT_OFFSET_STORAGE_TOPIC": "_connect-offsets",
+        "CONNECT_STATUS_STORAGE_TOPIC": "_connect-status",
         "CONNECT_KEY_CONVERTER": "org.apache.kafka.connect.storage.StringConverter",
         "CONNECT_VALUE_CONVERTER": "org.apache.kafka.connect.json.JsonConverter",
         "CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE": "false",

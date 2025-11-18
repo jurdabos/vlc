@@ -51,6 +51,9 @@ class TestKafkaConnectService:
         connect_service = compose_config["services"]["connect"]
         assert "kafka" in connect_service["depends_on"]
         assert connect_service["depends_on"]["kafka"]["condition"] == "service_healthy"
+        # Also depends on schema-registry
+        assert "schema-registry" in connect_service["depends_on"]
+        assert connect_service["depends_on"]["schema-registry"]["condition"] == "service_started"
 
     def test_connect_service_environment_variables(self, compose_file: Path, kafka_connect_env: Dict):
         """Verifies that the Connect service has all required environment variables."""
@@ -66,15 +69,16 @@ class TestKafkaConnectService:
             # Converting both to strings for comparison to handle integer values in YAML
             assert str(connect_env[key]) == str(expected_value), f"Incorrect value for {key}"
 
-    def test_connect_service_exposes_rest_api_port(self, compose_file: Path):
-        """Verifies that the Connect service exposes port 8083 for the REST API."""
+    def test_connect_service_has_rest_api_port_configured(self, compose_file: Path):
+        """Verifies that the Connect service has REST API port configured in environment."""
         import yaml
 
         with open(compose_file) as f:
             compose_config = yaml.safe_load(f)
 
         connect_service = compose_config["services"]["connect"]
-        assert "8083:8083" in connect_service["ports"]
+        # Port is configured via CONNECT_REST_PORT environment variable
+        assert connect_service["environment"]["CONNECT_REST_PORT"] == 8083
 
     def test_bootstrap_script_waits_for_connect_service(self, bootstrap_script_path: Path):
         """Verifies that the bootstrap script waits for Kafka Connect to be reachable."""
@@ -104,6 +108,34 @@ class TestKafkaConnectService:
 
         # Checking for warning message when Connect is not reachable
         assert "WARN: Connect not reachable" in content
+
+    def test_connect_service_has_file_config_provider(self, compose_file: Path):
+        """Verifies that the Connect service has file-based config provider configured."""
+        import yaml
+
+        with open(compose_file) as f:
+            compose_config = yaml.safe_load(f)
+
+        connect_env = compose_config["services"]["connect"]["environment"]
+
+        assert connect_env["CONNECT_CONFIG_PROVIDERS"] == "file"
+        assert connect_env["CONNECT_CONFIG_PROVIDERS_FILE_CLASS"] == (
+            "org.apache.kafka.common.config.provider.FileConfigProvider"
+        )
+        assert connect_env["CONNECT_CONFIG_PROVIDERS_FILE_PARAM_PATH"] == "/opt/kafka/connect/secrets"
+
+    def test_connect_service_mounts_secrets_volume(self, compose_file: Path):
+        """Verifies that the Connect service mounts the secrets directory."""
+        import yaml
+
+        with open(compose_file) as f:
+            compose_config = yaml.safe_load(f)
+
+        connect_service = compose_config["services"]["connect"]
+        volumes = connect_service["volumes"]
+
+        # Checking for secrets volume mount
+        assert any("./connect/secrets:/opt/kafka/connect/secrets" in vol for vol in volumes)
 
 
 class TestJdbcSinkConnectorConfiguration:
@@ -159,23 +191,23 @@ class TestJdbcSinkConnectorConfiguration:
 
         assert config["config"]["topics"] == "vlc.weather"
 
-    def test_air_connector_uses_environment_variables_for_connection(self, air_connector_config_path: Path):
-        """Verifies that the air connector uses environment variables for database connection."""
+    def test_air_connector_uses_file_config_for_connection(self, air_connector_config_path: Path):
+        """Verifies that the air connector uses file-based config provider for database connection."""
         with open(air_connector_config_path) as f:
             config = json.load(f)
 
-        assert config["config"]["connection.url"] == "${env:PG_JDBC_URL}"
-        assert config["config"]["connection.user"] == "${env:PG_USER}"
-        assert config["config"]["connection.password"] == "${env:PG_PASSWORD}"
+        assert config["config"]["connection.url"] == "${file:secrets.properties:TS_JDBC_URL}"
+        assert config["config"]["connection.user"] == "${file:secrets.properties:TS_USERNAME}"
+        assert config["config"]["connection.password"] == "${file:secrets.properties:TS_PASSWORD}"
 
-    def test_weather_connector_uses_environment_variables_for_connection(self, weather_connector_config_path: Path):
-        """Verifies that the weather connector uses environment variables for database connection."""
+    def test_weather_connector_uses_file_config_for_connection(self, weather_connector_config_path: Path):
+        """Verifies that the weather connector uses file-based config provider for database connection."""
         with open(weather_connector_config_path) as f:
             config = json.load(f)
 
-        assert config["config"]["connection.url"] == "${env:PG_JDBC_URL}"
-        assert config["config"]["connection.user"] == "${env:PG_USER}"
-        assert config["config"]["connection.password"] == "${env:PG_PASSWORD}"
+        assert config["config"]["connection.url"] == "${file:secrets.properties:TS_JDBC_URL}"
+        assert config["config"]["connection.user"] == "${file:secrets.properties:TS_USERNAME}"
+        assert config["config"]["connection.password"] == "${file:secrets.properties:TS_PASSWORD}"
 
     def test_air_connector_uses_upsert_mode(self, air_connector_config_path: Path):
         """Verifies that the air connector uses upsert insert mode."""
