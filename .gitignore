@@ -105,8 +105,13 @@ target/
 .ruff_cache/
 # SageMath parsed files
 *.sage.py
-# Scrapy stuff:
+# Scrapy stuff
 .scrapy
+# Secrets
+compose/.htpasswd
+connect/secrets
+connect/secrets/
+secrets.properties
 # Sphinx documentation
 docs/_build/
 # Spyder project settings

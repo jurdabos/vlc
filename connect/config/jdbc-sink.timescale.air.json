@@ -4,9 +4,9 @@
     "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
     "tasks.max": "1",
 
-    "connection.url": "${env:PG_JDBC_URL}",
-    "connection.user": "${env:PG_USER}",
-    "connection.password": "${env:PG_PASSWORD}",
+    "connection.url":      "${file:secrets.properties:TS_JDBC_URL}",
+    "connection.user":     "${file:secrets.properties:TS_USERNAME}",
+    "connection.password": "${file:secrets.properties:TS_PASSWORD}",
 
     "topics": "vlc.air",
 

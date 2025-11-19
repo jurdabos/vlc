@@ -1,4 +1,39 @@
+# VCS
 .git
+.gitignore
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+ENV/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Large/generated stuff
+data/
+datasets/
+logs/
+models/
+analytics/
+temp/
+uploads/
+*.csv
+*.db
+*.sqlite
+*.sqlite3
+*.parquet
+*.tar
+*.gz
+*.zip
+
+# Secrets that should never be baked into an image
+compose/.htpasswd
+connect/secrets/
+secrets.properties
 .env
