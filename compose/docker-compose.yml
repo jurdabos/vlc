@@ -54,7 +54,7 @@ services:
     profiles: ["schema","ui"]  # to start it with either of these profiles
 
   connect:
-    image: confluentinc/cp-kafka-connect:7.6.1
+    image: vlc/connect:7.6.1-jdbc-pg
     build: ./connect
     container_name: connect
     networks: [vlc_internal]
@@ -96,7 +96,7 @@ services:
     profiles: ["infra"]
 
   timescaledb:
-    image: timescale/timescaledb:pg16-latest
+    image: timescale/timescaledb:2.23.1-pg16
     container_name: timescaledb
     networks: [vlc_internal]
     environment:
@@ -117,7 +117,7 @@ services:
     profiles: ["infra"]
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.0.0
     container_name: grafana
     networks: [vlc_internal, vlc_frontend]
     environment:
@@ -129,7 +129,7 @@ services:
     profiles: ["ui"]
 
   kafka-ui:
-    image: provectuslabs/kafka-ui:latest
+    image: provectuslabs/kafka-ui:0.7.3
     container_name: kafka-ui
     networks: [vlc_internal, vlc_frontend]
     environment:

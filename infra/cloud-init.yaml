@@ -1,0 +1,57 @@
+#cloud-config
+package_update: true
+packages:
+  - docker.io
+  - docker-compose-plugin
+  - git
+
+users:
+  - default
+  - name: azureuser
+    groups: [sudo, docker]
+    shell: /bin/bash
+
+runcmd:
+  # Make sure docker is running and enabled
+  - systemctl enable --now docker
+
+  # Clone or update the VLC repo
+  - mkdir -p /opt
+  - cd /opt
+  - if [ ! -d vlc ]; then
+      git clone https://github.com/jurdabos/vlc.git vlc;
+    else
+      cd vlc && git pull;
+    fi
+
+  # Write systemd unit for the stack
+  - |
+    cat >/etc/systemd/system/vlc-stack.service <<'EOF'
+    [Unit]
+    Description=VLC stack (Docker Compose)
+    Requires=docker.service network-online.target
+    After=docker.service network-online.target
+
+    [Service]
+    Type=oneshot
+    WorkingDirectory=/opt/vlc/compose
+    ExecStartPre=/usr/bin/docker compose pull
+    ExecStart=/usr/bin/docker compose up -d --remove-orphans
+    ExecStop=/usr/bin/docker compose down
+    RemainAfterExit=yes
+    Restart=on-failure
+    RestartSec=5s
+    TimeoutStartSec=0
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+
+  - systemctl daemon-reload
+  - systemctl enable --now vlc-stack
+
+  # Optional: one-time DB/Kafka bootstrap, idempotent by design
+  - cd /opt/vlc
+  - chmod +x scripts/set_vlc_db_password.sh scripts/bootstrap_kafka.sh
+  - ./scripts/set_vlc_db_password.sh || true
+  - ./scripts/bootstrap_kafka.sh || true

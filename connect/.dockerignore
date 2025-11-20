@@ -1,0 +1,39 @@
+# VCS metadata
+.git
+.gitignore
+
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtualenvs
+.venv/
+venv/
+env/
+ENV/
+
+# IDE/editor stuff
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local data & logs (if any)
+data/
+datasets/
+logs/
+tmp/
+temp/
+
+# Tests & docs (as long as we don't need them in the image)
+tests/
+docs/
+
+# Secrets – we mount these as a volume, NOT bake into the image
+secrets/
+secrets.properties
+*.pem
+*.key
+*.crt
+*.p12
