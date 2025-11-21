@@ -22,14 +22,14 @@ class TestKafkaConnectService:
         assert "connect" in compose_config["services"]
 
     def test_connect_service_uses_correct_image(self, compose_file: Path):
-        """Verifies that the Connect service uses the correct Docker image."""
+        """Verifies that the Connect service uses the custom-built Docker image."""
         import yaml
 
         with open(compose_file) as f:
             compose_config = yaml.safe_load(f)
 
         connect_service = compose_config["services"]["connect"]
-        assert connect_service["image"] == "confluentinc/cp-kafka-connect:7.6.1"
+        assert connect_service["image"] == "vlc/connect:7.6.1-jdbc-pg"
 
     def test_connect_service_builds_from_local_dockerfile(self, compose_file: Path):
         """Verifies that the Connect service builds from the local Dockerfile."""

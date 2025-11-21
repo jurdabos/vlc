@@ -47,11 +47,15 @@ class TestKafkaConnectDockerImage:
         assert "https://jdbc.postgresql.org/download/" in content
 
     def test_dockerfile_places_driver_in_correct_location(self, dockerfile_path: Path):
-        """Verifies that the PostgreSQL JDBC driver is placed in the correct directory."""
+        """Verifies that the PostgreSQL JDBC driver is placed in a directory on the plugin path."""
         content = dockerfile_path.read_text()
 
-        # Checking that driver is placed in the kafka-connect-jdbc plugin directory
-        assert "/usr/share/java/kafka-connect-jdbc/postgresql-42.7.3.jar" in content
+        # Accept either classic location under /usr/share/java/kafka-connect-jdbc or inside the plugin's lib directory
+        ok_paths = [
+            "/usr/share/java/kafka-connect-jdbc/postgresql-42.7.3.jar",
+            "/usr/share/confluent-hub-components/confluentinc-kafka-connect-jdbc/lib/postgresql-42.7.3.jar",
+        ]
+        assert any(p in content for p in ok_paths), f"Expected driver copied to one of {ok_paths}"
 
     def test_dockerfile_has_minimal_layers(self, dockerfile_path: Path):
         """Verifies that the Dockerfile is optimized with minimal layers."""
@@ -60,8 +64,8 @@ class TestKafkaConnectDockerImage:
         # Counting RUN commands (should be minimal)
         run_commands = re.findall(r"^RUN\s", content, re.MULTILINE)
 
-        # Should have exactly 2 RUN commands (one for confluent-hub, one for JDBC driver)
-        assert len(run_commands) == 2, f"Expected 2 RUN commands, found {len(run_commands)}"
+        # Multi-stage build: 2 in builder stage, 1 in final stage = 3 total
+        assert len(run_commands) == 3, f"Expected 3 RUN commands (multi-stage build), found {len(run_commands)}"
 
     def test_compose_builds_custom_image(self, compose_file: Path):
         """Verifies that docker-compose.yml builds the custom Connect image."""
@@ -178,8 +182,8 @@ class TestDockerImageBuildProcess:
         assert url.endswith(".jar")
 
     def test_confluent_jdbc_connector_version(self, dockerfile_path: Path):
-        """Verifies that the JDBC connector uses 'latest' or a specific version."""
+        """Verifies that the JDBC connector uses a pinned version."""
         content = dockerfile_path.read_text()
 
-        # Checking for version specification
-        assert "confluentinc/kafka-connect-jdbc:latest" in content
+        # Checking for pinned version specification (not latest)
+        assert "confluentinc/kafka-connect-jdbc:10.2.5" in content
