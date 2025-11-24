@@ -2,21 +2,20 @@
 set -euo pipefail
 
 # --- Defaults (override via env) ---
-BROKER_CONTAINER="${BROKER_CONTAINER:-broker}"
-BOOTSTRAP="${BOOTSTRAP:-broker:9092}"
+BROKER_CONTAINER="${BROKER_CONTAINER:-kafka}"
+BOOTSTRAP="${BOOTSTRAP:-kafka:9092}"
 
-DATA_TOPIC="${DATA_TOPIC:-valencia.air}"
-DATA_TOPIC_2="${DATA_TOPIC_2:-valencia.weather}"
+DATA_TOPIC="${DATA_TOPIC:-vlc.air}"
+DATA_TOPIC_2="${DATA_TOPIC_2:-vlc.weather}"
 DATA_PARTITIONS="${DATA_PARTITIONS:-3}"
 DATA_RF="${DATA_RF:-1}"
 DATA_RETENTION_MS="${DATA_RETENTION_MS:-2592000000}"     # 30 days
 
-CFG_TOPIC="${CFG_TOPIC:-connect-configs}"
-OFF_TOPIC="${OFF_TOPIC:-connect-offsets}"
-STS_TOPIC="${STS_TOPIC:-connect-status}"
+CFG_TOPIC="${CFG_TOPIC:-_connect-configs}"
+OFF_TOPIC="${OFF_TOPIC:-_connect-offsets}"
+STS_TOPIC="${STS_TOPIC:-_connect-status}"
 
-CONNECT_URL="${CONNECT_URL:-http://connect:8083}"
-FALLBACK_CONNECT_URL="http://127.0.0.1:8083"             # on VM host or via SSH -L
+CONNECT_URL="${CONNECT_URL:-http://localhost:8083}"
 
 # --- Helpers ---
 exec_in_broker() {
@@ -25,7 +24,7 @@ exec_in_broker() {
 }
 
 http_ok() {
-  curl -s -o /dev/null -w "%{http_code}" "$1" | grep -qE '^(200|201)$'
+  docker exec connect curl -s -o /dev/null -w "%{http_code}" "$1" | grep -qE '^(200|201)$'
 }
 
 wait_for_broker() {
@@ -45,21 +44,15 @@ create_topic () {
 }
 
 wait_for_connect() {
-  # Choosing best URL
-  local url="${CONNECT_URL}"
-  if ! http_ok "${url}/connectors"; then
-    url="${FALLBACK_CONNECT_URL}"
-  fi
-  echo "[bootstrap] Waiting for Connect at ${url} ..."
+  echo "[bootstrap] Waiting for Connect at ${CONNECT_URL} ..."
   for _ in $(seq 1 60); do
-    if http_ok "${url}/connectors"; then
-      echo "[bootstrap] Connect is up at ${url}"
-      CONNECT_URL="${url}"
+    if http_ok "${CONNECT_URL}/connectors"; then
+      echo "[bootstrap] Connect is up at ${CONNECT_URL}"
       return 0
     fi
     sleep 2
   done
-  echo "[bootstrap] WARN: Connect not reachable at ${CONNECT_URL} or ${FALLBACK_CONNECT_URL}; continuing without connector creation."
+  echo "[bootstrap] WARN: Connect not reachable at ${CONNECT_URL}; continuing without connector creation."
   return 1
 }
 
@@ -67,18 +60,29 @@ upsert_connector() {
   # Uses PUT for idempotent updates; falls back to POST if needed
   local cfg_file="$1"
   local name
-  name="$(jq -r '.name // empty' < "${cfg_file}")"
-  if [ -z "${name}" ]; then
+  name="$(jq -r '.name // empty' "${cfg_file}")"
+  if [ -z "${name}" ] || [ "${name}" = "null" ]; then
     echo "[bootstrap] ERROR: connector config '${cfg_file}' must include a 'name' field." >&2
     return 1
   fi
-  # Try PUT (update-or-create), then POST if 404
+  # 1) Try PUT (update-or-create), streaming JSON from the host into the container
   local code
-  code=$(curl -s -o /dev/null -w "%{http_code}" -X PUT -H "Content-Type: application/json" \
-         --data @"${cfg_file}" "${CONNECT_URL}/connectors/${name}/config" || true)
+  code=$(
+    docker exec -i connect sh -lc "
+      curl -s -o /dev/null -w '%{http_code}' \
+           -X PUT -H 'Content-Type: application/json' \
+           --data @- '${CONNECT_URL}/connectors/${name}/config'
+    " < "${cfg_file}" || true
+  )
+  # 2) If 404, try POST (create)
   if [ "${code}" = "404" ]; then
-    code=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" \
-           --data @"${cfg_file}" "${CONNECT_URL}/connectors" || true)
+    code=$(
+      docker exec -i connect sh -lc "
+        curl -s -o /dev/null -w '%{http_code}' \
+             -X POST -H 'Content-Type: application/json' \
+             --data @- '${CONNECT_URL}/connectors'
+      " < "${cfg_file}" || true
+    )
   fi
   if ! grep -qE '^(200|201)$' <<< "${code}"; then
     echo "[bootstrap] WARN: connector upsert for '${name}' returned HTTP ${code}"

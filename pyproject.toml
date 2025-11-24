@@ -3,7 +3,16 @@ name = "vlc"
 version = "0.1.0"
 description = "Valencia air quality and weather data pipeline"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "certifi>=2025.11.12",
+    "charset-normalizer>=3.4.4",
+    "confluent-kafka>=2.12.2",
+    "idna>=3.11",
+    "psycopg2>=2.9.11",
+    "python-dotenv>=1.2.1",
+    "requests>=2.32.5",
+    "urllib3>=2.5.0",
+]
 
 [tool.setuptools]
 packages = []
@@ -16,6 +25,7 @@ dev = [
     "pytest-docker>=3.1.0",
     "pyyaml>=6.0.0",
     "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [tool.pytest.ini_options]
