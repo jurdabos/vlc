@@ -38,12 +38,13 @@ addopts = [
     "-v",
     "--strict-markers",
     "--cov=scripts",
+    "--cov=producer",
     "--cov-report=term-missing",
     "--cov-report=html",
 ]
 
 [tool.coverage.run]
-source = ["scripts"]
+source = ["scripts", "producer"]
 omit = ["tests/*", "*/test_*.py"]
 
 [tool.ruff]

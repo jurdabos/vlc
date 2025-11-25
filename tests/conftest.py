@@ -46,7 +46,7 @@ def bootstrap_script_path(project_root: Path) -> Path:
 def kafka_data_topic_config() -> Dict[str, any]:
     """Returns expected configuration for data topics."""
     return {
-        "topics": ["valencia.air", "valencia.weather"],
+        "topics": ["vlc.air", "vlc.weather"],
         "partitions": 3,
         "replication_factor": 1,
         "retention_ms": 2592000000,  # 30 days

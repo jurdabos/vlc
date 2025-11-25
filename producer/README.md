@@ -6,18 +6,11 @@ Two independent producer services that poll Valencia OpenDataSoft API and produc
 - **weather_producer.py** → `vlc.weather` (weather station readings)
 
 ## Implementation Status
-
-### ✅ Completed
-1. **Fixed air_producer.py**:
-   - Corrected fields from weather to air quality (so2, no2, o3, co, pm10, pm25)
+1. **Set up air_producer.py**:
    - Added field renaming: `calidad_am` → `air_quality_summary`
-   - Fixed Kafka key generation (fiwareid instead of station_fiwareid)
-   - Proper DB table reference for offset bootstrap
 
-2. **Fixed weather_producer.py**:
-   - Corrected dataset ID (removed erroneous "exploracion_" prefix)
-   - Fixed DB table reference for offset bootstrap
-   - Field renaming implemented:
+2. **Set up weather_producer.py**:
+   - Field renaming:
      - `viento_dir` → `wind_dir_deg`
      - `viento_vel` → `wind_speed_ms`
      - `temperatur` → `temperature_c`
@@ -25,7 +18,7 @@ Two independent producer services that poll Valencia OpenDataSoft API and produc
      - `presion_ba` → `pressure_hpa`
      - `precipitac` → `precip_mm`
 
-3. **Created separate Dockerfiles**:
+3. **Separate Dockerfiles**:
    - `Dockerfile.air` for air quality producer
    - `Dockerfile.weather` for weather producer
    - Both include Kafka dependencies (librdkafka-dev, libssl-dev, libsasl2-dev)
@@ -44,7 +37,7 @@ Two independent producer services that poll Valencia OpenDataSoft API and produc
    - All dependencies from pyproject.toml
    - Proper psycopg2 version (>=2.9.11)
 
-### 🔨 Features Implemented
+### 🔨 Features
 - **Polling**: Every 5 minutes (configurable via `POLL_EVERY_SECONDS`)
 - **Pagination**: Using ODS v2.1 `limit`/`offset` parameters
 - **Incremental ingestion**: Using `where=fecha_carg>date'{offset}'`
@@ -56,40 +49,33 @@ Two independent producer services that poll Valencia OpenDataSoft API and produc
 - **Field flattening**: `geo_point_2d` → `lat`/`lon`
 - **Timestamp normalization**: All timestamps to `YYYY-MM-DDTHH:MM:SSZ` format
 
-### 📋 Next Steps (TODO)
+### 📋 Next Steps
 
-1. **Database Schema**:
+1. **Database schema** (TODO for 25 Nov Tuesday):
    - Create TimescaleDB schemas: `air` and `weather`
    - Create tables: `air.air_station_readings` and `weather.weather_station_readings`
    - Define proper column types and indexes
    - Set up TimescaleDB hypertables for time-series optimization
 
-2. **Kafka Connect Sinks**:
+2. **Kafka Connect sinks** (TODO for 26 Nov Wednesday):
    - Create JDBC Sink connector config for `vlc.air` → TimescaleDB
    - Create JDBC Sink connector config for `vlc.weather` → TimescaleDB
    - Handle NULL values properly (partial station measurements)
    - Configure upsert mode if needed
 
-3. **Historical Backfill**:
+3. **Historical backfill** (TODO for 30 Nov Sunday):
    - Use ODS exports endpoint for bulk data (no pagination limit)
    - Options:
      - Direct load via `psql \copy` into TimescaleDB
      - Kafka Connect File Pulse → Kafka → JDBC Sink
    - Set proper offsets after backfill to avoid duplication
 
-4. **Testing**:
-   - Unit tests for field mapping and normalization
-   - Integration tests with mock ODS API
-   - Test deduplication logic
-   - Test offset persistence across restarts
-   - Test graceful shutdown
-
-5. **Monitoring**:
+4. **Monitoring** (TODO for 29 Nov Friday):
    - Add Prometheus metrics (records produced, API latency, errors)
    - Grafana dashboards for producer health
    - Alert on API failures or stale offsets
 
-6. **Documentation**:
+5. **Documentation**:
    - API field mapping reference
    - Troubleshooting guide
    - Offset reset procedures
@@ -146,7 +132,6 @@ Grafana Dashboards
 ```
 
 ## Quality Checks Passed
-✅ Correct fields for each producer type
 ✅ Field renaming as specified
 ✅ Proper Kafka key format: `{fiwareid}|{ts}`
 ✅ Offset persistence with fingerprint-based deduplication
@@ -154,4 +139,3 @@ Grafana Dashboards
 ✅ Non-root Docker user for security
 ✅ Requirements.txt matches pyproject.toml
 ✅ Separate state volumes prevent cross-contamination
-✅ Health check dependencies ensure proper startup order
