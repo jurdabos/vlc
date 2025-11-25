@@ -15,7 +15,7 @@ class TestKafkaDataTopics:
         content = bootstrap_script_path.read_text()
 
         # Checking for topic name in environment variables
-        assert 'DATA_TOPIC="${DATA_TOPIC:-valencia.air}"' in content
+        assert 'DATA_TOPIC="${DATA_TOPIC:-vlc.air}"' in content
 
         # Checking topic creation call with correct parameters
         assert "create_topic \"${DATA_TOPIC}\"" in content
@@ -37,7 +37,7 @@ class TestKafkaDataTopics:
         content = bootstrap_script_path.read_text()
 
         # Checking for topic name in environment variables
-        assert 'DATA_TOPIC_2="${DATA_TOPIC_2:-valencia.weather}"' in content
+        assert 'DATA_TOPIC_2="${DATA_TOPIC_2:-vlc.weather}"' in content
 
         # Checking topic creation call
         assert "create_topic \"${DATA_TOPIC_2}\"" in content
@@ -81,8 +81,8 @@ class TestKafkaConnectInternalTopics:
         """Verifies that _connect-configs topic is created with correct configuration."""
         content = bootstrap_script_path.read_text()
 
-        # Checking for topic name
-        assert 'CFG_TOPIC="${CFG_TOPIC:-connect-configs}"' in content
+        # Checking for topic name (underscore prefix for internal topics)
+        assert 'CFG_TOPIC="${CFG_TOPIC:-_connect-configs}"' in content
 
         # Checking topic creation with single partition and compact policy
         pattern = r'create_topic "\$\{CFG_TOPIC\}" 1 "\$\{DATA_RF\}" "--config cleanup\.policy=compact"'
@@ -96,8 +96,8 @@ class TestKafkaConnectInternalTopics:
         """Verifies that _connect-offsets topic is created with correct configuration."""
         content = bootstrap_script_path.read_text()
 
-        # Checking for topic name
-        assert 'OFF_TOPIC="${OFF_TOPIC:-connect-offsets}"' in content
+        # Checking for topic name (underscore prefix for internal topics)
+        assert 'OFF_TOPIC="${OFF_TOPIC:-_connect-offsets}"' in content
 
         # Checking topic creation with single partition and compact policy
         pattern = r'create_topic "\$\{OFF_TOPIC\}" 1 "\$\{DATA_RF\}" "--config cleanup\.policy=compact"'
@@ -111,8 +111,8 @@ class TestKafkaConnectInternalTopics:
         """Verifies that _connect-status topic is created with correct configuration."""
         content = bootstrap_script_path.read_text()
 
-        # Checking for topic name
-        assert 'STS_TOPIC="${STS_TOPIC:-connect-status}"' in content
+        # Checking for topic name (underscore prefix for internal topics)
+        assert 'STS_TOPIC="${STS_TOPIC:-_connect-status}"' in content
 
         # Checking topic creation with single partition and compact policy
         pattern = r'create_topic "\$\{STS_TOPIC\}" 1 "\$\{DATA_RF\}" "--config cleanup\.policy=compact"'

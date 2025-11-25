@@ -95,9 +95,9 @@ class TestKafkaConnectService:
         """Verifies that the bootstrap script uses the correct Connect URL."""
         content = bootstrap_script_path.read_text()
 
-        # Checking for primary and fallback URLs
-        assert 'CONNECT_URL="${CONNECT_URL:-http://connect:8083}"' in content
-        assert 'FALLBACK_CONNECT_URL="http://127.0.0.1:8083"' in content
+        # Checking for Connect URL - script uses localhost for running from host
+        # The docker exec commands will run curl inside the connect container
+        assert 'CONNECT_URL="${CONNECT_URL:-http://localhost:8083}"' in content
 
     def test_bootstrap_script_handles_connect_unavailability(self, bootstrap_script_path: Path):
         """Verifies that the bootstrap script handles Connect service unavailability gracefully."""

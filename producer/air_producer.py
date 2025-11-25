@@ -34,14 +34,15 @@ PG_PW = os.getenv("PGPASSWORD", "postgres")
 
 # Desired fields (we'll intersect with what's available)
 DESIRED_FIELDS = [
-    "objectid","nombre","direccion",
-    "viento_dir","viento_vel","temperatur","humedad_re","presion_ba","precipitac",
+    "objectid", "nombre", "direccion",
+    "so2", "no2", "o3", "co", "pm10", "pm25",
+    "calidad_am",
     "fiwareid",
-    "geo_point_2d"  # ts field added at runtime
+    "geo_point_2d"
 ]
 
 # Which fields define a change if ts is the same?
-CHANGE_FIELDS = ["viento_dir","viento_vel","temperatur","humedad_re","presion_ba","precipitac"]
+CHANGE_FIELDS = ["so2", "no2", "o3", "co", "pm10", "pm25"]
 
 session = requests.Session()
 session.headers.update({"User-Agent": "vlc-python-producer/1.3"})
@@ -149,27 +150,24 @@ def map_record(r: Dict[str, Any], ts_field: str) -> Dict[str, Any]:
     out = {
         "fiwareid": r.get("fiwareid") or f"obj{r.get('objectid') or 'na'}",
         "ts": normalize_ts(ts_raw) if ts_raw else None,
-        "objectid": r.get("objectid"),
-        "nombre": r.get("nombre"),
-        "direccion": r.get("direccion"),
-        # meteo
-        "wind_dir_deg": r.get("viento_dir"),
-        "wind_speed_ms": r.get("viento_vel"),
-        "temperature_c": r.get("temperatur"),
-        "humidity_pct": r.get("humedad_re"),
-        "pressure_hpa": r.get("presion_ba"),
-        "precip_mm": r.get("precipitac"),
+        "so2": r.get("so2"),
+        "no2": r.get("no2"),
+        "o3": r.get("o3"),
+        "co": r.get("co"),
+        "pm10": r.get("pm10"),
+        "pm25": r.get("pm25"),
+        "air_quality_summary": r.get("calidad_am"),
         # location
         "lat": lat, "lon": lon
     }
     # Add fingerprint based on mapped values
     out["_fp"] = value_fingerprint({
-        "viento_dir": out["wind_dir_deg"],
-        "viento_vel": out["wind_speed_ms"],
-        "temperatur": out["temperature_c"],
-        "humedad_re": out["humidity_pct"],
-        "presion_ba": out["pressure_hpa"],
-        "precipitac": out["precip_mm"]
+        "so2": out["so2"],
+        "no2": out["no2"],
+        "o3": out["o3"],
+        "co": out["co"],
+        "pm10": out["pm10"],
+        "pm25": out["pm25"]
     })
     return out
 
@@ -178,7 +176,7 @@ def produce_all(p: Producer, events: Iterable[Dict[str, Any]]) -> None:
     for ev in events:
         if not ev.get("ts"):  # skip malformed rows without timestamp
             continue
-        key = f"{ev['station_fiwareid']}|{ev['ts']}"
+        key = f"{ev['fiwareid']}|{ev['ts']}"
         p.produce(TOPIC, key=key.encode("utf-8"), value=json.dumps(ev).encode("utf-8"))
     p.flush()
 
@@ -278,7 +276,7 @@ def fetch_since(offset_iso: str, seen_for_offset: dict, bases: List[str],
             for r in rows:
                 ev = map_record(r, ts_field)
                 ts = ev.get("ts")
-                sid = ev.get("station_fiwareid")
+                sid = ev.get("fiwareid")
                 fp = ev.get("_fp")
                 if not (ts and sid and fp): 
                     continue

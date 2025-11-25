@@ -9,7 +9,8 @@ networks:
 
 volumes:
   timescale_data:
-  python-producer_state:
+  air-producer_state:
+  weather-producer_state:
 
 services:
 
@@ -141,17 +142,46 @@ services:
     restart: unless-stopped
     profiles: ["ui"]
 
-  python-producer:
+  air-producer:
     build:
-      context: ./connect/producer
-    image: vlc/python-producer:latest
+      context: ../producer
+      dockerfile: Dockerfile.air
+    image: vlc/air-producer:latest
     env_file:
-      - ./connect/producer/.env
+      - ../.env
+    environment:
+      VLC_DATASET_ID: estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas
+      KAFKA_TOPIC: vlc.air
+      STATE_DIR: /state
     depends_on:
-      - kafka
-      - timescaledb
+      kafka:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
     volumes:
-      - python-producer_state:/state
+      - air-producer_state:/state
+    networks: [vlc_internal]
+    restart: unless-stopped
+    profiles: ["producer"]
+
+  weather-producer:
+    build:
+      context: ../producer
+      dockerfile: Dockerfile.weather
+    image: vlc/weather-producer:latest
+    env_file:
+      - ../.env
+    environment:
+      VLC_DATASET_ID: estacions-atmosferiques-estaciones-atmosfericas
+      KAFKA_TOPIC: vlc.weather
+      STATE_DIR: /state
+    depends_on:
+      kafka:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    volumes:
+      - weather-producer_state:/state
     networks: [vlc_internal]
     restart: unless-stopped
     profiles: ["producer"]

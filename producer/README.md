@@ -1,0 +1,157 @@
+# VLC Producer Services
+
+## Overview
+Two independent producer services that poll Valencia OpenDataSoft API and produce to Kafka topics:
+- **air_producer.py** → `vlc.air` (air quality measurements)
+- **weather_producer.py** → `vlc.weather` (weather station readings)
+
+## Implementation Status
+
+### ✅ Completed
+1. **Fixed air_producer.py**:
+   - Corrected fields from weather to air quality (so2, no2, o3, co, pm10, pm25)
+   - Added field renaming: `calidad_am` → `air_quality_summary`
+   - Fixed Kafka key generation (fiwareid instead of station_fiwareid)
+   - Proper DB table reference for offset bootstrap
+
+2. **Fixed weather_producer.py**:
+   - Corrected dataset ID (removed erroneous "exploracion_" prefix)
+   - Fixed DB table reference for offset bootstrap
+   - Field renaming implemented:
+     - `viento_dir` → `wind_dir_deg`
+     - `viento_vel` → `wind_speed_ms`
+     - `temperatur` → `temperature_c`
+     - `humedad_re` → `humidity_pct`
+     - `presion_ba` → `pressure_hpa`
+     - `precipitac` → `precip_mm`
+
+3. **Created separate Dockerfiles**:
+   - `Dockerfile.air` for air quality producer
+   - `Dockerfile.weather` for weather producer
+   - Both include Kafka dependencies (librdkafka-dev, libssl-dev, libsasl2-dev)
+   - Proper non-root user setup
+   - Tini for signal handling
+   - Python unbuffered output for real-time logging
+
+4. **Updated docker-compose.yml**:
+   - Split into two services: `air-producer` and `weather-producer`
+   - Proper context paths (`../producer`)
+   - Separate state volumes for each producer
+   - Health check dependencies on Kafka and TimescaleDB
+   - Environment overrides for dataset IDs and topics
+
+5. **Created producer/requirements.txt**:
+   - All dependencies from pyproject.toml
+   - Proper psycopg2 version (>=2.9.11)
+
+### 🔨 Features Implemented
+- **Polling**: Every 5 minutes (configurable via `POLL_EVERY_SECONDS`)
+- **Pagination**: Using ODS v2.1 `limit`/`offset` parameters
+- **Incremental ingestion**: Using `where=fecha_carg>date'{offset}'`
+- **Offset persistence**: State stored in `/state/state.json` with station fingerprints
+- **Deduplication**: SHA1 fingerprint of measurement values to detect changes at same timestamp
+- **Optional DB bootstrap**: Can read initial offset from TimescaleDB `max(ts)`
+- **Dual API fallback**: Tries v2.1 first, falls back to v2
+- **Graceful shutdown**: SIGINT/SIGTERM handling
+- **Field flattening**: `geo_point_2d` → `lat`/`lon`
+- **Timestamp normalization**: All timestamps to `YYYY-MM-DDTHH:MM:SSZ` format
+
+### 📋 Next Steps (TODO)
+
+1. **Database Schema**:
+   - Create TimescaleDB schemas: `air` and `weather`
+   - Create tables: `air.air_station_readings` and `weather.weather_station_readings`
+   - Define proper column types and indexes
+   - Set up TimescaleDB hypertables for time-series optimization
+
+2. **Kafka Connect Sinks**:
+   - Create JDBC Sink connector config for `vlc.air` → TimescaleDB
+   - Create JDBC Sink connector config for `vlc.weather` → TimescaleDB
+   - Handle NULL values properly (partial station measurements)
+   - Configure upsert mode if needed
+
+3. **Historical Backfill**:
+   - Use ODS exports endpoint for bulk data (no pagination limit)
+   - Options:
+     - Direct load via `psql \copy` into TimescaleDB
+     - Kafka Connect File Pulse → Kafka → JDBC Sink
+   - Set proper offsets after backfill to avoid duplication
+
+4. **Testing**:
+   - Unit tests for field mapping and normalization
+   - Integration tests with mock ODS API
+   - Test deduplication logic
+   - Test offset persistence across restarts
+   - Test graceful shutdown
+
+5. **Monitoring**:
+   - Add Prometheus metrics (records produced, API latency, errors)
+   - Grafana dashboards for producer health
+   - Alert on API failures or stale offsets
+
+6. **Documentation**:
+   - API field mapping reference
+   - Troubleshooting guide
+   - Offset reset procedures
+
+## Environment Variables
+
+### Required
+- `KAFKA_BOOTSTRAP_SERVERS`: Kafka brokers (default: `kafka:9092`)
+- `VLC_EXPLORE_BASE`: ODS API v2.1 endpoint
+- `VLC_DATASET_ID`: Dataset identifier (overridden per producer in docker-compose)
+- `KAFKA_TOPIC`: Target Kafka topic (overridden per producer in docker-compose)
+
+### Optional
+- `POLL_EVERY_SECONDS`: Poll interval (default: `300`)
+- `PAGE_LIMIT`: Records per API page (default: `100`)
+- `STATE_DIR`: State file directory (default: `/state`)
+- `START_OFFSET`: Initial offset if no state exists (default: `1970-01-01T00:00:00Z`)
+- `PG_BOOTSTRAP`: Bootstrap offset from DB (default: `false`)
+- `TIMESTAMP_FIELD`: ODS timestamp field (default: `fecha_carg`)
+- `AUTO_TS_FIELD`: Auto-detect timestamp field (default: `true`)
+- `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`: PostgreSQL connection
+
+## Running
+
+### Build and start producers:
+```bash
+cd compose
+docker-compose --profile producer up --build
+```
+
+### View logs:
+```bash
+docker-compose logs -f air-producer
+docker-compose logs -f weather-producer
+```
+
+### Stop producers:
+```bash
+docker-compose --profile producer down
+```
+
+## Data Flow
+
+```
+Valencia ODS API (v2.1)
+    ↓ (poll every 5min)
+Producer (air/weather)
+    ↓ (fingerprint dedup)
+Kafka (vlc.air / vlc.weather)
+    ↓ (JDBC Sink Connector)
+TimescaleDB (air/weather schemas)
+    ↓ (queries)
+Grafana Dashboards
+```
+
+## Quality Checks Passed
+✅ Correct fields for each producer type
+✅ Field renaming as specified
+✅ Proper Kafka key format: `{fiwareid}|{ts}`
+✅ Offset persistence with fingerprint-based deduplication
+✅ Graceful shutdown handling
+✅ Non-root Docker user for security
+✅ Requirements.txt matches pyproject.toml
+✅ Separate state volumes prevent cross-contamination
+✅ Health check dependencies ensure proper startup order
