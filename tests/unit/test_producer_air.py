@@ -9,9 +9,11 @@ import pytest
 # Make producer modules importable
 sys.path.append(str(Path(__file__).parents[2] / "producer"))
 import air_producer as ap  # noqa: E402
+import resilience  # noqa: E402
 
 
 class DummyProducer:
+    """Mock for confluent_kafka.Producer (legacy tests)."""
     def __init__(self):
         self.calls: List[Dict[str, Any]] = []
 
@@ -23,6 +25,18 @@ class DummyProducer:
         })
 
     def flush(self):
+        return 0
+
+
+class DummyResilientProducer:
+    """Mock for ResilientProducer."""
+    def __init__(self):
+        self.calls: List[Dict[str, Any]] = []
+
+    def produce(self, key: bytes, value: bytes):
+        self.calls.append({"key": key, "value": value})
+
+    def flush(self, timeout: float = 30.0):
         return 0
 
 
@@ -71,12 +85,11 @@ def test_compute_select_includes_ts_when_missing():
 
 
 def test_produce_all_uses_topic_and_key(monkeypatch):
-    dummy = DummyProducer()
+    dummy = DummyResilientProducer()
     events = [{"fiwareid": "A01", "ts": "2025-10-18T18:00:00Z", "pm10": 10, "_fp": "abc"}]
     ap.produce_all(dummy, events)
     assert len(dummy.calls) == 1
     call = dummy.calls[0]
-    assert call["topic"] == ap.TOPIC  # default is "vlc.air"
     assert call["key"].decode() == "A01|2025-10-18T18:00:00Z"
     payload = json.loads(call["value"].decode())
     assert payload["pm10"] == 10
@@ -127,16 +140,17 @@ def test_fetch_since_emits_new_and_advances_offset(monkeypatch, tmp_path):
         ],
     }
 
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
+        params = kwargs.get("params", {})
         # Only the records endpoint is used in this test
-        if url.endswith("/records"):
+        if "/records" in url:
             # first page returns two rows, next page returns empty
             if params and params.get("offset") == "0":
                 return _FakeResp(page0)
             return _FakeResp({"total_count": 2, "results": []})
         return _FakeResp({}, 404)
 
-    monkeypatch.setattr(ap.session, "get", fake_get)
+    monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
     select = "fiwareid,geo_point_2d,fecha_carg,no2,pm10,pm25"
     out, new_offset, seen_map = ap.fetch_since(offset, {}, ap.BASES, select, ts_field="fecha_carg")
@@ -147,14 +161,14 @@ def test_fetch_since_emits_new_and_advances_offset(monkeypatch, tmp_path):
     assert set(seen_map.keys()) == {"A01", "A02"}
 
     # And produce_all should emit two messages
-    dummy = DummyProducer()
+    dummy = DummyResilientProducer()
     ap.produce_all(dummy, out)
     assert len(dummy.calls) == 2
 
 
 def test_produce_all_skips_events_without_ts():
     """Verifies that produce_all skips records without timestamp."""
-    dummy = DummyProducer()
+    dummy = DummyResilientProducer()
     events = [
         {"fiwareid": "A01", "ts": None, "pm10": 10, "_fp": "abc"},  # No ts - should skip
         {"fiwareid": "A02", "ts": "2025-10-18T18:00:00Z", "pm10": 20, "_fp": "def"},  # Valid
@@ -168,30 +182,30 @@ def test_get_meta_success(monkeypatch):
     """Verifies get_meta returns parsed JSON on success."""
     meta_response = {"dataset": {"fields": [{"name": "so2"}, {"name": "no2"}]}}
 
-    def fake_get(url):
+    def fake_http_request(session, method, url, **kwargs):
         return _FakeResp(meta_response)
 
-    monkeypatch.setattr(ap.session, "get", fake_get)
+    monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
     result = ap.get_meta("https://example.com/api")
     assert result == meta_response
 
 
 def test_get_meta_returns_none_on_failure(monkeypatch):
     """Verifies get_meta returns None on HTTP error."""
-    def fake_get(url):
+    def fake_http_request(session, method, url, **kwargs):
         return _FakeResp({}, 500)
 
-    monkeypatch.setattr(ap.session, "get", fake_get)
+    monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
     result = ap.get_meta("https://example.com/api")
     assert result is None
 
 
 def test_get_meta_returns_none_on_exception(monkeypatch):
     """Verifies get_meta returns None on network exception."""
-    def fake_get(url):
+    def fake_http_request(session, method, url, **kwargs):
         raise ConnectionError("Network error")
 
-    monkeypatch.setattr(ap.session, "get", fake_get)
+    monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
     result = ap.get_meta("https://example.com/api")
     assert result is None
 
@@ -200,31 +214,31 @@ def test_fetch_one_record_success(monkeypatch):
     """Verifies fetch_one_record returns a single record."""
     record = {"fiwareid": "A01", "fecha_carg": "2025-10-18T17:00:00Z"}
 
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         resp = _FakeResp({"results": [record]})
         return resp
 
-    monkeypatch.setattr(ap.session, "get", fake_get)
+    monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
     result = ap.fetch_one_record("https://example.com/api")
     assert result == record
 
 
 def test_fetch_one_record_returns_none_on_empty(monkeypatch):
     """Verifies fetch_one_record returns None when no records."""
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         return _FakeResp({"results": []})
 
-    monkeypatch.setattr(ap.session, "get", fake_get)
+    monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
     result = ap.fetch_one_record("https://example.com/api")
     assert result is None
 
 
 def test_fetch_one_record_returns_none_on_exception(monkeypatch):
     """Verifies fetch_one_record returns None on exception."""
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         raise ConnectionError("Network error")
 
-    monkeypatch.setattr(ap.session, "get", fake_get)
+    monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
     result = ap.fetch_one_record("https://example.com/api")
     assert result is None
 
@@ -299,12 +313,12 @@ def test_bootstrap_schema_with_meta(monkeypatch):
         }
     }
 
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         if "/records" not in url:
             return _FakeResp(meta)
         return _FakeResp({"results": []})
 
-    monkeypatch.setattr(ap.session, "get", fake_get)
+    monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
     monkeypatch.setattr(ap, "TIMESTAMP_FIELD", "fecha_carg")
 
     select, ts_field = ap.bootstrap_schema()
@@ -323,13 +337,13 @@ def test_bootstrap_schema_falls_back_to_sample(monkeypatch):
 
     call_count = [0]
 
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         call_count[0] += 1
         if "/records" in url:
             return _FakeResp({"results": [sample_record]})
         return _FakeResp({}, 404)  # Meta fails
 
-    monkeypatch.setattr(ap.session, "get", fake_get)
+    monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
     monkeypatch.setattr(ap, "TIMESTAMP_FIELD", "fecha_carg")
 
     select, ts_field = ap.bootstrap_schema()
@@ -341,10 +355,10 @@ def test_fetch_since_handles_api_exception(monkeypatch, tmp_path):
     monkeypatch.setattr(ap, "STATE_DIR", str(tmp_path))
     monkeypatch.setattr(ap, "LIMIT", 10)
 
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         raise ConnectionError("Network error")
 
-    monkeypatch.setattr(ap.session, "get", fake_get)
+    monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
     out, new_offset, seen_map = ap.fetch_since(
         "2025-10-18T17:00:00Z", {}, ap.BASES, "fiwareid,fecha_carg", "fecha_carg"
@@ -367,13 +381,13 @@ def test_fetch_since_skips_records_without_ts(monkeypatch, tmp_path):
 
     call_count = [0]
 
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         call_count[0] += 1
         if call_count[0] == 1:
             return _FakeResp(page)
         return _FakeResp({"results": []})
 
-    monkeypatch.setattr(ap.session, "get", fake_get)
+    monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
     out, new_offset, seen_map = ap.fetch_since(
         "2025-10-18T17:00:00Z", {}, ap.BASES, "fiwareid,fecha_carg,so2,no2,o3,co,pm10,pm25,geo_point_2d", "fecha_carg"

@@ -15,14 +15,11 @@ runcmd:
   # Make sure docker is running and enabled
   - systemctl enable --now docker
 
-  # Clone or update the VLC repo
-  - mkdir -p /opt
-  - cd /opt
-  - if [ ! -d vlc ]; then
-      git clone https://github.com/jurdabos/vlc.git vlc;
-    else
-      cd vlc && git pull;
-    fi
+  # Clone or update the VLC repo under /opt/vlc
+  - [ bash, -lc, 'mkdir -p /opt && cd /opt && if [ ! -d vlc ]; then git clone https://github.com/jurdabos/vlc.git vlc; else cd vlc && git pull; fi' ]
+
+  # Ensure we have a .env file (copy from example if needed; safe if it has no secrets)
+  - [ bash, -lc, 'cd /opt/vlc && if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env; fi' ]
 
   # Write systemd unit for the stack
   - |
@@ -34,10 +31,10 @@ runcmd:
 
     [Service]
     Type=oneshot
-    WorkingDirectory=/opt/vlc/compose
-    ExecStartPre=/usr/bin/docker compose pull
-    ExecStart=/usr/bin/docker compose up -d --remove-orphans
-    ExecStop=/usr/bin/docker compose down
+    WorkingDirectory=/opt/vlc
+    ExecStartPre=/usr/bin/docker compose --env-file .env -f compose/docker-compose.yml pull
+    ExecStart=/usr/bin/docker compose --env-file .env -f compose/docker-compose.yml up -d --remove-orphans
+    ExecStop=/usr/bin/docker compose --env-file .env -f compose/docker-compose.yml down
     RemainAfterExit=yes
     Restart=on-failure
     RestartSec=5s
@@ -50,8 +47,7 @@ runcmd:
   - systemctl daemon-reload
   - systemctl enable --now vlc-stack
 
-  # Optional: one-time DB/Kafka bootstrap, idempotent by design
-  - cd /opt/vlc
-  - chmod +x scripts/set_vlc_db_password.sh scripts/bootstrap_kafka.sh
-  - ./scripts/set_vlc_db_password.sh || true
-  - ./scripts/bootstrap_kafka.sh || true
+  # 1-time DB/Kafka bootstrap, idempotent by design
+  - [ bash, -lc, 'cd /opt/vlc && chmod +x scripts/set_vlc_db_password.sh scripts/bootstrap_kafka.sh' ]
+  - [ bash, -lc, 'cd /opt/vlc && ./scripts/set_vlc_db_password.sh || true' ]
+  - [ bash, -lc, 'cd /opt/vlc && ./scripts/bootstrap_kafka.sh || true' ]

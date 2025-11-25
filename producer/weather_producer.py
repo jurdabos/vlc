@@ -5,6 +5,13 @@ from typing import Dict, Any, Iterable, Tuple, List, Optional
 import requests
 from confluent_kafka import Producer
 
+from resilience import (
+    RetryConfig,
+    http_request_with_retry,
+    InflightLimiter,
+    ResilientProducer,
+)
+
 # --------- env ---------
 BASE1 = os.getenv("VLC_EXPLORE_BASE", "https://valencia.opendatasoft.com/api/explore/v2.1")
 BASE2 = os.getenv("VLC_EXPLORE_BASE2", "https://valencia.opendatasoft.com/api/v2")
@@ -44,8 +51,13 @@ DESIRED_FIELDS = [
 CHANGE_FIELDS = ["viento_dir", "viento_vel", "temperatur", "humedad_re", "presion_ba", "precipitac"]
 
 session = requests.Session()
-session.headers.update({"User-Agent": "vlc-python-producer/1.3"})
+session.headers.update({"User-Agent": "vlc-python-producer/1.4"})
 session.timeout = (10, 60)  # connect, read
+
+# Resilience configuration
+RETRY_CONFIG = RetryConfig.from_env()
+INFLIGHT_LIMITER = InflightLimiter()
+DLQ_DIR = os.getenv("VLC_DLQ_DIR", os.path.join(STATE_DIR, "dlq"))
 
 running = True
 
@@ -182,20 +194,22 @@ def map_record(r: Dict[str, Any], ts_field: str) -> Dict[str, Any]:
     return out
 
 
-def produce_all(p: Producer, events: Iterable[Dict[str, Any]]) -> None:
+def produce_all(p: ResilientProducer, events: Iterable[Dict[str, Any]]) -> None:
+    """Produces events to Kafka with resilience (DLQ on failure)."""
     for ev in events:
         if not ev.get("ts"):  # skip malformed rows without timestamp
             continue
         key = f"{ev['fiwareid']}|{ev['ts']}"
-        p.produce(TOPIC, key=key.encode("utf-8"), value=json.dumps(ev).encode("utf-8"))
+        p.produce(key=key.encode("utf-8"), value=json.dumps(ev).encode("utf-8"))
     p.flush()
 
 
 # ------------- metadata helpers -------------
 def get_meta(base: str) -> Optional[Dict[str, Any]]:
+    """Fetches dataset metadata with retry on transient failures."""
     url = f"{base}/catalog/datasets/{DATASET_ID}"
     try:
-        r = session.get(url)
+        r = http_request_with_retry(session, "GET", url, config=RETRY_CONFIG)
         if r.ok:
             return r.json()
     except Exception:
@@ -212,9 +226,12 @@ def get_fields_from_meta(meta: Dict[str, Any]) -> List[str]:
 
 
 def fetch_one_record(base: str) -> Optional[Dict[str, Any]]:
+    """Fetches a single record with retry on transient failures."""
     url = f"{base}/catalog/datasets/{DATASET_ID}/records"
     try:
-        r = session.get(url, params={"limit": "1"})
+        r = http_request_with_retry(
+            session, "GET", url, config=RETRY_CONFIG, params={"limit": "1"}
+        )
         r.raise_for_status()
         arr = r.json().get("results", [])
         return arr[0] if arr else None
@@ -278,7 +295,12 @@ def fetch_since(offset_iso: str, seen_for_offset: dict, bases: List[str],
                 "where": f"{ts_field}>=date'{offset_iso}'"
             }
             try:
-                resp = session.get(f"{base}/catalog/datasets/{DATASET_ID}/records", params=params)
+                resp = http_request_with_retry(
+                    session, "GET",
+                    f"{base}/catalog/datasets/{DATASET_ID}/records",
+                    config=RETRY_CONFIG,
+                    params=params
+                )
                 resp.raise_for_status()
                 rows = resp.json().get("results", [])
             except Exception:
@@ -361,26 +383,49 @@ def bootstrap_schema() -> Tuple[str, str]:
 
 
 def main():
+    """Main loop with resilience: backoff, inflight limiting, DLQ retry."""
     offset, seen = load_state()
     select, ts_field = bootstrap_schema()
-    print(f"[sidecar] using ts_field='{ts_field}', SELECT='{select}'")
-    print(f"[sidecar] starting with offset {offset}, seen_for_offset={len(seen)}")
-
-    producer = Producer({"bootstrap.servers": BOOTSTRAP, "linger.ms": 50, "enable.idempotence": True})
-
+    print(f"[weather] using ts_field='{ts_field}', SELECT='{select}'")
+    print(f"[weather] starting with offset {offset}, seen_for_offset={len(seen)}")
+    print(f"[weather] resilience: max_inflight={INFLIGHT_LIMITER.max_inflight}, "
+          f"backoff_base={RETRY_CONFIG.base_delay_ms}ms, "
+          f"max_retries={RETRY_CONFIG.max_retries}")
+    raw_producer = Producer({
+        "bootstrap.servers": BOOTSTRAP,
+        "linger.ms": 50,
+        "enable.idempotence": True,
+    })
+    producer = ResilientProducer(raw_producer, TOPIC, dlq_dir=DLQ_DIR)
     while running:
         try:
-            items, new_offset, new_seen = fetch_since(offset, seen, BASES, select, ts_field)
+            # Retrying any messages from DLQ first
+            dlq_retried = producer.retry_dlq()
+            if dlq_retried:
+                producer.flush()
+            # Fetching new data with inflight limiting
+            with INFLIGHT_LIMITER:
+                items, new_offset, new_seen = fetch_since(
+                    offset, seen, BASES, select, ts_field
+                )
             if items:
                 produce_all(producer, items)
                 save_state(new_offset, new_seen)
                 offset, seen = new_offset, new_seen
-                print(f"[sidecar] produced {len(items)}; offset={offset}; seen={len(seen)}")
+                stats = producer.stats
+                stats_str = ""
+                if stats:
+                    stats_str = f" (ok={stats.success_count}, fail={stats.failure_count})"
+                print(f"[weather] produced {len(items)}; offset={offset}; "
+                      f"seen={len(seen)}{stats_str}")
             else:
-                print("[sidecar] no new records")
+                print("[weather] no new records")
+            # Logging DLQ size if non-empty
+            dlq_size = producer.dlq_size
+            if dlq_size > 0:
+                print(f"[weather] DLQ has {dlq_size} pending messages")
         except Exception as e:
-            print(f"[sidecar] ERROR: {e}")
-
+            print(f"[weather] ERROR: {e}")
         for _ in range(POLL_SECS):
             if not running:
                 break

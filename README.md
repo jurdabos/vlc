@@ -6,5 +6,29 @@ This repository contains the infrastructural elements of a pipeline related to a
 
 
 
-More info on the architecture, the data used and so on is in the docs/ lib.
+\## Data Flow
+
+
+
+```
+
+Valencia ODS API (v2.1)
+
+&nbsp;   ↓ (poll every 5min)
+
+Producer (air/weather)
+
+&nbsp;   ↓ (fingerprint dedup)
+
+Kafka (vlc.air / vlc.weather)
+
+&nbsp;   ↓ (JDBC Sink Connector)
+
+TimescaleDB (air/weather schemas)
+
+&nbsp;   ↓ (queries)
+
+Grafana Dashboards
+
+```
 

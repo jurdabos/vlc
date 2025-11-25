@@ -7,6 +7,7 @@ import pytest
 # Make producer modules importable
 sys.path.append(str(Path(__file__).parents[2] / "producer"))
 import weather_producer as wp  # noqa: E402
+import resilience  # noqa: E402
 
 
 class DummyProducer:
@@ -17,6 +18,17 @@ class DummyProducer:
         self.calls.append({"topic": topic, "key": key, "value": value})
 
     def flush(self):
+        return 0
+
+
+class DummyResilientProducer:
+    def __init__(self):
+        self.calls: List[Dict[str, Any]] = []
+
+    def produce(self, key: bytes, value: bytes):
+        self.calls.append({"key": key, "value": value})
+
+    def flush(self, timeout: float = 30.0):
         return 0
 
 
@@ -45,12 +57,11 @@ def test_weather_map_record_field_renames():
 
 
 def test_weather_produce_all(monkeypatch):
-    dummy = DummyProducer()
+    dummy = DummyResilientProducer()
     ev = {"fiwareid": "W01", "ts": "2025-10-18T17:00:00Z", "temperature_c": 22.5, "_fp": "f"}
     wp.produce_all(dummy, [ev])
     assert len(dummy.calls) == 1
     call = dummy.calls[0]
-    assert call["topic"] == wp.TOPIC  # default is "vlc.weather"
     assert call["key"].decode() == "W01|2025-10-18T17:00:00Z"
     payload = json.loads(call["value"].decode())
     assert payload["temperature_c"] == 22.5
@@ -146,29 +157,29 @@ def test_weather_get_meta_success(monkeypatch):
     """Verifies get_meta returns parsed JSON on success."""
     meta = {"dataset": {"fields": [{"name": "temperatur"}]}}
 
-    def fake_get(url):
+    def fake_http_request(session, method, url, **kwargs):
         return _FakeResp(meta)
 
-    monkeypatch.setattr(wp.session, "get", fake_get)
+    monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
     result = wp.get_meta("https://example.com/api")
     assert result == meta
 
 
 def test_weather_get_meta_failure(monkeypatch):
     """Verifies get_meta returns None on failure."""
-    def fake_get(url):
+    def fake_http_request(session, method, url, **kwargs):
         return _FakeResp({}, 500)
 
-    monkeypatch.setattr(wp.session, "get", fake_get)
+    monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
     assert wp.get_meta("https://example.com/api") is None
 
 
 def test_weather_get_meta_exception(monkeypatch):
     """Verifies get_meta returns None on exception."""
-    def fake_get(url):
+    def fake_http_request(session, method, url, **kwargs):
         raise ConnectionError("Network error")
 
-    monkeypatch.setattr(wp.session, "get", fake_get)
+    monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
     assert wp.get_meta("https://example.com/api") is None
 
 
@@ -196,29 +207,29 @@ def test_weather_fetch_one_record_success(monkeypatch):
     """Verifies fetch_one_record returns a record."""
     record = {"fiwareid": "W01", "fecha_carg": "2025-10-18T17:00:00Z"}
 
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         return _FakeResp({"results": [record]})
 
-    monkeypatch.setattr(wp.session, "get", fake_get)
+    monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
     result = wp.fetch_one_record("https://example.com/api")
     assert result == record
 
 
 def test_weather_fetch_one_record_empty(monkeypatch):
     """Verifies fetch_one_record returns None when empty."""
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         return _FakeResp({"results": []})
 
-    monkeypatch.setattr(wp.session, "get", fake_get)
+    monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
     assert wp.fetch_one_record("https://example.com/api") is None
 
 
 def test_weather_fetch_one_record_exception(monkeypatch):
     """Verifies fetch_one_record returns None on exception."""
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         raise ConnectionError("Network error")
 
-    monkeypatch.setattr(wp.session, "get", fake_get)
+    monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
     assert wp.fetch_one_record("https://example.com/api") is None
 
 
@@ -273,13 +284,13 @@ def test_weather_fetch_since(monkeypatch, tmp_path):
 
     call_count = [0]
 
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         call_count[0] += 1
         if call_count[0] == 1:
             return _FakeResp(page)
         return _FakeResp({"results": []})
 
-    monkeypatch.setattr(wp.session, "get", fake_get)
+    monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
     out, new_offset, seen_map = wp.fetch_since(
         "2025-10-18T17:00:00Z", {}, wp.BASES,
@@ -295,10 +306,10 @@ def test_weather_fetch_since_exception(monkeypatch, tmp_path):
     monkeypatch.setattr(wp, "STATE_DIR", str(tmp_path))
     monkeypatch.setattr(wp, "LIMIT", 10)
 
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         raise ConnectionError("Network error")
 
-    monkeypatch.setattr(wp.session, "get", fake_get)
+    monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
     out, new_offset, seen_map = wp.fetch_since(
         "2025-10-18T17:00:00Z", {}, wp.BASES, "fiwareid,fecha_carg", "fecha_carg"
@@ -319,12 +330,12 @@ def test_weather_bootstrap_schema(monkeypatch):
         }
     }
 
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         if "/records" not in url:
             return _FakeResp(meta)
         return _FakeResp({"results": []})
 
-    monkeypatch.setattr(wp.session, "get", fake_get)
+    monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
     monkeypatch.setattr(wp, "TIMESTAMP_FIELD", "fecha_carg")
 
     select, ts_field = wp.bootstrap_schema()
@@ -342,13 +353,13 @@ def test_weather_bootstrap_schema_fallback_to_sample(monkeypatch):
 
     call_count = [0]
 
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         call_count[0] += 1
         if "/records" in url:
             return _FakeResp({"results": [sample]})
         return _FakeResp({}, 404)
 
-    monkeypatch.setattr(wp.session, "get", fake_get)
+    monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
     monkeypatch.setattr(wp, "TIMESTAMP_FIELD", "fecha_carg")
 
     select, ts_field = wp.bootstrap_schema()
@@ -357,7 +368,7 @@ def test_weather_bootstrap_schema_fallback_to_sample(monkeypatch):
 
 def test_weather_produce_all_skips_no_ts():
     """Verifies produce_all skips records without ts."""
-    dummy = DummyProducer()
+    dummy = DummyResilientProducer()
     events = [
         {"fiwareid": "W01", "ts": None, "temperature_c": 22.5, "_fp": "a"},
         {"fiwareid": "W02", "ts": "2025-10-18T18:00:00Z", "temperature_c": 23.0, "_fp": "b"},
@@ -467,13 +478,13 @@ def test_weather_fetch_since_deduplication(monkeypatch, tmp_path):
 
     call_count = [0]
 
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         call_count[0] += 1
         if call_count[0] == 1:
             return _FakeResp(page)
         return _FakeResp({"results": []})
 
-    monkeypatch.setattr(wp.session, "get", fake_get)
+    monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
     # Already seen this station with same fingerprint
     seen_for_offset = {"W01": expected_fp}
@@ -510,13 +521,13 @@ def test_weather_fetch_since_emits_changed_value(monkeypatch, tmp_path):
 
     call_count = [0]
 
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         call_count[0] += 1
         if call_count[0] == 1:
             return _FakeResp(page)
         return _FakeResp({"results": []})
 
-    monkeypatch.setattr(wp.session, "get", fake_get)
+    monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
     # Old fingerprint doesn't match
     seen_for_offset = {"W01": "old_fingerprint_123"}
@@ -532,10 +543,10 @@ def test_weather_fetch_since_emits_changed_value(monkeypatch, tmp_path):
 
 def test_weather_bootstrap_schema_no_ts_field(monkeypatch):
     """Verifies bootstrap_schema falls back to TIMESTAMP_FIELD when none found."""
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         return _FakeResp({}, 404)  # All requests fail
 
-    monkeypatch.setattr(wp.session, "get", fake_get)
+    monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
     monkeypatch.setattr(wp, "TIMESTAMP_FIELD", "fecha_carg")
 
     select, ts_field = wp.bootstrap_schema()
@@ -578,13 +589,13 @@ def test_weather_fetch_since_skips_records_without_ts(monkeypatch, tmp_path):
 
     call_count = [0]
 
-    def fake_get(url, params=None):
+    def fake_http_request(session, method, url, **kwargs):
         call_count[0] += 1
         if call_count[0] == 1:
             return _FakeResp(page)
         return _FakeResp({"results": []})
 
-    monkeypatch.setattr(wp.session, "get", fake_get)
+    monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
     out, new_offset, seen_map = wp.fetch_since(
         "2025-10-18T17:00:00Z", {}, wp.BASES, "fiwareid,fecha_carg", "fecha_carg"

@@ -115,14 +115,14 @@ class TestDeduplication:
 
         call_count = [0]
 
-        def fake_get(url, params=None):
+        def fake_http_request(session, method, url, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
                 return FakeResp()
             # Subsequent calls return empty
             return type("Empty", (), {"ok": True, "status_code": 200, "json": lambda: {"results": []}, "raise_for_status": lambda: None})()
 
-        monkeypatch.setattr(ap.session, "get", fake_get)
+        monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
         out, new_offset, new_seen = ap.fetch_since(
             offset, seen_for_offset, ap.BASES, "fiwareid,fecha_carg,no2,pm10,pm25,geo_point_2d", "fecha_carg"
@@ -164,13 +164,13 @@ class TestDeduplication:
 
         call_count = [0]
 
-        def fake_get(url, params=None):
+        def fake_http_request(session, method, url, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
                 return FakeResp()
             return type("Empty", (), {"ok": True, "status_code": 200, "json": lambda: {"results": []}, "raise_for_status": lambda: None})()
 
-        monkeypatch.setattr(ap.session, "get", fake_get)
+        monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
         out, new_offset, new_seen = ap.fetch_since(
             offset, seen_for_offset, ap.BASES, "fiwareid,fecha_carg,so2,no2,o3,co,pm10,pm25,geo_point_2d", "fecha_carg"
