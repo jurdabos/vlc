@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "jdbc-sink.schema.json",
+  "title": "Kafka Connect JDBC Sink Connector",
+  "description": "Schema for validating JDBC sink connector configurations",
+  "type": "object",
+  "required": ["name", "config"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^jdbc-sink-[a-z0-9-]+$",
+      "description": "Connector name (must start with jdbc-sink-)"
+    },
+    "config": {
+      "type": "object",
+      "required": [
+        "connector.class",
+        "tasks.max",
+        "connection.url",
+        "connection.user",
+        "connection.password",
+        "topics",
+        "insert.mode",
+        "pk.mode",
+        "pk.fields",
+        "table.name.format",
+        "value.converter"
+      ],
+      "properties": {
+        "connector.class": {
+          "type": "string",
+          "const": "io.confluent.connect.jdbc.JdbcSinkConnector"
+        },
+        "tasks.max": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$",
+          "description": "Maximum number of tasks"
+        },
+        "connection.url": {
+          "type": "string",
+          "description": "JDBC connection URL or secret reference"
+        },
+        "connection.user": {
+          "type": "string",
+          "description": "Database username or secret reference"
+        },
+        "connection.password": {
+          "type": "string",
+          "description": "Database password or secret reference"
+        },
+        "topics": {
+          "type": "string",
+          "pattern": "^vlc\\.(air|weather)$",
+          "description": "Kafka topic to consume (vlc.air or vlc.weather)"
+        },
+        "auto.create": {
+          "type": "string",
+          "enum": ["true", "false"],
+          "description": "Auto-create tables (should be false for hypertables)"
+        },
+        "auto.evolve": {
+          "type": "string",
+          "enum": ["true", "false"],
+          "description": "Auto-evolve schema (should be false for controlled schemas)"
+        },
+        "insert.mode": {
+          "type": "string",
+          "enum": ["insert", "upsert", "update"],
+          "description": "Insert mode for records"
+        },
+        "pk.mode": {
+          "type": "string",
+          "enum": ["none", "kafka", "record_key", "record_value"],
+          "description": "Primary key mode"
+        },
+        "pk.fields": {
+          "type": "string",
+          "pattern": "^fiwareid,ts$",
+          "description": "Primary key fields (must be fiwareid,ts)"
+        },
+        "table.name.format": {
+          "type": "string",
+          "pattern": "^(air|weather)\\.hyper$",
+          "description": "Target table (air.hyper or weather.hyper)"
+        },
+        "value.converter": {
+          "type": "string",
+          "const": "org.apache.kafka.connect.json.JsonConverter"
+        },
+        "value.converter.schemas.enable": {
+          "type": "string",
+          "enum": ["true", "false"]
+        },
+        "transforms": {
+          "type": "string",
+          "description": "Comma-separated list of transforms"
+        },
+        "transforms.tsToTimestamp.type": {
+          "type": "string",
+          "const": "org.apache.kafka.connect.transforms.TimestampConverter$Value"
+        },
+        "transforms.tsToTimestamp.field": {
+          "type": "string",
+          "const": "ts"
+        },
+        "transforms.tsToTimestamp.target.type": {
+          "type": "string",
+          "const": "Timestamp"
+        },
+        "transforms.tsToTimestamp.format": {
+          "type": "string",
+          "description": "Timestamp format pattern"
+        },
+        "batch.size": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$",
+          "description": "Batch size for inserts"
+        },
+        "max.retries": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Maximum retry attempts"
+        },
+        "retry.backoff.ms": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "description": "Retry backoff in milliseconds"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

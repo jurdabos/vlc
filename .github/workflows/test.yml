@@ -1,4 +1,4 @@
-name: Unit Tests
+name: CI
 
 on:
   push:
@@ -7,32 +7,93 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  test:
-    runs-on: windows-latest
-    
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install ruff
+      run: pip install ruff
+
+    - name: Lint Python code
+      run: ruff check producer/ scripts/ tests/
+
+    - name: Check Python formatting
+      run: ruff format --check producer/ scripts/ tests/
+
+  test:
+    name: Unit Tests
+    runs-on: windows-latest
+    needs: lint
+
+    steps:
+    - uses: actions/checkout@v4
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
-    
+
     - name: Install uv
       run: pip install uv
-    
+
     - name: Install dependencies
       run: uv pip install --system -e ".[dev]"
-    
+
     - name: Run unit tests
       run: pytest tests/unit/ -v --tb=short
-    
+
     - name: Generate coverage report
       run: pytest tests/unit/ --cov --cov-report=xml --cov-report=html
-    
+
     - name: Upload coverage to artifacts
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: coverage-report
         path: htmlcov/
+
+  validate-config:
+    name: Validate Connect Configs
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install jsonschema
+      run: pip install jsonschema
+
+    - name: Validate JSON syntax
+      run: |
+        for f in connect/config/*.json; do
+          echo "Validating $f..."
+          python -m json.tool "$f" > /dev/null
+        done
+
+    - name: Validate against schema
+      run: |
+        python -c "
+        import json
+        import jsonschema
+        from pathlib import Path
+
+        schema_file = Path('connect/config/jdbc-sink.schema.json')
+        schema = json.loads(schema_file.read_text())
+
+        for config_file in Path('connect/config').glob('jdbc-sink.timescale.*.json'):
+            print(f'Validating {config_file.name}...')
+            config = json.loads(config_file.read_text())
+            jsonschema.validate(instance=config, schema=schema)
+            print(f'  ✓ {config_file.name} is valid')
+        "
