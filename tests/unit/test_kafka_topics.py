@@ -4,8 +4,6 @@ import re
 from pathlib import Path
 from typing import Dict
 
-import pytest
-
 
 class TestKafkaDataTopics:
     """Tests for Kafka data topics (valencia.air and valencia.weather)."""
@@ -18,7 +16,7 @@ class TestKafkaDataTopics:
         assert 'DATA_TOPIC="${DATA_TOPIC:-vlc.air}"' in content
 
         # Checking topic creation call with correct parameters
-        assert "create_topic \"${DATA_TOPIC}\"" in content
+        assert 'create_topic "${DATA_TOPIC}"' in content
 
         # Verifying partition count
         pattern = rf'DATA_PARTITIONS="\${{DATA_PARTITIONS:-{kafka_data_topic_config["partitions"]}}}"'
@@ -40,7 +38,7 @@ class TestKafkaDataTopics:
         assert 'DATA_TOPIC_2="${DATA_TOPIC_2:-vlc.weather}"' in content
 
         # Checking topic creation call
-        assert "create_topic \"${DATA_TOPIC_2}\"" in content
+        assert 'create_topic "${DATA_TOPIC_2}"' in content
 
     def test_data_topics_have_delete_cleanup_policy(self, bootstrap_script_path: Path):
         """Verifies that data topics use 'delete' cleanup policy."""
@@ -74,9 +72,7 @@ class TestKafkaConnectInternalTopics:
     """Tests for Kafka Connect internal topics (_connect_configs, _connect_offsets, _connect_status)."""
 
     def test_bootstrap_script_creates_connect_config_topic(
-        self,
-        bootstrap_script_path: Path,
-        kafka_connect_internal_topic_config: Dict
+        self, bootstrap_script_path: Path, kafka_connect_internal_topic_config: Dict
     ):
         """Verifies that _connect-configs topic is created with correct configuration."""
         content = bootstrap_script_path.read_text()
@@ -89,9 +85,7 @@ class TestKafkaConnectInternalTopics:
         assert re.search(pattern, content), "_connect-configs topic not configured correctly"
 
     def test_bootstrap_script_creates_connect_offset_topic(
-        self,
-        bootstrap_script_path: Path,
-        kafka_connect_internal_topic_config: Dict
+        self, bootstrap_script_path: Path, kafka_connect_internal_topic_config: Dict
     ):
         """Verifies that _connect-offsets topic is created with correct configuration."""
         content = bootstrap_script_path.read_text()
@@ -104,9 +98,7 @@ class TestKafkaConnectInternalTopics:
         assert re.search(pattern, content), "_connect-offsets topic not configured correctly"
 
     def test_bootstrap_script_creates_connect_status_topic(
-        self,
-        bootstrap_script_path: Path,
-        kafka_connect_internal_topic_config: Dict
+        self, bootstrap_script_path: Path, kafka_connect_internal_topic_config: Dict
     ):
         """Verifies that _connect-status topic is created with correct configuration."""
         content = bootstrap_script_path.read_text()
@@ -126,7 +118,7 @@ class TestKafkaConnectInternalTopics:
         internal_topic_patterns = [
             r'create_topic "\$\{CFG_TOPIC\}" 1 ',
             r'create_topic "\$\{OFF_TOPIC\}" 1 ',
-            r'create_topic "\$\{STS_TOPIC\}" 1 '
+            r'create_topic "\$\{STS_TOPIC\}" 1 ',
         ]
 
         for pattern in internal_topic_patterns:
@@ -137,7 +129,7 @@ class TestKafkaConnectInternalTopics:
         content = bootstrap_script_path.read_text()
 
         # Counting occurrences of compact policy for internal topics
-        compact_policy_count = content.count('--config cleanup.policy=compact')
+        compact_policy_count = content.count("--config cleanup.policy=compact")
 
         # Should have exactly 3 (one for each internal topic)
         assert compact_policy_count == 3, f"Expected 3 compact policies, found {compact_policy_count}"

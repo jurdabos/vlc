@@ -1,8 +1,7 @@
 """Common producer tests: state persistence, fingerprinting, deduplication."""
-import json
+
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
 
 import pytest
 
@@ -108,8 +107,10 @@ class TestDeduplication:
         class FakeResp:
             ok = True
             status_code = 200
+
             def json(self):
                 return {"total_count": 1, "results": [row_data]}
+
             def raise_for_status(self):
                 pass
 
@@ -120,7 +121,11 @@ class TestDeduplication:
             if call_count[0] == 1:
                 return FakeResp()
             # Subsequent calls return empty
-            return type("Empty", (), {"ok": True, "status_code": 200, "json": lambda: {"results": []}, "raise_for_status": lambda: None})()
+            return type(
+                "Empty",
+                (),
+                {"ok": True, "status_code": 200, "json": lambda: {"results": []}, "raise_for_status": lambda: None},
+            )()
 
         monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
@@ -157,8 +162,10 @@ class TestDeduplication:
         class FakeResp:
             ok = True
             status_code = 200
+
             def json(self):
                 return {"total_count": 1, "results": [row_data]}
+
             def raise_for_status(self):
                 pass
 
@@ -168,7 +175,11 @@ class TestDeduplication:
             call_count[0] += 1
             if call_count[0] == 1:
                 return FakeResp()
-            return type("Empty", (), {"ok": True, "status_code": 200, "json": lambda: {"results": []}, "raise_for_status": lambda: None})()
+            return type(
+                "Empty",
+                (),
+                {"ok": True, "status_code": 200, "json": lambda: {"results": []}, "raise_for_status": lambda: None},
+            )()
 
         monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
@@ -274,6 +285,7 @@ class TestGracefulShutdown:
         depending on import order, but both have the same behavior.
         """
         import signal
+
         handler = signal.getsignal(signal.SIGINT)
         # Verifying handler is a callable named _stop
         assert callable(handler)
@@ -286,6 +298,7 @@ class TestGracefulShutdown:
         depending on import order, but both have the same behavior.
         """
         import signal
+
         handler = signal.getsignal(signal.SIGTERM)
         # Verifying handler is a callable named _stop
         assert callable(handler)

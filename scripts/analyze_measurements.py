@@ -2,19 +2,19 @@
 """Station Environmental Metrics Report for Valencia Opendatasoft datasets."""
 
 from __future__ import annotations
+
 import argparse
 import json
 import sys
 from typing import Any, Dict, List
+
 import requests
 
 DEFAULT_URL = (
     "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/"
     "estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas/records"
 )
-ODS_DATASETS_BASE = (
-    "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets"
-)
+ODS_DATASETS_BASE = "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets"
 
 
 def expand_url(value: str) -> str:
@@ -25,9 +25,7 @@ def expand_url(value: str) -> str:
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(
-        description="Print pollutant availability per station from a Valencia ODS dataset."
-    )
+    p = argparse.ArgumentParser(description="Print pollutant availability per station from a Valencia ODS dataset.")
     p.add_argument(
         "-u",
         "--url",
@@ -92,10 +90,12 @@ def main() -> None:
     print("=" * 80)
     print(f"Total count from API: {total_count}")
     print(f"Records returned: {len(results)}")
+
     # Sort safely even if objectid is absent
     def sort_key(x: Dict[str, Any]):
         oid = x.get("objectid")
         return (oid is None, oid)
+
     for record in sorted(results, key=sort_key):
         oid = record.get("objectid", "NA")
         name = record.get("nombre", "N/A")

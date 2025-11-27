@@ -1,0 +1,49 @@
+startDelaySeconds: 20
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # Broker state
+  - pattern: 'kafka.server<type=KafkaServer, name=BrokerState><>Value'
+    name: kafka_broker_state
+    help: "Kafka broker state (0=NotRunning, 3=RunningAsBroker)"
+    type: GAUGE
+
+  # Under-replicated partitions
+  - pattern: 'kafka.server<type=ReplicaManager, name=UnderReplicatedPartitions><>Value'
+    name: kafka_under_replicated_partitions
+    help: "Number of under-replicated partitions on this broker"
+    type: GAUGE
+
+  # Offline partitions
+  - pattern: 'kafka.controller<type=KafkaController, name=OfflinePartitionsCount><>Value'
+    name: kafka_offline_partitions_count
+    help: "Number of offline partitions in the cluster"
+    type: GAUGE
+
+  # Bytes in / out per topic
+  - pattern: 'kafka.server<type=BrokerTopicMetrics, name=BytesInPerSec, topic=(.+)><>Count'
+    name: kafka_topic_bytes_in_total
+    labels:
+      topic: "$1"
+    type: COUNTER
+
+  - pattern: 'kafka.server<type=BrokerTopicMetrics, name=BytesOutPerSec, topic=(.+)><>Count'
+    name: kafka_topic_bytes_out_total
+    labels:
+      topic: "$1"
+    type: COUNTER
+
+  # Messages in per topic
+  - pattern: 'kafka.server<type=BrokerTopicMetrics, name=MessagesInPerSec, topic=(.+)><>Count'
+    name: kafka_topic_messages_in_total
+    labels:
+      topic: "$1"
+    type: COUNTER
+
+  # Request latency (produce & fetch)
+  - pattern: 'kafka.network<type=RequestMetrics, name=TotalTimeMs, request=(Produce|FetchConsumer|FetchFollower)><>99thPercentile'
+    name: kafka_request_latency_ms_p99
+    labels:
+      request: "$1"
+    type: GAUGE

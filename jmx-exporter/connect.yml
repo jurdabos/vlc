@@ -1,0 +1,54 @@
+startDelaySeconds: 20
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # Worker-level metrics
+  - pattern: 'kafka.connect<type=connect-worker-metrics, client-id=([^,]+), status=running><>status'
+    name: connect_worker_running
+    labels:
+      client_id: "$1"
+    type: GAUGE
+
+  - pattern: 'kafka.connect<type=connect-worker-metrics, client-id=([^,]+)><>connector-count'
+    name: connect_worker_connector_count
+    labels:
+      client_id: "$1"
+    type: GAUGE
+
+  # Connector status
+  - pattern: 'kafka.connect<type=connector-metrics, connector=(.+)><>status'
+    name: connect_connector_status
+    labels:
+      connector: "$1"
+    type: GAUGE
+
+  # Task-level metrics (important for your JDBC sinks)
+  - pattern: 'kafka.connect<type=task-metrics, connector=(.+), task=(\d+)><>status'
+    name: connect_task_status
+    labels:
+      connector: "$1"
+      task: "$2"
+    type: GAUGE
+
+  - pattern: 'kafka.connect<type=task-metrics, connector=(.+), task=(\d+)><>batch-size-avg'
+    name: connect_task_batch_size_avg
+    labels:
+      connector: "$1"
+      task: "$2"
+    type: GAUGE
+
+  - pattern: 'kafka.connect<type=task-metrics, connector=(.+), task=(\d+)><>put-batch-time-avg'
+    name: connect_task_put_batch_time_ms_avg
+    labels:
+      connector: "$1"
+      task: "$2"
+    type: GAUGE
+
+  # Errors
+  - pattern: 'kafka.connect<type=task-metrics, connector=(.+), task=(\d+)><>total-record-failures'
+    name: connect_task_record_failures_total
+    labels:
+      connector: "$1"
+      task: "$2"
+    type: COUNTER

@@ -6,6 +6,7 @@ Implements the backoff & shed contract:
 - Detect Kafka pressure → reduce produce rate
 - Never drop data silently; on-disk queue for retries when Kafka is down
 """
+
 import json
 import os
 import random
@@ -13,7 +14,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import requests
 from confluent_kafka import KafkaError, Producer
@@ -23,6 +24,7 @@ from confluent_kafka import KafkaError, Producer
 @dataclass
 class RetryConfig:
     """Configuration for exponential backoff retry logic."""
+
     base_delay_ms: int = 1000
     max_delay_ms: int = 60000
     max_retries: int = 5
@@ -53,7 +55,7 @@ class ExponentialBackoff:
         Applies jitter: ±jitter_factor of calculated delay.
         """
         # Exponential delay
-        delay = self.config.base_delay_ms * (2 ** attempt)
+        delay = self.config.base_delay_ms * (2**attempt)
         delay = min(delay, self.config.max_delay_ms)
         # Applying jitter
         jitter_range = delay * self.config.jitter_factor
@@ -72,11 +74,14 @@ RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 def is_retryable_error(exc: Exception) -> bool:
     """Checks if exception is retryable (timeout or connection error)."""
-    return isinstance(exc, (
-        requests.exceptions.Timeout,
-        requests.exceptions.ConnectionError,
-        requests.exceptions.ChunkedEncodingError,
-    ))
+    return isinstance(
+        exc,
+        (
+            requests.exceptions.Timeout,
+            requests.exceptions.ConnectionError,
+            requests.exceptions.ChunkedEncodingError,
+        ),
+    )
 
 
 def is_retryable_status(status_code: int) -> bool:
@@ -85,11 +90,7 @@ def is_retryable_status(status_code: int) -> bool:
 
 
 def http_request_with_retry(
-    session: requests.Session,
-    method: str,
-    url: str,
-    config: Optional[RetryConfig] = None,
-    **kwargs
+    session: requests.Session, method: str, url: str, config: Optional[RetryConfig] = None, **kwargs
 ) -> requests.Response:
     """Makes HTTP request with exponential backoff retry on transient failures.
 
@@ -244,6 +245,7 @@ class DiskQueue:
 @dataclass
 class ProduceStats:
     """Tracks produce success/failure statistics for rate throttling."""
+
     success_count: int = 0
     failure_count: int = 0
     window_start: float = field(default_factory=time.time)
@@ -308,9 +310,7 @@ class RateThrottler:
         if self._stats.failure_ratio > self._failure_threshold:
             # Scaling delay based on failure ratio
             ratio = min(self._stats.failure_ratio, 1.0)
-            delay_ms = self._min_delay_ms + (
-                (self._max_delay_ms - self._min_delay_ms) * ratio
-            )
+            delay_ms = self._min_delay_ms + ((self._max_delay_ms - self._min_delay_ms) * ratio)
             time.sleep(delay_ms / 1000.0)
 
     @property

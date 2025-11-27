@@ -15,9 +15,18 @@ Usage:
 """
 
 from __future__ import annotations
-import argparse, csv, json, math, os, signal, sys, time
+
+import argparse
+import csv
+import json
+import math
+import os
+import signal
+import sys
+import time
 from datetime import datetime, timezone
 from statistics import mean
+
 import requests
 
 # Defaults for the WEATHER dataset (5 stations, live snapshot)
@@ -27,14 +36,16 @@ MAX_LIMIT = 100  # Explore v2.1 hard cap; clamp just like our air checker.  :con
 
 STATE_DIR = os.path.join(".", "state")
 STATE_FILE = os.path.join(STATE_DIR, "weather_last_tick.txt")
-CSV_FILE   = os.path.join(STATE_DIR, "weather_ticks.csv")
+CSV_FILE = os.path.join(STATE_DIR, "weather_ticks.csv")
 
 UA = "vlc-weather-frequency/1.0 (+github.com/acidvuca)"
+
 
 def build_url(spec: str) -> str:
     if spec.startswith(("http://", "https://")):
         return spec
     return f"{BASE}/catalog/datasets/{spec}/records"
+
 
 def iso_to_utc(ts: str) -> datetime:
     """
@@ -52,6 +63,7 @@ def iso_to_utc(ts: str) -> datetime:
             tz = ""
         ts = left + tz
     return datetime.fromisoformat(ts).astimezone(timezone.utc)
+
 
 def _get(url: str, params: dict, tolerate_400_fixups: bool = True) -> dict:
     """
@@ -84,12 +96,14 @@ def _get(url: str, params: dict, tolerate_400_fixups: bool = True) -> dict:
     except json.JSONDecodeError:
         raise SystemExit(f"Non-JSON response. Params={p}. Payload head: {r.text[:600]}")
 
+
 def fetch_total_count(url: str) -> int:
     data = _get(url, {"select": "count(*) as n", "limit": "1"})
     try:
         return int(data.get("results", [{}])[0].get("n", 0))
     except Exception:
         return 0
+
 
 def fetch_all_rows(url: str) -> list[dict]:
     """
@@ -114,8 +128,10 @@ def fetch_all_rows(url: str) -> list[dict]:
         rows.extend(data.get("results", []))
     return rows
 
+
 def ensure_state_dir():
     os.makedirs(STATE_DIR, exist_ok=True)
+
 
 def read_last_tick() -> str | None:
     if os.path.exists(STATE_FILE):
@@ -123,9 +139,11 @@ def read_last_tick() -> str | None:
         return s or None
     return None
 
+
 def write_last_tick(tick: str) -> None:
     ensure_state_dir()
     open(STATE_FILE, "w", encoding="utf-8").write(tick)
+
 
 def append_csv_row(wall_utc: datetime, tick_utc: datetime, rows: int, stations: int) -> None:
     ensure_state_dir()
@@ -136,21 +154,33 @@ def append_csv_row(wall_utc: datetime, tick_utc: datetime, rows: int, stations: 
             w.writerow(["wall_time_utc", "tick_utc", "rows", "stations"])
         w.writerow([wall_utc.isoformat(), tick_utc.isoformat(), rows, stations])
 
+
 def summarize_deltas(deltas_h: list[float]) -> str:
     if not deltas_h:
         return "no advances observed"
-    return f"{len(deltas_h)} advances | mean {mean(deltas_h):.2f} h | min {min(deltas_h):.2f} h | max {max(deltas_h):.2f} h"
+    return (
+        f"{len(deltas_h)} advances | mean {mean(deltas_h):.2f} h | "
+        f"min {min(deltas_h):.2f} h | max {max(deltas_h):.2f} h"
+    )
+
 
 def main():
     ap = argparse.ArgumentParser(description="Count live-tick advances for the WEATHER snapshot.")
-    ap.add_argument("-u", "--url_or_dataset", default=DATASET_DEFAULT,
-                    help="Full records URL or dataset id. Default: estacions-atmosferiques-estaciones-atmosfericas")
+    ap.add_argument(
+        "-u",
+        "--url_or_dataset",
+        default=DATASET_DEFAULT,
+        help="Full records URL or dataset id. Default: estacions-atmosferiques-estaciones-atmosfericas",
+    )
     ap.add_argument("-i", "--interval", type=int, default=300, help="Poll interval in seconds. Default: 300")
     args = ap.parse_args()
     url = build_url(args.url_or_dataset)
     # graceful Ctrl+C
     stop = {"flag": False}
-    def _sigint(_sig, _frm): stop["flag"] = True
+
+    def _sigint(_sig, _frm):
+        stop["flag"] = True
+
     signal.signal(signal.SIGINT, _sigint)
     # Warm-up: fetch one snapshot
     try:
@@ -204,26 +234,36 @@ def main():
             gap_h = (tick_dt_now - last_tick_dt).total_seconds() / 3600.0
             advances += 1
             deltas_h.append(gap_h)
-            print(f"[{wall.strftime('%H:%M:%S')}] tick advanced by {gap_h:.2f} h → {tick_dt_now.strftime('%Y-%m-%d %H:%M:%S')} UTC "
-                  f"(rows={len(rows)}, stations={stations_now}); advances={advances}")
+            print(
+                f"[{wall.strftime('%H:%M:%S')}] tick advanced by {gap_h:.2f} h → "
+                f"{tick_dt_now.strftime('%Y-%m-%d %H:%M:%S')} UTC "
+                f"(rows={len(rows)}, stations={stations_now}); advances={advances}"
+            )
             write_last_tick(tick_str_now)
             append_csv_row(wall, tick_dt_now, len(rows), stations_now)
             last_tick_dt = tick_dt_now
         else:
             # unchanged
-            print(f"[{wall.strftime('%H:%M:%S')}] same tick ({last_tick_dt.strftime('%H:%M:%S')} UTC); polls={polls}, advances={advances}")
+            print(
+                f"[{wall.strftime('%H:%M:%S')}] same tick ({last_tick_dt.strftime('%H:%M:%S')} UTC); "
+                f"polls={polls}, advances={advances}"
+            )
     # Summary on Ctrl+C
     stop_wall = datetime.now(timezone.utc)
     elapsed_h = (stop_wall - start_wall).total_seconds() / 3600.0
     print("\n" + "=" * 80)
     print("Session summary")
-    print(f"  Duration        : {elapsed_h:.2f} h (from {start_wall.strftime('%Y-%m-%d %H:%M:%S')} to {stop_wall.strftime('%Y-%m-%d %H:%M:%S')} UTC)")
+    print(
+        f"  Duration        : {elapsed_h:.2f} h "
+        f"(from {start_wall.strftime('%Y-%m-%d %H:%M:%S')} to {stop_wall.strftime('%Y-%m-%d %H:%M:%S')} UTC)"
+    )
     print(f"  Polls / Advances: {polls} / {advances}")
     print(f"  Last tick       : {last_tick_dt.isoformat()}")
     print(f"  Tick gaps (h)   : {summarize_deltas(deltas_h)}")
     print(f"  State file      : {os.path.abspath(STATE_FILE)}")
     print(f"  CSV (advances)  : {os.path.abspath(CSV_FILE)}")
     print("=" * 80)
+
 
 if __name__ == "__main__":
     main()

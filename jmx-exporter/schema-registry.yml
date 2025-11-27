@@ -1,0 +1,26 @@
+startDelaySeconds: 20
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # HTTP request metrics
+  - pattern: 'io.confluent.kafka.schemaregistry<type=jetty-metrics, endpoint=(.+), metric=(requests|responses)><>Count'
+    name: schema_registry_http_$2_total
+    labels:
+      endpoint: "$1"
+    type: COUNTER
+
+  - pattern: 'io.confluent.kafka.schemaregistry<type=jetty-metrics, endpoint=(.+), metric=requestTimeMs><>99thPercentile'
+    name: schema_registry_http_request_time_ms_p99
+    labels:
+      endpoint: "$1"
+    type: GAUGE
+
+  # Registry-level metrics
+  - pattern: 'io.confluent.kafka.schemaregistry<type=schema-registry-metrics, name=schema_count><>Value'
+    name: schema_registry_schema_count
+    type: GAUGE
+
+  - pattern: 'io.confluent.kafka.schemaregistry<type=schema-registry-metrics, name=subject_count><>Value'
+    name: schema_registry_subject_count
+    type: GAUGE

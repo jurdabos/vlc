@@ -1,19 +1,23 @@
-import os, time, json, re, signal, hashlib
+import hashlib
+import json
+import os
+import re
+import signal
+import time
 from datetime import datetime, timezone
-from typing import Dict, Any, Iterable, Tuple, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import requests
 from confluent_kafka import Producer
-
 from resilience import (
-    RetryConfig,
-    http_request_with_retry,
     InflightLimiter,
     ResilientProducer,
+    RetryConfig,
+    http_request_with_retry,
 )
 
 # --------- env ---------
-BASE1 = os.getenv("VLC_EXPLORE_BASE",  "https://valencia.opendatasoft.com/api/explore/v2.1")
+BASE1 = os.getenv("VLC_EXPLORE_BASE", "https://valencia.opendatasoft.com/api/explore/v2.1")
 BASE2 = os.getenv("VLC_EXPLORE_BASE2", "https://valencia.opendatasoft.com/api/v2")
 BASES = [BASE1, BASE2]
 
@@ -41,11 +45,18 @@ PG_PW = os.getenv("PGPASSWORD", "postgres")
 
 # Desired fields (we'll intersect with what's available)
 DESIRED_FIELDS = [
-    "objectid", "nombre", "direccion",
-    "so2", "no2", "o3", "co", "pm10", "pm25",
+    "objectid",
+    "nombre",
+    "direccion",
+    "so2",
+    "no2",
+    "o3",
+    "co",
+    "pm10",
+    "pm25",
     "calidad_am",
     "fiwareid",
-    "geo_point_2d"
+    "geo_point_2d",
 ]
 
 # Which fields define a change if ts is the same?
@@ -61,11 +72,16 @@ INFLIGHT_LIMITER = InflightLimiter()
 DLQ_DIR = os.getenv("VLC_DLQ_DIR", os.path.join(STATE_DIR, "dlq"))
 
 running = True
+
+
 def _stop(*_):
     global running
     running = False
+
+
 signal.signal(signal.SIGINT, _stop)
 signal.signal(signal.SIGTERM, _stop)
+
 
 # ------------- utilities -------------
 def load_offset() -> str:
@@ -74,14 +90,13 @@ def load_offset() -> str:
     if START_OFFSET == "latest_db" and PG_BOOTSTRAP:
         try:
             import psycopg2
-            conn = psycopg2.connect(
-                host=PG_HOST, port=PG_PORT, dbname=PG_DB, user=PG_USER, password=PG_PW
-            )
+
+            conn = psycopg2.connect(host=PG_HOST, port=PG_PORT, dbname=PG_DB, user=PG_USER, password=PG_PW)
             with conn, conn.cursor() as cur:
                 cur.execute(
                     "select coalesce(to_char(max(ts) at time zone 'UTC', "
-                    "'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), %s) from air.air_station_readings",
-                    (START_OFFSET,)
+                    '\'YYYY-MM-DD"T"HH24:MI:SS"Z"\'), %s) from air.air_station_readings',
+                    (START_OFFSET,),
                 )
                 ts = cur.fetchone()[0]
                 return ts or START_OFFSET
@@ -119,7 +134,9 @@ def save_offset(iso: str) -> None:
     with open(OFFSET_FILE, "w", encoding="utf-8") as f:
         f.write(iso)
 
+
 POINT_RX = re.compile(r"POINT\s*\(\s*([-\d\.]+)\s+([-\d\.]+)\s*\)")
+
 
 def extract_lat_lon(geo: Any) -> Tuple[Optional[float], Optional[float]]:
     if isinstance(geo, dict):
@@ -135,6 +152,7 @@ def extract_lat_lon(geo: Any) -> Tuple[Optional[float], Optional[float]]:
             return lat, lon
     return (None, None)
 
+
 def normalize_ts(s: str) -> str:
     # Ensure "YYYY-MM-DDTHH:MM:SSZ" (no millis)
     try:
@@ -146,15 +164,17 @@ def normalize_ts(s: str) -> str:
         except Exception:
             # Last resort: let requests/ODS give RFC3339 with subsec: strip subsec
             # Example: 2025-10-17T10:11:12.345Z
-            s2 = s.split(".")[0].replace("Z","")
+            s2 = s.split(".")[0].replace("Z", "")
             dt = datetime.fromisoformat(s2).replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
 
 def value_fingerprint(rec: dict) -> str:
     """Creates a fingerprint of the value fields to detect data changes."""
     payload = {k: rec.get(k) for k in CHANGE_FIELDS}
-    s = json.dumps(payload, sort_keys=True, separators=(",",":"))
+    s = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha1(s.encode("utf-8")).hexdigest()
+
 
 def map_record(r: Dict[str, Any], ts_field: str) -> Dict[str, Any]:
     lat, lon = extract_lat_lon(r.get("geo_point_2d"))
@@ -170,17 +190,20 @@ def map_record(r: Dict[str, Any], ts_field: str) -> Dict[str, Any]:
         "pm25": r.get("pm25"),
         "air_quality_summary": r.get("calidad_am"),
         # location
-        "lat": lat, "lon": lon
+        "lat": lat,
+        "lon": lon,
     }
     # Add fingerprint based on mapped values
-    out["_fp"] = value_fingerprint({
-        "so2": out["so2"],
-        "no2": out["no2"],
-        "o3": out["o3"],
-        "co": out["co"],
-        "pm10": out["pm10"],
-        "pm25": out["pm25"]
-    })
+    out["_fp"] = value_fingerprint(
+        {
+            "so2": out["so2"],
+            "no2": out["no2"],
+            "o3": out["o3"],
+            "co": out["co"],
+            "pm10": out["pm10"],
+            "pm25": out["pm25"],
+        }
+    )
     return out
 
 
@@ -192,6 +215,7 @@ def produce_all(p: ResilientProducer, events: Iterable[Dict[str, Any]]) -> None:
         key = f"{ev['fiwareid']}|{ev['ts']}"
         p.produce(key=key.encode("utf-8"), value=json.dumps(ev).encode("utf-8"))
     p.flush()
+
 
 # ------------- metadata helpers -------------
 def get_meta(base: str) -> Optional[Dict[str, Any]]:
@@ -205,6 +229,7 @@ def get_meta(base: str) -> Optional[Dict[str, Any]]:
         pass
     return None
 
+
 def get_fields_from_meta(meta: Dict[str, Any]) -> List[str]:
     try:
         fields = meta.get("dataset", {}).get("fields", [])
@@ -212,18 +237,18 @@ def get_fields_from_meta(meta: Dict[str, Any]) -> List[str]:
     except Exception:
         return []
 
+
 def fetch_one_record(base: str) -> Optional[Dict[str, Any]]:
     """Fetches a single record with retry on transient failures."""
     url = f"{base}/catalog/datasets/{DATASET_ID}/records"
     try:
-        r = http_request_with_retry(
-            session, "GET", url, config=RETRY_CONFIG, params={"limit": "1"}
-        )
+        r = http_request_with_retry(session, "GET", url, config=RETRY_CONFIG, params={"limit": "1"})
         r.raise_for_status()
         arr = r.json().get("results", [])
         return arr[0] if arr else None
     except Exception:
         return None
+
 
 def choose_ts_field(avail_fields: List[str], sample: Optional[Dict[str, Any]]) -> Optional[str]:
     # 1) honor env if present in dataset
@@ -234,8 +259,15 @@ def choose_ts_field(avail_fields: List[str], sample: Optional[Dict[str, Any]]) -
 
     # 2) try meta-typed date-like names
     candidates = [
-        "fecha_carg","update_jcd","timestamp","fechahora","fecha",
-        "updated_at","date","data","last_update"
+        "fecha_carg",
+        "update_jcd",
+        "timestamp",
+        "fechahora",
+        "fecha",
+        "updated_at",
+        "date",
+        "data",
+        "last_update",
     ]
     for c in candidates:
         if c in avail_fields:
@@ -248,18 +280,20 @@ def choose_ts_field(avail_fields: List[str], sample: Optional[Dict[str, Any]]) -
                 return k
     return None
 
+
 def compute_select(avail_fields: List[str], ts_field: str) -> str:
     fields = [f for f in DESIRED_FIELDS if f in avail_fields]
     if ts_field not in fields:
         fields = fields + [ts_field]
     return ",".join(fields)
 
+
 # ------------- fetching loop -------------
-def fetch_since(offset_iso: str, seen_for_offset: dict, bases: List[str],
-                select: str, ts_field: str
-               ) -> Tuple[List[Dict[str, Any]], str, dict]:
+def fetch_since(
+    offset_iso: str, seen_for_offset: dict, bases: List[str], select: str, ts_field: str
+) -> Tuple[List[Dict[str, Any]], str, dict]:
     """Fetches records since offset, using fingerprint-based deduplication.
-    
+
     Returns:
         - List of new/changed records to emit
         - New offset (advances only when newer timestamps found)
@@ -276,31 +310,28 @@ def fetch_since(offset_iso: str, seen_for_offset: dict, bases: List[str],
                 "limit": str(LIMIT),
                 "offset": str(page * LIMIT),
                 "select": select,
-                "where": f"{ts_field}>=date'{offset_iso}'"
+                "where": f"{ts_field}>=date'{offset_iso}'",
             }
             try:
                 resp = http_request_with_retry(
-                    session, "GET",
-                    f"{base}/catalog/datasets/{DATASET_ID}/records",
-                    config=RETRY_CONFIG,
-                    params=params
+                    session, "GET", f"{base}/catalog/datasets/{DATASET_ID}/records", config=RETRY_CONFIG, params=params
                 )
                 resp.raise_for_status()
                 rows = resp.json().get("results", [])
             except Exception:
                 # Try next base if nothing collected yet
-                if not out: 
+                if not out:
                     break
-                else: 
+                else:
                     return out, max_ts, seen_map
-            if not rows: 
+            if not rows:
                 break
             for r in rows:
                 ev = map_record(r, ts_field)
                 ts = ev.get("ts")
                 sid = ev.get("fiwareid")
                 fp = ev.get("_fp")
-                if not (ts and sid and fp): 
+                if not (ts and sid and fp):
                     continue
                 if ts > max_ts:
                     # New timestamp watermark - reset the seen map
@@ -327,10 +358,10 @@ def fetch_since(offset_iso: str, seen_for_offset: dict, bases: List[str],
                     if ts == max_ts:
                         # Track this station's fingerprint for current timestamp
                         seen_map[sid] = fp
-            if len(rows) < LIMIT: 
+            if len(rows) < LIMIT:
                 break
             page += 1
-        if out: 
+        if out:
             break  # Got data from this base, don't try others
     # Determine new offset and seen map to persist
     # Only advance offset if we found strictly newer timestamps
@@ -365,20 +396,25 @@ def bootstrap_schema() -> Tuple[str, str]:
     select = compute_select(avail_fields, ts_field)
     return select, ts_field
 
+
 def main():
     """Main loop with resilience: backoff, inflight limiting, DLQ retry."""
     offset, seen = load_state()
     select, ts_field = bootstrap_schema()
     print(f"[air] using ts_field='{ts_field}', SELECT='{select}'")
     print(f"[air] starting with offset {offset}, seen_for_offset={len(seen)}")
-    print(f"[air] resilience: max_inflight={INFLIGHT_LIMITER.max_inflight}, "
-          f"backoff_base={RETRY_CONFIG.base_delay_ms}ms, "
-          f"max_retries={RETRY_CONFIG.max_retries}")
-    raw_producer = Producer({
-        "bootstrap.servers": BOOTSTRAP,
-        "linger.ms": 50,
-        "enable.idempotence": True,
-    })
+    print(
+        f"[air] resilience: max_inflight={INFLIGHT_LIMITER.max_inflight}, "
+        f"backoff_base={RETRY_CONFIG.base_delay_ms}ms, "
+        f"max_retries={RETRY_CONFIG.max_retries}"
+    )
+    raw_producer = Producer(
+        {
+            "bootstrap.servers": BOOTSTRAP,
+            "linger.ms": 50,
+            "enable.idempotence": True,
+        }
+    )
     producer = ResilientProducer(raw_producer, TOPIC, dlq_dir=DLQ_DIR)
     while running:
         try:
@@ -388,9 +424,7 @@ def main():
                 producer.flush()
             # Fetching new data with inflight limiting
             with INFLIGHT_LIMITER:
-                items, new_offset, new_seen = fetch_since(
-                    offset, seen, BASES, select, ts_field
-                )
+                items, new_offset, new_seen = fetch_since(offset, seen, BASES, select, ts_field)
             if items:
                 produce_all(producer, items)
                 save_state(new_offset, new_seen)
@@ -399,8 +433,7 @@ def main():
                 stats_str = ""
                 if stats:
                     stats_str = f" (ok={stats.success_count}, fail={stats.failure_count})"
-                print(f"[air] produced {len(items)}; offset={offset}; "
-                      f"seen={len(seen)}{stats_str}")
+                print(f"[air] produced {len(items)}; offset={offset}; seen={len(seen)}{stats_str}")
             else:
                 print("[air] no new records")
             # Logging DLQ size if non-empty

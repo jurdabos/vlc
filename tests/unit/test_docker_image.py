@@ -3,8 +3,6 @@
 import re
 from pathlib import Path
 
-import pytest
-
 
 class TestKafkaConnectDockerImage:
     """Tests for Kafka Connect Docker image build configuration."""
@@ -141,9 +139,23 @@ class TestDockerImageBuildProcess:
 
         # Checking that each line is either empty, a comment, or a valid Dockerfile instruction
         valid_instructions = {
-            "FROM", "RUN", "CMD", "LABEL", "EXPOSE", "ENV", "ADD", "COPY",
-            "ENTRYPOINT", "VOLUME", "USER", "WORKDIR", "ARG", "ONBUILD",
-            "STOPSIGNAL", "HEALTHCHECK", "SHELL"
+            "FROM",
+            "RUN",
+            "CMD",
+            "LABEL",
+            "EXPOSE",
+            "ENV",
+            "ADD",
+            "COPY",
+            "ENTRYPOINT",
+            "VOLUME",
+            "USER",
+            "WORKDIR",
+            "ARG",
+            "ONBUILD",
+            "STOPSIGNAL",
+            "HEALTHCHECK",
+            "SHELL",
         }
 
         lines = content.strip().split("\n")

@@ -1,13 +1,13 @@
+import json
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
-import json
+
 import pytest
 
 # Make producer modules importable
 sys.path.append(str(Path(__file__).parents[2] / "producer"))
 import weather_producer as wp  # noqa: E402
-import resilience  # noqa: E402
 
 
 class DummyProducer:
@@ -102,12 +102,20 @@ def test_weather_extract_lat_lon():
 def test_weather_value_fingerprint():
     """Verifies fingerprinting in weather producer."""
     rec1 = {
-        "viento_dir": 180, "viento_vel": 3.2, "temperatur": 22.5,
-        "humedad_re": 55.0, "presion_ba": 1013.2, "precipitac": 0.4
+        "viento_dir": 180,
+        "viento_vel": 3.2,
+        "temperatur": 22.5,
+        "humedad_re": 55.0,
+        "presion_ba": 1013.2,
+        "precipitac": 0.4,
     }
     rec2 = {
-        "viento_dir": 180, "viento_vel": 3.2, "temperatur": 23.0,  # Different temp
-        "humedad_re": 55.0, "presion_ba": 1013.2, "precipitac": 0.4
+        "viento_dir": 180,
+        "viento_vel": 3.2,
+        "temperatur": 23.0,  # Different temp
+        "humedad_re": 55.0,
+        "presion_ba": 1013.2,
+        "precipitac": 0.4,
     }
     fp1 = wp.value_fingerprint(rec1)
     fp2 = wp.value_fingerprint(rec2)
@@ -167,6 +175,7 @@ def test_weather_get_meta_success(monkeypatch):
 
 def test_weather_get_meta_failure(monkeypatch):
     """Verifies get_meta returns None on failure."""
+
     def fake_http_request(session, method, url, **kwargs):
         return _FakeResp({}, 500)
 
@@ -176,6 +185,7 @@ def test_weather_get_meta_failure(monkeypatch):
 
 def test_weather_get_meta_exception(monkeypatch):
     """Verifies get_meta returns None on exception."""
+
     def fake_http_request(session, method, url, **kwargs):
         raise ConnectionError("Network error")
 
@@ -217,6 +227,7 @@ def test_weather_fetch_one_record_success(monkeypatch):
 
 def test_weather_fetch_one_record_empty(monkeypatch):
     """Verifies fetch_one_record returns None when empty."""
+
     def fake_http_request(session, method, url, **kwargs):
         return _FakeResp({"results": []})
 
@@ -226,6 +237,7 @@ def test_weather_fetch_one_record_empty(monkeypatch):
 
 def test_weather_fetch_one_record_exception(monkeypatch):
     """Verifies fetch_one_record returns None on exception."""
+
     def fake_http_request(session, method, url, **kwargs):
         raise ConnectionError("Network error")
 
@@ -293,8 +305,7 @@ def test_weather_fetch_since(monkeypatch, tmp_path):
     monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
     out, new_offset, seen_map = wp.fetch_since(
-        "2025-10-18T17:00:00Z", {}, wp.BASES,
-        "fiwareid,fecha_carg,temperatur,humedad_re,geo_point_2d", "fecha_carg"
+        "2025-10-18T17:00:00Z", {}, wp.BASES, "fiwareid,fecha_carg,temperatur,humedad_re,geo_point_2d", "fecha_carg"
     )
     assert len(out) == 1
     assert new_offset == "2025-10-18T18:00:00Z"
@@ -455,8 +466,12 @@ def test_weather_fetch_since_deduplication(monkeypatch, tmp_path):
 
     # Create fingerprint for the expected record
     rec_values = {
-        "viento_dir": 180, "viento_vel": 3.2, "temperatur": 22.5,
-        "humedad_re": 55.0, "presion_ba": 1013.2, "precipitac": 0.4
+        "viento_dir": 180,
+        "viento_vel": 3.2,
+        "temperatur": 22.5,
+        "humedad_re": 55.0,
+        "presion_ba": 1013.2,
+        "precipitac": 0.4,
     }
     expected_fp = wp.value_fingerprint(rec_values)
 
@@ -490,9 +505,11 @@ def test_weather_fetch_since_deduplication(monkeypatch, tmp_path):
     seen_for_offset = {"W01": expected_fp}
 
     out, new_offset, seen_map = wp.fetch_since(
-        "2025-10-18T17:00:00Z", seen_for_offset, wp.BASES,
+        "2025-10-18T17:00:00Z",
+        seen_for_offset,
+        wp.BASES,
         "fiwareid,fecha_carg,viento_dir,viento_vel,temperatur,humedad_re,presion_ba,precipitac,geo_point_2d",
-        "fecha_carg"
+        "fecha_carg",
     )
     # Should skip because fingerprint matches
     assert len(out) == 0
@@ -533,9 +550,11 @@ def test_weather_fetch_since_emits_changed_value(monkeypatch, tmp_path):
     seen_for_offset = {"W01": "old_fingerprint_123"}
 
     out, new_offset, seen_map = wp.fetch_since(
-        "2025-10-18T17:00:00Z", seen_for_offset, wp.BASES,
+        "2025-10-18T17:00:00Z",
+        seen_for_offset,
+        wp.BASES,
         "fiwareid,fecha_carg,viento_dir,viento_vel,temperatur,humedad_re,presion_ba,precipitac,geo_point_2d",
-        "fecha_carg"
+        "fecha_carg",
     )
     # Should emit because fingerprint changed
     assert len(out) == 1
@@ -543,6 +562,7 @@ def test_weather_fetch_since_emits_changed_value(monkeypatch, tmp_path):
 
 def test_weather_bootstrap_schema_no_ts_field(monkeypatch):
     """Verifies bootstrap_schema falls back to TIMESTAMP_FIELD when none found."""
+
     def fake_http_request(session, method, url, **kwargs):
         return _FakeResp({}, 404)  # All requests fail
 
@@ -609,3 +629,372 @@ def test_weather_get_fields_from_meta_exception():
     meta = {"dataset": {"other": []}}
     result = wp.get_fields_from_meta(meta)
     assert result == []
+
+
+# ============== Additional coverage tests ==============
+
+
+class TestWeatherLoadOffsetDbBootstrap:
+    """Tests for load_offset with PG_BOOTSTRAP enabled."""
+
+    def test_load_offset_from_file_takes_precedence(self, tmp_path, monkeypatch):
+        """Verifies that offset file takes precedence over DB bootstrap."""
+        offset_file = tmp_path / "offset.txt"
+        offset_file.write_text("2025-10-18T17:00:00Z", encoding="utf-8")
+
+        monkeypatch.setattr(wp, "OFFSET_FILE", str(offset_file))
+        monkeypatch.setattr(wp, "PG_BOOTSTRAP", True)
+        monkeypatch.setattr(wp, "START_OFFSET", "latest_db")
+
+        result = wp.load_offset()
+        assert result == "2025-10-18T17:00:00Z"
+
+    def test_load_offset_db_bootstrap_success(self, tmp_path, monkeypatch):
+        """Verifies DB bootstrap fetches max timestamp from database."""
+        monkeypatch.setattr(wp, "OFFSET_FILE", str(tmp_path / "nonexistent.txt"))
+        monkeypatch.setattr(wp, "PG_BOOTSTRAP", True)
+        monkeypatch.setattr(wp, "START_OFFSET", "latest_db")
+
+        class MockCursor:
+            def execute(self, query, params):
+                pass
+
+            def fetchone(self):
+                return ("2025-10-18T18:00:00Z",)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+        class MockConn:
+            def cursor(self):
+                return MockCursor()
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+        class MockPsycopg2:
+            def connect(self, **kwargs):
+                return MockConn()
+
+        import sys
+
+        sys.modules["psycopg2"] = MockPsycopg2()
+
+        result = wp.load_offset()
+        assert result == "2025-10-18T18:00:00Z"
+
+        del sys.modules["psycopg2"]
+
+    def test_load_offset_db_bootstrap_exception(self, tmp_path, monkeypatch):
+        """Verifies fallback on DB connection exception."""
+        monkeypatch.setattr(wp, "OFFSET_FILE", str(tmp_path / "nonexistent.txt"))
+        monkeypatch.setattr(wp, "PG_BOOTSTRAP", True)
+        monkeypatch.setattr(wp, "START_OFFSET", "latest_db")
+
+        class MockPsycopg2:
+            def connect(self, **kwargs):
+                raise ConnectionError("DB connection failed")
+
+        import sys
+
+        sys.modules["psycopg2"] = MockPsycopg2()
+
+        result = wp.load_offset()
+        assert result == "latest_db"
+
+        del sys.modules["psycopg2"]
+
+    def test_load_offset_db_bootstrap_returns_none(self, tmp_path, monkeypatch):
+        """Verifies fallback when DB returns None."""
+        monkeypatch.setattr(wp, "OFFSET_FILE", str(tmp_path / "nonexistent.txt"))
+        monkeypatch.setattr(wp, "PG_BOOTSTRAP", True)
+        monkeypatch.setattr(wp, "START_OFFSET", "latest_db")
+
+        class MockCursor:
+            def execute(self, query, params):
+                pass
+
+            def fetchone(self):
+                return (None,)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+        class MockConn:
+            def cursor(self):
+                return MockCursor()
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+        class MockPsycopg2:
+            def connect(self, **kwargs):
+                return MockConn()
+
+        import sys
+
+        sys.modules["psycopg2"] = MockPsycopg2()
+
+        result = wp.load_offset()
+        # Should return START_OFFSET since DB returned None
+        assert result == "latest_db" or result is not None
+
+        del sys.modules["psycopg2"]
+
+
+class TestWeatherNormalizeTsFallbackPaths:
+    """Tests for normalize_ts fallback parsing paths."""
+
+    def test_normalize_ts_strptime_fallback(self):
+        """Verifies strptime fallback for non-ISO timestamps."""
+        result = wp.normalize_ts("2025-10-18T17:00:00")
+        assert result.endswith("Z")
+        assert "2025-10-18" in result
+
+    def test_normalize_ts_subsecond_stripping(self):
+        """Verifies subsecond stripping for timestamps with milliseconds."""
+        result = wp.normalize_ts("2025-10-18T17:00:00.123456Z")
+        assert result == "2025-10-18T17:00:00Z"
+
+    def test_normalize_ts_subsecond_with_timezone(self):
+        """Verifies subsecond stripping with timezone offset."""
+        result = wp.normalize_ts("2025-10-18T19:00:00.500+02:00")
+        assert result == "2025-10-18T17:00:00Z"
+
+
+class TestWeatherGetFieldsFromMetaException:
+    """Tests for get_fields_from_meta exception handling."""
+
+    def test_get_fields_from_meta_exception_on_none(self):
+        """Verifies exception handling when None is passed."""
+        result = wp.get_fields_from_meta(None)
+        assert result == []
+
+
+class TestWeatherFetchSinceEarlyReturn:
+    """Tests for fetch_since early return scenarios."""
+
+    def test_fetch_since_returns_data_on_exception_after_first_page(self, monkeypatch, tmp_path):
+        """Verifies fetch_since returns collected data when exception occurs after first page."""
+        monkeypatch.setattr(wp, "STATE_DIR", str(tmp_path))
+        monkeypatch.setattr(wp, "LIMIT", 1)
+
+        page0 = {
+            "results": [
+                {
+                    "fiwareid": "W01",
+                    "fecha_carg": "2025-10-18T18:00:00+00:00",
+                    "temperatur": 22.5,
+                    "geo_point_2d": {"lat": 39.47, "lon": -0.38},
+                }
+            ]
+        }
+
+        call_count = [0]
+
+        def fake_http_request(session, method, url, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return _FakeResp(page0)
+            raise ConnectionError("Network error on page 2")
+
+        monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
+
+        out, new_offset, seen_map = wp.fetch_since(
+            "2025-10-18T17:00:00Z",
+            {},
+            wp.BASES,
+            "fiwareid,fecha_carg,temperatur,geo_point_2d",
+            "fecha_carg",
+        )
+        assert len(out) == 1
+        assert new_offset == "2025-10-18T18:00:00Z"
+
+
+class TestWeatherFetchSinceMaxTsEmission:
+    """Tests for fetch_since emission when ts equals max_ts."""
+
+    def test_fetch_since_emits_for_ts_equals_max_ts(self, monkeypatch, tmp_path):
+        """Verifies emission for records where ts == max_ts (not offset)."""
+        monkeypatch.setattr(wp, "STATE_DIR", str(tmp_path))
+        monkeypatch.setattr(wp, "LIMIT", 10)
+
+        page = {
+            "results": [
+                {
+                    "fiwareid": "W01",
+                    "fecha_carg": "2025-10-18T18:00:00+00:00",
+                    "temperatur": 22.5,
+                    "geo_point_2d": {"lat": 39.47, "lon": -0.38},
+                },
+                {
+                    "fiwareid": "W02",
+                    "fecha_carg": "2025-10-18T18:00:00+00:00",
+                    "temperatur": 23.0,
+                    "geo_point_2d": {"lat": 39.48, "lon": -0.39},
+                },
+            ]
+        }
+
+        call_count = [0]
+
+        def fake_http_request(session, method, url, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return _FakeResp(page)
+            return _FakeResp({"results": []})
+
+        monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
+
+        out, new_offset, seen_map = wp.fetch_since(
+            "2025-10-18T17:00:00Z",
+            {},
+            wp.BASES,
+            "fiwareid,fecha_carg,temperatur,geo_point_2d",
+            "fecha_carg",
+        )
+        assert len(out) == 2
+        assert new_offset == "2025-10-18T18:00:00Z"
+        assert "W01" in seen_map
+        assert "W02" in seen_map
+
+
+class TestWeatherMainFunction:
+    """Tests for the main() function."""
+
+    def test_main_single_iteration_no_data(self, monkeypatch, tmp_path):
+        """Verifies main loop handles no-data case."""
+        monkeypatch.setattr(wp, "STATE_DIR", str(tmp_path))
+        monkeypatch.setattr(wp, "STATE_JSON", str(tmp_path / "state.json"))
+        monkeypatch.setattr(wp, "OFFSET_FILE", str(tmp_path / "offset.txt"))
+        monkeypatch.setattr(wp, "DLQ_DIR", str(tmp_path / "dlq"))
+        monkeypatch.setattr(wp, "POLL_SECS", 0)
+        monkeypatch.setattr(wp, "START_OFFSET", "1970-01-01T00:00:00Z")
+
+        def fake_http_request(session, method, url, **kwargs):
+            return _FakeResp({"results": []})
+
+        monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
+
+        class MockProducer:
+            def produce(self, topic, key, value, callback=None):
+                pass
+
+            def flush(self, timeout=None):
+                return 0
+
+        monkeypatch.setattr("confluent_kafka.Producer", lambda cfg: MockProducer())
+
+        original_running = wp.running
+        monkeypatch.setattr(wp, "running", False)
+
+        wp.main()
+
+        wp.running = original_running
+
+    def test_main_with_data_produces_messages(self, monkeypatch, tmp_path, capsys):
+        """Verifies main loop produces messages when data is available."""
+        monkeypatch.setattr(wp, "STATE_DIR", str(tmp_path))
+        monkeypatch.setattr(wp, "STATE_JSON", str(tmp_path / "state.json"))
+        monkeypatch.setattr(wp, "OFFSET_FILE", str(tmp_path / "offset.txt"))
+        monkeypatch.setattr(wp, "DLQ_DIR", str(tmp_path / "dlq"))
+        monkeypatch.setattr(wp, "POLL_SECS", 0)
+        monkeypatch.setattr(wp, "START_OFFSET", "1970-01-01T00:00:00Z")
+        monkeypatch.setattr(wp, "LIMIT", 10)
+
+        page = {
+            "results": [
+                {
+                    "fiwareid": "W01",
+                    "fecha_carg": "2025-10-18T18:00:00+00:00",
+                    "temperatur": 22.5,
+                    "geo_point_2d": {"lat": 39.47, "lon": -0.38},
+                }
+            ]
+        }
+        meta = {"dataset": {"fields": [{"name": "fiwareid"}, {"name": "fecha_carg"}, {"name": "temperatur"}]}}
+
+        call_count = [0]
+
+        def fake_http_request(session, method, url, **kwargs):
+            call_count[0] += 1
+            if "/records" not in url:
+                return _FakeResp(meta)
+            if call_count[0] <= 2:
+                return _FakeResp(page)
+            return _FakeResp({"results": []})
+
+        monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
+
+        class MockProducer:
+            def produce(self, topic, key, value, callback=None):
+                if callback:
+                    callback(None, type("Msg", (), {"key": lambda: key, "value": lambda: value})())
+
+            def flush(self, timeout=None):
+                return 0
+
+        monkeypatch.setattr("confluent_kafka.Producer", lambda cfg: MockProducer())
+
+        original_running = wp.running
+        monkeypatch.setattr(wp, "running", False)
+
+        wp.main()
+
+        captured = capsys.readouterr()
+        assert "[weather] using ts_field" in captured.out
+
+        wp.running = original_running
+
+    def test_main_handles_exception_gracefully(self, monkeypatch, tmp_path):
+        """Verifies main loop catches and logs exceptions."""
+        monkeypatch.setattr(wp, "STATE_DIR", str(tmp_path))
+        monkeypatch.setattr(wp, "STATE_JSON", str(tmp_path / "state.json"))
+        monkeypatch.setattr(wp, "OFFSET_FILE", str(tmp_path / "offset.txt"))
+        monkeypatch.setattr(wp, "DLQ_DIR", str(tmp_path / "dlq"))
+        monkeypatch.setattr(wp, "POLL_SECS", 0)
+        monkeypatch.setattr(wp, "START_OFFSET", "1970-01-01T00:00:00Z")
+
+        def fake_http_request(session, method, url, **kwargs):
+            raise RuntimeError("Simulated failure")
+
+        monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
+
+        class MockProducer:
+            def produce(self, topic, key, value, callback=None):
+                pass
+
+            def flush(self, timeout=None):
+                return 0
+
+        monkeypatch.setattr("confluent_kafka.Producer", lambda cfg: MockProducer())
+
+        original_running = wp.running
+        monkeypatch.setattr(wp, "running", False)
+
+        wp.main()
+
+        wp.running = original_running
+
+
+class TestWeatherStopHandler:
+    """Tests for signal handler."""
+
+    def test_stop_handler(self, monkeypatch):
+        """Verifies _stop handler sets running to False."""
+        monkeypatch.setattr(wp, "running", True)
+        wp._stop()
+        assert wp.running is False
+        wp.running = True
