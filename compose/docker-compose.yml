@@ -64,7 +64,7 @@ services:
 
   connect:
     image: vlc/connect:7.6.1-jdbc-pg
-    build: ./connect
+    build: ../connect
     container_name: connect
     networks: [vlc_internal]
     depends_on:
