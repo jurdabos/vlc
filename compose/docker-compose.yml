@@ -41,8 +41,8 @@ services:
       start_period: 20s
     profiles: ["infra"]
     volumes:
-      - ./jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
-      - ./jmx-exporter/kafka.yml:/jmx/kafka.yml:ro
+      - ../jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
+      - ../jmx-exporter/kafka.yml:/jmx/kafka.yml:ro
 
   # For if we swap to Avro in a later phase
   schema-registry:
@@ -59,8 +59,8 @@ services:
     restart: unless-stopped
     profiles: ["schema","ui"]  # to start it with either of these profiles
     volumes:
-      - ./jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
-      - ./jmx-exporter/schema-registry.yml:/jmx/schema-registry.yml:ro
+      - ../jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
+      - ../jmx-exporter/schema-registry.yml:/jmx/schema-registry.yml:ro
 
   connect:
     image: vlc/connect:7.6.1-jdbc-pg
@@ -101,10 +101,10 @@ services:
       CONNECT_OPTS: >-
         -javaagent:/jmx/jmx_prometheus_javaagent.jar=9404:/jmx/connect.yml
     volumes:
-      - ./connect/config:/config
-      - ./connect/secrets:/opt/kafka/connect/secrets:ro
-      - ./jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
-      - ./jmx-exporter/connect.yml:/jmx/connect.yml:ro
+      - ../connect/config:/config
+      - ../connect/secrets:/opt/kafka/connect/secrets:ro
+      - ../jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
+      - ../jmx-exporter/connect.yml:/jmx/connect.yml:ro
     restart: unless-stopped
     profiles: ["infra"]
 
@@ -125,7 +125,7 @@ services:
       start_period: 20s
     volumes:
       - timescale_data:/var/lib/postgresql/data
-      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - ../db/init:/docker-entrypoint-initdb.d:ro
     restart: unless-stopped
     profiles: ["infra"]
 
