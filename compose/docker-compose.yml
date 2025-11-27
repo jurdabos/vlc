@@ -35,7 +35,11 @@ services:
         -javaagent:/jmx/jmx_prometheus_javaagent.jar=9404:/jmx/kafka.yml
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "(command -v kafka-topics >/dev/null 2>&1 && kafka-topics --bootstrap-server kafka:9092 --list || kafka-topics.sh --bootstrap-server kafka:9092 --list) >/dev/null 2>&1"]
+      test:
+        [
+          "CMD-SHELL",
+          "KAFKA_OPTS='' (command -v kafka-topics >/dev/null 2>&1 && kafka-topics --bootstrap-server kafka:9092 --list || kafka-topics.sh --bootstrap-server kafka:9092 --list) >/dev/null 2>&1"
+        ]
       interval: 15s
       timeout: 5s
       retries: 5
