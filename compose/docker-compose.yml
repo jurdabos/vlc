@@ -156,7 +156,7 @@ services:
     profiles: ["ui"]
 
   kafka-ui:
-    image: provectuslabs/kafka-ui:0.7.3
+    image: provectuslabs/kafka-ui:0.7.2
     container_name: kafka-ui
     networks: [vlc_internal, vlc_frontend]
     environment:
