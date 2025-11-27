@@ -42,9 +42,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-      profiles: ["infra"]
-      volumes:
-        - kafka_data:/var/lib/kafka/data
+    profiles: ["infra"]
+    volumes:
+      - kafka_data:/var/lib/kafka/data
 
   # For if we swap to Avro in a later phase
   schema-registry:
