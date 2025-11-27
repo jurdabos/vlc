@@ -42,7 +42,6 @@ services:
       start_period: 20s
     profiles: ["infra"]
     volumes:
-      - kafka_data:/var/lib/kafka/data
       - ../jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
       - ../jmx-exporter/kafka.yml:/jmx/kafka.yml:ro
 
