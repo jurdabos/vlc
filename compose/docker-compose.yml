@@ -219,8 +219,8 @@ services:
     ports:
       - "8080:8080"  # single entry point
     volumes:
-      - ./compose/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./compose/.htpasswd:/etc/nginx/.htpasswd:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./.htpasswd:/etc/nginx/.htpasswd:ro
     profiles: ["ui"]
 
   alertmanager:
