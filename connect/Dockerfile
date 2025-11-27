@@ -18,9 +18,4 @@ COPY --from=builder /usr/share/confluent-hub-components/confluentinc-kafka-conne
 # Copy PostgreSQL JDBC driver to connector's lib directory
 COPY --from=builder /tmp/postgresql-42.7.3.jar /usr/share/confluent-hub-components/confluentinc-kafka-connect-jdbc/lib/postgresql-42.7.3.jar
 
-# Create non-root user and switch to it
-RUN groupadd -r connectuser && useradd -r -g connectuser -u 1000 connectuser && \
-    chown -R connectuser:connectuser /usr/share/confluent-hub-components /usr/share/java /etc/kafka-connect /var/log
-
-USER connectuser
 
