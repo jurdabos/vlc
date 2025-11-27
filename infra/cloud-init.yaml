@@ -12,11 +12,10 @@ users:
     shell: /bin/bash
 
 runcmd:
-  # Make sure docker is running and enabled
-  - systemctl enable --now docker
-
   # Clone or update the VLC repo under /opt/vlc
-  - [ bash, -lc, 'mkdir -p /opt && cd /opt && if [ ! -d vlc ]; then git clone https://github.com/jurdabos/vlc.git vlc; else cd vlc && git pull; fi' ]
+  - [ bash, -lc, 'mkdir -p /opt && chown azureuser:azureuser /opt' ]
+  - [ sudo, -u, azureuser, bash, -lc, 'cd /opt && if [ ! -d vlc ]; then git clone https://github.com/jurdabos/vlc.git vlc; else cd vlc && git pull; fi' ]
+  - systemctl enable --now docker
 
   # Ensure we have a .env file
   - [ bash, -lc, 'cd /opt/vlc && if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env; fi' ]
