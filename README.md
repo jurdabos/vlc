@@ -9,14 +9,12 @@ This repository contains the infrastructural elements of a pipeline related to a
 \## Data Flow
 
 
-
 ```
-
 Valencia ODS API (v2.1)
 
 &nbsp;   ↓ (poll every 5min)
 
-Producer (air/weather)
+Producers (air_producer + weather_producer)
 
 &nbsp;   ↓ (fingerprint dedup)
 

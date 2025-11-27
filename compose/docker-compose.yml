@@ -32,6 +32,8 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OPTS: >-
+        -javaagent:/jmx/jmx_prometheus_javaagent.jar=9404:/jmx/kafka.yml
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "(command -v kafka-topics >/dev/null 2>&1 && kafka-topics --bootstrap-server kafka:9092 --list || kafka-topics.sh --bootstrap-server kafka:9092 --list) >/dev/null 2>&1"]
@@ -40,8 +42,11 @@ services:
       retries: 5
       start_period: 20s
     profiles: ["infra"]
+    volumes:
+      - ./jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
+      - ./jmx-exporter/kafka.yml:/jmx/kafka.yml:ro
 
-  # Optional if/when we swap to Avro/Protobuf
+  # For if we swap to Avro in a later phase
   schema-registry:
     image: confluentinc/cp-schema-registry:7.6.1
     container_name: schema-registry
@@ -50,9 +55,14 @@ services:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+      SCHEMA_REGISTRY_OPTS: >-
+        -javaagent:/jmx/jmx_prometheus_javaagent.jar=9404:/jmx/schema-registry.yml
     depends_on: [kafka]
     restart: unless-stopped
     profiles: ["schema","ui"]  # to start it with either of these profiles
+    volumes:
+      - ./jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
+      - ./jmx-exporter/schema-registry.yml:/jmx/schema-registry.yml:ro
 
   connect:
     image: vlc/connect:7.6.1-jdbc-pg
@@ -90,9 +100,13 @@ services:
       PG_JDBC_URL: jdbc:postgresql://timescaledb:5432/vlc?ApplicationName=vlc-connect&reWriteBatchedInserts=true
       PG_USER: postgres
       PG_PASSWORD: postgres
+      CONNECT_OPTS: >-
+        -javaagent:/jmx/jmx_prometheus_javaagent.jar=9404:/jmx/connect.yml
     volumes:
       - ./connect/config:/config
       - ./connect/secrets:/opt/kafka/connect/secrets:ro
+      - ./jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
+      - ./jmx-exporter/connect.yml:/jmx/connect.yml:ro
     restart: unless-stopped
     profiles: ["infra"]
 
@@ -126,6 +140,20 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    restart: unless-stopped
+    profiles: ["ui"]
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: prometheus
+    networks: [vlc_internal, vlc_frontend]
+    volumes:
+      - ../monitoring/prometheus:/etc/prometheus:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
     restart: unless-stopped
     profiles: ["ui"]
 
@@ -197,4 +225,14 @@ services:
       - ./compose/.htpasswd:/etc/nginx/.htpasswd:ro
     profiles: ["ui"]
 
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    networks: [vlc_internal]
+    volumes:
+      - ../monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+    restart: unless-stopped
+    profiles: ["ui"]
 

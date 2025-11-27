@@ -1,0 +1,108 @@
+# Domain roots
+$DOMAIN = 'https://valencia.opendatasoft.com'
+$BASE   = "$DOMAIN/api/explore/v2.1"
+$BASE2  = "$DOMAIN/api/v2" # now not used below, but handy to keep
+$ODATA  = "$DOMAIN/api/odata"
+
+# --- Robust dataset listing: OData primary, Explore v2.1 fallback ---
+function Get-OdsAllDatasetIds {
+  param([string]$Domain = $DOMAIN)
+
+  # 1) OData service root: returns {"value":[{"name":"<datasetid>","url":"<datasetid>"}, ...]}
+  try {
+    $r = irm "$Domain/api/odata/?`$format=json"
+    if ($r.value) {
+      $ids = $r.value |
+        ForEach-Object {
+          if ($_.name) { $_.name }
+          elseif ($_.url) { ($_.url -split '[/?]')[-1] }
+        } | Where-Object { $_ } | Sort-Object -Unique
+      if ($ids.Count -gt 0) { return $ids }
+    }
+  } catch {}
+
+  # 2) Fallback: Explore v2.1 catalog/datasets with pagination
+  $limit = 100
+  $offset = 0
+  $ids = @()
+  while ($true) {
+    try {
+      $resp = irm "$Domain/api/explore/v2.1/catalog/datasets?limit=$limit&offset=$offset"
+    } catch { break }
+
+    # Shape-insensitive extraction
+    $batch = @()
+    if ($resp.datasets) { $batch = $resp.datasets }
+    elseif ($resp.results) { $batch = $resp.results }
+    else { $batch = @($resp) }
+
+    if (-not $batch -or $batch.Count -eq 0) { break }
+
+    foreach ($d in $batch) {
+      $id = $null
+      if ($d.PSObject.Properties.Name -contains 'datasetid') { $id = $d.datasetid }
+      elseif ($d.PSObject.Properties.Name -contains 'dataset') {
+        $ds = $d.dataset
+        foreach ($k in 'dataset_id','datasetid','id') {
+          if ($ds -and ($ds.PSObject.Properties.Name -contains $k)) { $id = $ds.$k; break }
+        }
+      } elseif ($d.PSObject.Properties.Name -contains 'id') { $id = $d.id }
+      if ($id) { $ids += $id }
+    }
+
+    if ($batch.Count -lt $limit) { break }
+    $offset += $limit
+  }
+  return $ids | Sort-Object -Unique
+}
+
+# --- Helpers (shortened): timestamp field + recent-counts ---
+function Get-OdsMeta([string]$DatasetId) {
+  try {
+    $r = irm "$BASE/catalog/datasets/$DatasetId"; if ($r.dataset) { return $r }
+  } catch {}
+  irm "$DOMAIN/api/v2/catalog/datasets/$DatasetId"
+}
+
+function Get-OdsDateField([string]$DatasetId) {
+  $fields = @(); try { $fields = (Get-OdsMeta $DatasetId).dataset.fields } catch {}
+  $typed = $fields | Where-Object { $_.type -match 'date' } | Select-Object -First 1
+  if ($typed) { return [pscustomobject]@{ name=$typed.name; typed=$true } }
+  $cands = 'fecha_carg','update_jcd','timestamp','fechahora','fecha','updated_at','date','data','last_update'
+  $avail = @(); try { $avail = $fields.name } catch {}
+  $fallback = $cands | Where-Object { $_ -in $avail } | Select-Object -First 1
+  if ($fallback) { return [pscustomobject]@{ name=$fallback; typed=$false } }
+  $null
+}
+
+function Get-OdsCountBetween([string]$DatasetId, [datetime]$FromUtc, [datetime]$ToUtc) {
+  $df = Get-OdsDateField $DatasetId; if (-not $df) { return 0 }
+  $fromDay = $FromUtc.ToString('yyyy-MM-dd'); $toDay = $ToUtc.ToString('yyyy-MM-dd')
+  $where = if ($df.typed) { "$($df.name) >= date'$fromDay' AND $($df.name) < date'$toDay'" }
+           else            { "$($df.name) >= '$fromDay' AND $($df.name) < '$toDay'" }
+  $w = [uri]::EscapeDataString($where)
+  try { (irm "$BASE/catalog/datasets/$DatasetId/records?select=count(*)%20as%20n&where=$w&limit=1").results[0].n } catch { 0 }
+}
+function Get-OdsCountLastDays([string]$DatasetId, [int]$Days = 60) {
+  $to = [datetime]::UtcNow; $from = $to.AddDays(-$Days)
+  Get-OdsCountBetween $DatasetId $from $to
+}
+
+# --- Build $candidates with ALL dataset IDs on the portal ---
+$candidates = Get-OdsAllDatasetIds
+$candidates.Count  # just to see how many were found
+# $candidates | Select-Object -First 25
+
+# --- Optional: keep only "stream-ish" datasets (have time field + activity in 60d) ---
+$streamish =
+  $candidates | ForEach-Object {
+    $df = Get-OdsDateField $_
+    if (-not $df) { return }
+    $n60 = Get-OdsCountLastDays $_ 60
+    if ($n60 -gt 0) {
+      [pscustomobject]@{ dataset_id = $_; ts_field = $df.name; typed_date = $df.typed; last_60_days = $n60 }
+    }
+  } | Sort-Object last_60_days -Descending
+
+# Peek:
+$streamish | Format-Table -AutoSize

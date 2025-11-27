@@ -1,4 +1,5 @@
 """Unit tests for Kafka Connect configuration validation."""
+
 import json
 from pathlib import Path
 
@@ -6,6 +7,7 @@ import pytest
 
 try:
     import jsonschema
+
     HAS_JSONSCHEMA = True
 except ImportError:
     HAS_JSONSCHEMA = False
@@ -57,12 +59,13 @@ class TestConnectConfigSchema:
             assert "config" in config, f"{config_file.name}: missing 'config'"
             # Checking required config fields
             cfg = config["config"]
-            assert cfg.get("insert.mode") == "upsert", \
+            assert cfg.get("insert.mode") == "upsert", (
                 f"{config_file.name}: insert.mode should be 'upsert' for idempotent writes"
-            assert cfg.get("pk.fields") == "fiwareid,ts", \
-                f"{config_file.name}: pk.fields should be 'fiwareid,ts'"
-            assert cfg.get("auto.create") == "false", \
+            )
+            assert cfg.get("pk.fields") == "fiwareid,ts", f"{config_file.name}: pk.fields should be 'fiwareid,ts'"
+            assert cfg.get("auto.create") == "false", (
                 f"{config_file.name}: auto.create should be 'false' for hypertables"
+            )
 
     def test_configs_use_secret_references(self, schema):
         """Verifies configs use secret file references, not hardcoded credentials."""
@@ -72,12 +75,15 @@ class TestConnectConfigSchema:
                 config = json.load(f)
             cfg = config["config"]
             # Credentials should use ${file:...} syntax
-            assert "${file:" in cfg.get("connection.url", ""), \
+            assert "${file:" in cfg.get("connection.url", ""), (
                 f"{config_file.name}: connection.url should use secret reference"
-            assert "${file:" in cfg.get("connection.user", ""), \
+            )
+            assert "${file:" in cfg.get("connection.user", ""), (
                 f"{config_file.name}: connection.user should use secret reference"
-            assert "${file:" in cfg.get("connection.password", ""), \
+            )
+            assert "${file:" in cfg.get("connection.password", ""), (
                 f"{config_file.name}: connection.password should use secret reference"
+            )
 
     def test_topic_matches_table(self, schema):
         """Verifies topic name matches target table schema."""
@@ -90,11 +96,9 @@ class TestConnectConfigSchema:
             table = cfg.get("table.name.format", "")
             # vlc.air -> air.hyper, vlc.weather -> weather.hyper
             if topic == "vlc.air":
-                assert table == "air.hyper", \
-                    f"{config_file.name}: topic vlc.air should map to air.hyper"
+                assert table == "air.hyper", f"{config_file.name}: topic vlc.air should map to air.hyper"
             elif topic == "vlc.weather":
-                assert table == "weather.hyper", \
-                    f"{config_file.name}: topic vlc.weather should map to weather.hyper"
+                assert table == "weather.hyper", f"{config_file.name}: topic vlc.weather should map to weather.hyper"
 
 
 class TestConnectConfigJson:

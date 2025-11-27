@@ -1,15 +1,19 @@
-import os, time, json, re, signal, hashlib
+import hashlib
+import json
+import os
+import re
+import signal
+import time
 from datetime import datetime, timezone
-from typing import Dict, Any, Iterable, Tuple, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import requests
 from confluent_kafka import Producer
-
 from resilience import (
-    RetryConfig,
-    http_request_with_retry,
     InflightLimiter,
     ResilientProducer,
+    RetryConfig,
+    http_request_with_retry,
 )
 
 # --------- env ---------
@@ -41,10 +45,17 @@ PG_PW = os.getenv("PGPASSWORD", "postgres")
 
 # Desired fields (we'll intersect with what's available)
 DESIRED_FIELDS = [
-    "objectid", "nombre", "direccion",
-    "viento_dir", "viento_vel", "temperatur", "humedad_re", "presion_ba", "precipitac",
+    "objectid",
+    "nombre",
+    "direccion",
+    "viento_dir",
+    "viento_vel",
+    "temperatur",
+    "humedad_re",
+    "presion_ba",
+    "precipitac",
     "fiwareid",
-    "geo_point_2d"  # ts field added at runtime
+    "geo_point_2d",  # ts field added at runtime
 ]
 
 # Which fields define a change if ts is the same?
@@ -78,14 +89,13 @@ def load_offset() -> str:
     if START_OFFSET == "latest_db" and PG_BOOTSTRAP:
         try:
             import psycopg2
-            conn = psycopg2.connect(
-                host=PG_HOST, port=PG_PORT, dbname=PG_DB, user=PG_USER, password=PG_PW
-            )
+
+            conn = psycopg2.connect(host=PG_HOST, port=PG_PORT, dbname=PG_DB, user=PG_USER, password=PG_PW)
             with conn, conn.cursor() as cur:
                 cur.execute(
                     "select coalesce(to_char(max(ts) at time zone 'UTC', "
-                    "'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), %s) from weather.weather_station_readings",
-                    (START_OFFSET,)
+                    '\'YYYY-MM-DD"T"HH24:MI:SS"Z"\'), %s) from weather.weather_station_readings',
+                    (START_OFFSET,),
                 )
                 ts = cur.fetchone()[0]
                 return ts or START_OFFSET
@@ -180,17 +190,20 @@ def map_record(r: Dict[str, Any], ts_field: str) -> Dict[str, Any]:
         "pressure_hpa": r.get("presion_ba"),
         "precip_mm": r.get("precipitac"),
         # location
-        "lat": lat, "lon": lon
+        "lat": lat,
+        "lon": lon,
     }
     # Add fingerprint based on mapped values
-    out["_fp"] = value_fingerprint({
-        "viento_dir": out["wind_dir_deg"],
-        "viento_vel": out["wind_speed_ms"],
-        "temperatur": out["temperature_c"],
-        "humedad_re": out["humidity_pct"],
-        "presion_ba": out["pressure_hpa"],
-        "precipitac": out["precip_mm"]
-    })
+    out["_fp"] = value_fingerprint(
+        {
+            "viento_dir": out["wind_dir_deg"],
+            "viento_vel": out["wind_speed_ms"],
+            "temperatur": out["temperature_c"],
+            "humedad_re": out["humidity_pct"],
+            "presion_ba": out["pressure_hpa"],
+            "precipitac": out["precip_mm"],
+        }
+    )
     return out
 
 
@@ -229,9 +242,7 @@ def fetch_one_record(base: str) -> Optional[Dict[str, Any]]:
     """Fetches a single record with retry on transient failures."""
     url = f"{base}/catalog/datasets/{DATASET_ID}/records"
     try:
-        r = http_request_with_retry(
-            session, "GET", url, config=RETRY_CONFIG, params={"limit": "1"}
-        )
+        r = http_request_with_retry(session, "GET", url, config=RETRY_CONFIG, params={"limit": "1"})
         r.raise_for_status()
         arr = r.json().get("results", [])
         return arr[0] if arr else None
@@ -248,8 +259,15 @@ def choose_ts_field(avail_fields: List[str], sample: Optional[Dict[str, Any]]) -
 
     # 2) try meta-typed date-like names
     candidates = [
-        "fecha_carg", "update_jcd", "timestamp", "fechahora", "fecha",
-        "updated_at", "date", "data", "last_update"
+        "fecha_carg",
+        "update_jcd",
+        "timestamp",
+        "fechahora",
+        "fecha",
+        "updated_at",
+        "date",
+        "data",
+        "last_update",
     ]
     for c in candidates:
         if c in avail_fields:
@@ -271,9 +289,9 @@ def compute_select(avail_fields: List[str], ts_field: str) -> str:
 
 
 # ------------- fetching loop -------------
-def fetch_since(offset_iso: str, seen_for_offset: dict, bases: List[str],
-                select: str, ts_field: str
-                ) -> Tuple[List[Dict[str, Any]], str, dict]:
+def fetch_since(
+    offset_iso: str, seen_for_offset: dict, bases: List[str], select: str, ts_field: str
+) -> Tuple[List[Dict[str, Any]], str, dict]:
     """Fetches records since offset, using fingerprint-based deduplication.
 
     Returns:
@@ -292,14 +310,11 @@ def fetch_since(offset_iso: str, seen_for_offset: dict, bases: List[str],
                 "limit": str(LIMIT),
                 "offset": str(page * LIMIT),
                 "select": select,
-                "where": f"{ts_field}>=date'{offset_iso}'"
+                "where": f"{ts_field}>=date'{offset_iso}'",
             }
             try:
                 resp = http_request_with_retry(
-                    session, "GET",
-                    f"{base}/catalog/datasets/{DATASET_ID}/records",
-                    config=RETRY_CONFIG,
-                    params=params
+                    session, "GET", f"{base}/catalog/datasets/{DATASET_ID}/records", config=RETRY_CONFIG, params=params
                 )
                 resp.raise_for_status()
                 rows = resp.json().get("results", [])
@@ -388,14 +403,18 @@ def main():
     select, ts_field = bootstrap_schema()
     print(f"[weather] using ts_field='{ts_field}', SELECT='{select}'")
     print(f"[weather] starting with offset {offset}, seen_for_offset={len(seen)}")
-    print(f"[weather] resilience: max_inflight={INFLIGHT_LIMITER.max_inflight}, "
-          f"backoff_base={RETRY_CONFIG.base_delay_ms}ms, "
-          f"max_retries={RETRY_CONFIG.max_retries}")
-    raw_producer = Producer({
-        "bootstrap.servers": BOOTSTRAP,
-        "linger.ms": 50,
-        "enable.idempotence": True,
-    })
+    print(
+        f"[weather] resilience: max_inflight={INFLIGHT_LIMITER.max_inflight}, "
+        f"backoff_base={RETRY_CONFIG.base_delay_ms}ms, "
+        f"max_retries={RETRY_CONFIG.max_retries}"
+    )
+    raw_producer = Producer(
+        {
+            "bootstrap.servers": BOOTSTRAP,
+            "linger.ms": 50,
+            "enable.idempotence": True,
+        }
+    )
     producer = ResilientProducer(raw_producer, TOPIC, dlq_dir=DLQ_DIR)
     while running:
         try:
@@ -405,9 +424,7 @@ def main():
                 producer.flush()
             # Fetching new data with inflight limiting
             with INFLIGHT_LIMITER:
-                items, new_offset, new_seen = fetch_since(
-                    offset, seen, BASES, select, ts_field
-                )
+                items, new_offset, new_seen = fetch_since(offset, seen, BASES, select, ts_field)
             if items:
                 produce_all(producer, items)
                 save_state(new_offset, new_seen)
@@ -416,8 +433,7 @@ def main():
                 stats_str = ""
                 if stats:
                     stats_str = f" (ok={stats.success_count}, fail={stats.failure_count})"
-                print(f"[weather] produced {len(items)}; offset={offset}; "
-                      f"seen={len(seen)}{stats_str}")
+                print(f"[weather] produced {len(items)}; offset={offset}; seen={len(seen)}{stats_str}")
             else:
                 print("[weather] no new records")
             # Logging DLQ size if non-empty

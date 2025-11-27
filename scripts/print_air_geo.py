@@ -1,5 +1,6 @@
-import requests
 import re
+
+import requests
 
 BASE = "https://valencia.opendatasoft.com/api/explore/v2.1"
 DATASET = "estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas"
@@ -29,7 +30,7 @@ def fetch_records():
         "offset": 0,
         # Narrow to the ID range server-side; we’ll still filter precisely client-side
         "where": "objectid >= 12 AND objectid <= 22",
-        "order_by": "objectid"
+        "order_by": "objectid",
     }
     while True:
         r = requests.get(f"{BASE}/catalog/datasets/{DATASET}/records", params=params, timeout=(10, 60))

@@ -1,0 +1,76 @@
+groups:
+  - name: kafka
+    rules:
+      - alert: KafkaOfflinePartitions
+        expr: kafka_offline_partitions_count > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka has offline partitions"
+          description: "{{ $value }} partition(s) are offline."
+
+      - alert: KafkaUnderReplicatedPartitions
+        expr: kafka_under_replicated_partitions > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka has under-replicated partitions"
+          description: "{{ $value }} partition(s) are under-replicated."
+
+      - alert: KafkaBrokerDown
+        expr: up{job="kafka"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka broker is down"
+
+  - name: connect
+    rules:
+      - alert: ConnectTaskFailed
+        expr: connect_task_status == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka Connect task failed"
+          description: "Connector {{ $labels.connector }} task {{ $labels.task }} is not running."
+
+      - alert: ConnectRecordFailures
+        expr: rate(connect_task_record_failures_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka Connect sink failures"
+          description: "Connector {{ $labels.connector }} is experiencing record failures."
+
+      - alert: ConnectDown
+        expr: up{job="connect"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka Connect is down"
+
+  - name: vlc-topics
+    rules:
+      - alert: NoAirDataIngested
+        expr: increase(kafka_topic_messages_in_total{topic="vlc.air"}[30m]) == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No air quality data in 30 minutes"
+          description: "vlc.air topic has received no messages. Check air-producer."
+
+      - alert: NoWeatherDataIngested
+        expr: increase(kafka_topic_messages_in_total{topic="vlc.weather"}[30m]) == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No weather data in 30 minutes"
+          description: "vlc.weather topic has received no messages. Check weather-producer."

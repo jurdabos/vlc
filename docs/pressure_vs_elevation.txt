@@ -1,0 +1,15 @@
+VLCi seems to be publishing station pressure uncorrected rather than sea-level-reduced pressure (SLP).
+Across a city the horizontal pressure gradient at one instant is tiny (fractions of a hPa), so big differences mainly reflect elevation, plus minor effects from timestamp offsets and sensor calibration.
+
+As elevation increases, there is less overlying atmospheric mass, so atmospheric pressure decreases with increasing elevation.
+
+Valencia Airport (W03_VALENCIAAEROPUERTO_10m) sits around 73 m above sea level; Nazaret and Av. de Francia are basically at the coast (~3 m and a handful of meters, respectively). The 8–9 hPa gap we can see between AVD. Francia (~1012) and the Airport (~1003–1004) is exactly what is expected from that height difference (~70 m × 12 hPa/100 m ≈ 8–9 hPa).
+
+If we need apples-to-apples across stations in the pipeline in a later phase, we can compute an SLP-like normalization:
+1. Keep presion_ba as-is (station pressure) for raw provenance.
+2. Add a derived pressure_slp_hpa using each station’s elevation (airport ≈ 73 m; Nazaret ≈ 3 m; Av. Francia ≈ ~5–10 m) and a standard-atmosphere adjustment. Even a simple rule-of-thumb (add ~0.12 hPa per meter of elevation divided by 10 → ≈ 0.12 hPa/m?Note: the precise barometric reduction uses temperature; the best quick approximation is the exponential barometric formula) will probably collapse the inter-station gaps.
+
+Back-of-envelope check we can bake into a unit test:
+“Does Δpressure × 8 m/hPa ≈ Δelevation?”
+
+For the first test sample, (1012.0 − 1003.4) hPa × 8 m/hPa ≈ 69 m, which matches VLC’s field elevation. That’s the smoking altitude.

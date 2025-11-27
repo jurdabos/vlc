@@ -1,0 +1,115 @@
+al.
+aliī
+others
+
+AV
+avenida
+avenue
+
+c
+C
+Celsius
+
+calidad_am
+calidad ambiental
+air quality
+
+CI/CD
+continuous integration/continuous delivery/deployment
+
+CO
+carbon monoxide
+
+deg
+degree
+
+DLBDSEDE02
+Distance Learning Bachelor Data Science Elective Data Engineering – course #2
+
+DR
+doctor
+
+DT
+Delegación Territorial
+regional office of the State Meteorological Agency
+
+e. g.
+exemplī grātiā
+for example
+
+etc.
+et cetera
+
+fecha_carg
+fecha de carga
+upload date
+
+FIWARE
+Future Internet WARE
+una plataforma, impulsada por la Unión Europea, para el desarrollo y despliegue global de aplicaciones de Internet del Futuro
+
+geom
+types of spatial data that represent geographic features in the context of GIS and spatial DBs
+
+hpa
+hPa 
+hectopascal
+
+IU
+International University of Applied Sciences
+
+JDBC
+Java Database Connectivity
+a standard Java API that allows Java applications to connect to RDBs, and execute SQL queries
+
+JSONB
+binary-format JSON
+
+m
+meter
+
+mm
+millimeter
+
+ms
+millisecond
+
+MTBF
+mean time between failures
+
+MTTR
+mean time to repair
+
+NO2
+nitrogen dioxide
+
+O3
+ozone
+
+p./pp.
+page/pages
+
+pct
+percentage
+
+pg
+PostgreSQL
+
+pgJDBC
+PostgreSQL Java Database Connectivity Driver
+
+pm
+particulate matter
+
+RBAC
+Role-Based Access Control
+
+SO2
+sulphur dioxide
+
+UPV
+Universitat Politècnica de València
+Polytechnic University of Valencia
+
+W
+weather

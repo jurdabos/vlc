@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []  # Add alertmanager:9093 when deployed
+
+rule_files:
+  - alerts.yml
+
+scrape_configs:
+  # Kafka broker (JMX exporter)
+  - job_name: kafka
+    static_configs:
+      - targets: ["kafka:9404"]
+
+  # Kafka Connect (JMX exporter)
+  - job_name: connect
+    static_configs:
+      - targets: ["connect:9404"]
+
+  # Schema Registry (JMX exporter)
+  - job_name: schema-registry
+    static_configs:
+      - targets: ["schema-registry:9404"]
+
+  # Prometheus self-monitoring
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

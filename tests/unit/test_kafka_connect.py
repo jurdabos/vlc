@@ -1,12 +1,8 @@
 """Unit tests for Kafka Connect service and connector registration."""
 
 import json
-import re
 from pathlib import Path
 from typing import Dict
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 
 class TestKafkaConnectService:
@@ -251,9 +247,7 @@ class TestJdbcSinkConnectorConfiguration:
             assert config["config"]["value.converter.schemas.enable"] == "false"
 
     def test_connectors_have_timestamp_transformation(
-        self,
-        air_connector_config_path: Path,
-        weather_connector_config_path: Path
+        self, air_connector_config_path: Path, weather_connector_config_path: Path
     ):
         """Verifies that both connectors have timestamp transformation configured."""
         for config_path in [air_connector_config_path, weather_connector_config_path]:

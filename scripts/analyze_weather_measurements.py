@@ -15,18 +15,16 @@ DEFAULT_URL = (
     "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/"
     "estacions-atmosferiques-estaciones-atmosfericas/records"
 )
-ODS_DATASETS_BASE = (
-    "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets"
-)
+ODS_DATASETS_BASE = "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets"
 
 # Default weather fields (observed in this dataset)
 DEFAULT_METRICS = [
-    ("viento_dir",  "Wind Dir",   "°",    0),
-    ("viento_vel",  "Wind Spd",   "m/s",  1),
-    ("temperatur",  "Temp",       "°C",   1),
-    ("humedad_re",  "Humidity",   "%",    0),
-    ("presion_ba",  "Pressure",   "hPa",  1),
-    ("precipitac",  "Rain",       "mm",   1),
+    ("viento_dir", "Wind Dir", "°", 0),
+    ("viento_vel", "Wind Spd", "m/s", 1),
+    ("temperatur", "Temp", "°C", 1),
+    ("humedad_re", "Humidity", "%", 0),
+    ("presion_ba", "Pressure", "hPa", 1),
+    ("precipitac", "Rain", "mm", 1),
 ]
 
 
@@ -38,9 +36,7 @@ def expand_url(value: str) -> str:
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(
-        description="Print weather metrics per station from a Valencia ODS dataset."
-    )
+    p = argparse.ArgumentParser(description="Print weather metrics per station from a Valencia ODS dataset.")
     p.add_argument(
         "-u",
         "--url",

@@ -50,7 +50,7 @@ def kafka_data_topic_config() -> Dict[str, any]:
         "partitions": 3,
         "replication_factor": 1,
         "retention_ms": 2592000000,  # 30 days
-        "cleanup_policy": "delete"
+        "cleanup_policy": "delete",
     }
 
 
@@ -61,7 +61,7 @@ def kafka_connect_internal_topic_config() -> Dict[str, any]:
         "topics": ["_connect-configs", "_connect-offsets", "_connect-status"],
         "partitions": 1,
         "replication_factor": 1,
-        "cleanup_policy": "compact"
+        "cleanup_policy": "compact",
     }
 
 
@@ -79,5 +79,5 @@ def kafka_connect_env() -> Dict[str, str]:
         "CONNECT_KEY_CONVERTER": "org.apache.kafka.connect.storage.StringConverter",
         "CONNECT_VALUE_CONVERTER": "org.apache.kafka.connect.json.JsonConverter",
         "CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE": "false",
-        "CONNECT_PLUGIN_PATH": "/usr/share/confluent-hub-components,/usr/share/java"
+        "CONNECT_PLUGIN_PATH": "/usr/share/confluent-hub-components,/usr/share/java",
     }

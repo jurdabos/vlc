@@ -1,9 +1,9 @@
 """Unit tests for producer resilience module."""
-import json
+
 import sys
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 import requests
@@ -11,16 +11,16 @@ import requests
 # Make producer modules importable
 sys.path.append(str(Path(__file__).parents[2] / "producer"))
 from resilience import (  # noqa: E402
-    RetryConfig,
-    ExponentialBackoff,
-    http_request_with_retry,
-    is_retryable_error,
-    is_retryable_status,
-    InflightLimiter,
     DiskQueue,
+    ExponentialBackoff,
+    InflightLimiter,
     ProduceStats,
     RateThrottler,
     ResilientProducer,
+    RetryConfig,
+    http_request_with_retry,
+    is_retryable_error,
+    is_retryable_status,
 )
 
 
@@ -363,9 +363,7 @@ class TestRateThrottler:
         """Verifies throttle when failure ratio exceeds threshold."""
         sleep_calls = []
         monkeypatch.setattr(time, "sleep", lambda x: sleep_calls.append(x))
-        throttler = RateThrottler(
-            min_delay_ms=100, max_delay_ms=1000, failure_threshold=0.1
-        )
+        throttler = RateThrottler(min_delay_ms=100, max_delay_ms=1000, failure_threshold=0.1)
         # Creating 50% failure ratio
         throttler.record_success()
         throttler.record_failure()
@@ -452,7 +450,5 @@ class TestResilientProducer:
     def test_throttle_disabled(self, tmp_path):
         """Verifies throttling can be disabled."""
         mock_producer = MagicMock()
-        rp = ResilientProducer(
-            mock_producer, "test-topic", str(tmp_path), throttle_on_failures=False
-        )
+        rp = ResilientProducer(mock_producer, "test-topic", str(tmp_path), throttle_on_failures=False)
         assert rp.stats is None

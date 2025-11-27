@@ -150,9 +150,7 @@ def load_items(input_path: Path) -> list[dict]:
     )
 
 
-def filter_items(
-    items: list[dict], filter_field: Optional[str], filter_pattern: Optional[str]
-) -> list[dict]:
+def filter_items(items: list[dict], filter_field: Optional[str], filter_pattern: Optional[str]) -> list[dict]:
     """Filters items by field and pattern if specified."""
     if not filter_field or not filter_pattern:
         return items

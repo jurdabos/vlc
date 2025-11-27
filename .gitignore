@@ -57,6 +57,7 @@ instance/
 *.swp
 *.swo
 *~
+WARP.md
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt

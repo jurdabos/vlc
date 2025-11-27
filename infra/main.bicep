@@ -5,7 +5,7 @@ param adminUsername string = 'azureuser'
 param sshPublicKey string
 
 @description('VM size')
-param vmSize string = 'Standard_D2s_v5'
+param vmSize string = 'Standard_B2s'
 
 var vnetName = 'vlc-vnet'
 var subnetName = 'default'
@@ -107,9 +107,10 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-09-01' = {
     hardwareProfile: {
       vmSize: vmSize
     }
-    osProfile: {
+  osProfile: {
       computerName: vmName
       adminUsername: adminUsername
+      customData: cloudInit
       linuxConfiguration: {
         disablePasswordAuthentication: true
         ssh: {
@@ -120,7 +121,6 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-09-01' = {
             }
           ]
         }
-        customData: cloudInit
       }
     }
     storageProfile: {
