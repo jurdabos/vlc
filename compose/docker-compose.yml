@@ -55,7 +55,7 @@ services:
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
       SCHEMA_REGISTRY_OPTS: >-
-        -javaagent:/jmx/jmx_prometheus_javaagent.jar=9404:/jmx/schema-registry.yml
+        -javaagent:/jmx/jmx_prometheus_javaagent.jar=9405:/jmx/schema-registry.yml
     depends_on: [kafka]
     restart: unless-stopped
     profiles: ["infra", "schema","ui"]
@@ -100,7 +100,7 @@ services:
       PG_USER: postgres
       PG_PASSWORD: postgres
       CONNECT_OPTS: >-
-        -javaagent:/jmx/jmx_prometheus_javaagent.jar=9404:/jmx/connect.yml
+        -javaagent:/jmx/jmx_prometheus_javaagent.jar=9406:/jmx/connect.yml
     volumes:
       - ../connect/config:/config
       - ../connect/secrets:/opt/kafka/connect/secrets:ro
