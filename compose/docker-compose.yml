@@ -57,7 +57,7 @@ services:
         -javaagent:/jmx/jmx_prometheus_javaagent.jar=9404:/jmx/schema-registry.yml
     depends_on: [kafka]
     restart: unless-stopped
-    profiles: ["schema","ui"]  # to start it with either of these profiles
+    profiles: ["infra", "schema","ui"]
     volumes:
       - ../jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
       - ../jmx-exporter/schema-registry.yml:/jmx/schema-registry.yml:ro
