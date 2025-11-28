@@ -65,16 +65,16 @@ upsert_connector() {
     echo "[bootstrap] ERROR: connector config '${cfg_file}' must include a 'name' field." >&2
     return 1
   fi
-  # 1) Try PUT (update-or-create), streaming JSON from the host into the container
+  # 1) Try PUT (update-or-create), streaming only .config from the host into the container
   local code
   code=$(
-    docker exec -i connect sh -lc "
+    jq -c '.config' "${cfg_file}" | docker exec -i connect sh -lc "
       curl -s -o /dev/null -w '%{http_code}' \
            -X PUT -H 'Content-Type: application/json' \
            --data @- '${CONNECT_URL}/connectors/${name}/config'
-    " < "${cfg_file}" || true
+    " || true
   )
-  # 2) If 404, try POST (create)
+  # 2) If 404, try POST (create) with full payload
   if [ "${code}" = "404" ]; then
     code=$(
       docker exec -i connect sh -lc "
@@ -104,7 +104,7 @@ create_topic "${OFF_TOPIC}" 1 "${DATA_RF}" "--config cleanup.policy=compact"
 create_topic "${STS_TOPIC}" 1 "${DATA_RF}" "--config cleanup.policy=compact"
 
 echo "[bootstrap] Topics present:"
-exec_in_broker "kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${DATA_TOPIC} ${DATA_TOPIC_2} ${CFG_TOPIC} ${OFF_TOPIC} ${STS_TOPIC}"
+exec_in_broker "kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${DATA_TOPIC}; kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${DATA_TOPIC_2}; kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${CFG_TOPIC}; kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${OFF_TOPIC}; kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${STS_TOPIC}"
 
 # Connectors (after broker + topics)
 if wait_for_connect; then
