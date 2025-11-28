@@ -111,7 +111,7 @@ services:
     profiles: ["infra"]
 
   timescaledb:
-    image: timescale/timescaledb:2.23.1-pg16
+    image: timescale/timescaledb-ha:pg16
     container_name: timescaledb
     networks: [vlc_internal]
     environment:
