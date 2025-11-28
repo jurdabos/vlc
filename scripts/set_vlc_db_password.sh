@@ -11,6 +11,6 @@ done < connect/secrets/secrets.properties
 
 echo "Setting DB password for role '$TS_USERNAME'..."
 
-docker compose -f /opt/vlc/compose/docker-compose.yml exec -T timescaledb \
+docker compose -f compose/docker-compose.yml exec -T timescaledb \
   psql -U postgres -d vlc \
   -c "ALTER ROLE ${TS_USERNAME} PASSWORD '${TS_PASSWORD}';"
