@@ -21,9 +21,14 @@ Usage
 """
 
 from __future__ import annotations
-import argparse, json, math, os, sys, time
+
+import argparse
+import json
+import math
+import time
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple
+
 import requests
 
 BASE = "https://valencia.opendatasoft.com/api/explore/v2.1"
@@ -212,7 +217,10 @@ def main():
                     if prev is None or tick > prev:
                         updated_rows.append(r)
                 if updated_rows:
-                    title = f"[{wall}] PARTIAL ADVANCE → stations caught up to {max_tick.strftime('%Y-%m-%d %H:%M:%S')} UTC"
+                    title = (
+                        f"[{wall}] PARTIAL ADVANCE → stations caught up to "
+                        f"{max_tick.strftime('%Y-%m-%d %H:%M:%S')} UTC"
+                    )
                     print_block(title, rows=updated_rows, last_seen=last_seen, show_only_updated=True)
                     for r in updated_rows:
                         fid = station_key(r)
