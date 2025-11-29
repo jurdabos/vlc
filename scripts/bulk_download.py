@@ -60,13 +60,7 @@ def fetch_catalog_metadata(dataset_id, timeout=30):
     now = datetime.now(UTC)
     # URL-encoding dataset_id to prevent injection issues
     url = f"https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/{urllib.parse.quote(dataset_id)}"
-    req = urllib.request.Request(
-        url,
-        headers={
-            "User-Agent": "vlc-data-ingestion/1.0",
-            "Accept": "application/json"
-        }
-    )
+    req = urllib.request.Request(url, headers={"User-Agent": "vlc-data-ingestion/1.0", "Accept": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as response:
             if response.status != 200:
@@ -161,7 +155,7 @@ def download_dataset(dataset_id, output_base_dir):
         "download_timestamp": datetime.now(UTC).isoformat(),
         "total_records": len(all_records),
         "api_total_count": total_count,
-        "source_url": f"https://valencia.opendatasoft.com/explore/dataset/{dataset_id}"
+        "source_url": f"https://valencia.opendatasoft.com/explore/dataset/{dataset_id}",
     }
 
     # Embedding catalog metadata
@@ -170,7 +164,7 @@ def download_dataset(dataset_id, output_base_dir):
             "url": catalog_meta["url"],
             "fetched_at": catalog_meta["fetched_at"],
             "status": catalog_meta["status"],
-            "data": catalog_payload
+            "data": catalog_payload,
         }
         print(f"Catalog metadata included ({len(catalog_payload)} top-level keys)")
     else:
@@ -178,7 +172,7 @@ def download_dataset(dataset_id, output_base_dir):
             "url": catalog_meta["url"],
             "fetched_at": catalog_meta["fetched_at"],
             "status": catalog_meta["status"],
-            "error": catalog_meta.get("error")
+            "error": catalog_meta.get("error"),
         }
         print("Proceeding without catalog data (fetch failed)")
 
@@ -200,22 +194,15 @@ Examples:
   uv run download_dataset.py --datasetid arbratge-arbolado
   uv run download_dataset.py --datasetid estacions-atmosferiques
   uv run download_dataset.py --all --output D:\\dwh\\vlc
-        """
+        """,
     )
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument(
-        "--datasetid",
-        help="The dataset ID to download (e.g., 'vias', 'arbratge-arbolado')"
-    )
-    group.add_argument(
-        "--all",
-        action="store_true",
-        help="Download all available datasets from the catalog"
-    )
+    group.add_argument("--datasetid", help="The dataset ID to download (e.g., 'vias', 'arbratge-arbolado')")
+    group.add_argument("--all", action="store_true", help="Download all available datasets from the catalog")
     parser.add_argument(
         "--output",
         default=r"D:\tanul\iu\subjects\project_data_engineering\vlc\dataset",
-        help="Base output directory (default: D:\\tanul\\iu\\subjects\\project_data_engineering\\vlc\\dataset)"
+        help="Base output directory (default: D:\\tanul\\iu\\subjects\\project_data_engineering\\vlc\\dataset)",
     )
 
     args = parser.parse_args()
@@ -228,9 +215,9 @@ Examples:
         failed = []
 
         for idx, dataset_id in enumerate(sorted(dataset_ids), 1):
-            print(f"\n{'='*80}")
+            print(f"\n{'=' * 80}")
             print(f"[{idx}/{len(dataset_ids)}] Processing: {dataset_id}")
-            print(f"{'='*80}")
+            print(f"{'=' * 80}")
             try:
                 records, meta = download_dataset(dataset_id, args.output)
                 success_count += 1
@@ -239,7 +226,7 @@ Examples:
                 print(f"✗ Failed to download {dataset_id}: {e}")
                 failed.append(dataset_id)
 
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print("Bulk download complete!")
         print(f"Successful: {success_count}/{len(dataset_ids)}")
         if failed:
