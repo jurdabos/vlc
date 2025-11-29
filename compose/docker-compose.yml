@@ -18,6 +18,9 @@ services:
     image: confluentinc/cp-kafka:7.6.1
     container_name: kafka
     hostname: kafka
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks: [vlc_internal]
     ports: []  # intentionally nothing
     environment:
@@ -50,6 +53,9 @@ services:
   schema-registry:
     image: confluentinc/cp-schema-registry:7.6.1
     container_name: schema-registry
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks: [vlc_internal]
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
@@ -68,6 +74,9 @@ services:
     image: vlc/connect:7.6.1-jdbc-pg
     build: ../connect
     container_name: connect
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks: [vlc_internal]
     depends_on:
       kafka:
@@ -113,6 +122,9 @@ services:
   timescaledb:
     image: timescale/timescaledb-ha:pg16-ts2.17-all
     container_name: timescaledb
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks: [vlc_internal]
     environment:
       POSTGRES_DB: vlc
@@ -189,7 +201,10 @@ services:
         condition: service_healthy
     volumes:
       - air-producer_state:/state
-    networks: [vlc_internal]
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    networks: [vlc_internal, vlc_frontend]
     restart: unless-stopped
     profiles: ["producer"]
 
@@ -211,7 +226,10 @@ services:
         condition: service_healthy
     volumes:
       - weather-producer_state:/state
-    networks: [vlc_internal]
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    networks: [vlc_internal, vlc_frontend]
     restart: unless-stopped
     profiles: ["producer"]
 
@@ -229,6 +247,9 @@ services:
   alertmanager:
     image: prom/alertmanager:v0.27.0
     container_name: alertmanager
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks: [vlc_internal]
     volumes:
       - ../monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
