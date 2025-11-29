@@ -116,8 +116,8 @@ services:
     networks: [vlc_internal]
     environment:
       POSTGRES_DB: vlc
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: vlc_dev
+      POSTGRES_PASSWORD: ${VLC_DEV_PASSWORD}
     ports: []  # intentionally nothing
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d vlc -h 127.0.0.1"]
@@ -136,8 +136,8 @@ services:
     container_name: grafana
     networks: [vlc_internal, vlc_frontend]
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${VLC_DEV_PASSWORD}
       GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
     restart: unless-stopped
