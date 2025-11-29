@@ -37,14 +37,15 @@ MAX_LIMIT = 100
 UA = "vlc-weather-watcher/1.0 (+github.com/acidvuca)"
 
 FIELDS = (
-    "objectid,nombre,fiwareid,fecha_carg,"
-    "viento_dir,viento_vel,temperatur,humedad_re,presion_ba,precipitac,geo_point_2d"
+    "objectid,nombre,fiwareid,fecha_carg,viento_dir,viento_vel,temperatur,humedad_re,presion_ba,precipitac,geo_point_2d"
 )
+
 
 def build_url(spec: str) -> str:
     if spec.startswith(("http://", "https://")):
         return spec
     return f"{BASE}/catalog/datasets/{spec}/records"
+
 
 def iso_to_utc(ts: str) -> datetime:
     # Normalize e.g. "2025-10-19T13:50:00+00:00" and "…Z" to aware UTC
@@ -59,6 +60,7 @@ def iso_to_utc(ts: str) -> datetime:
         ts = left + tz
     return datetime.fromisoformat(ts).astimezone(timezone.utc)
 
+
 def _get(url: str, params: dict, tolerate_400_fixups: bool = True) -> dict:
     p = dict(params)
     try:
@@ -66,7 +68,7 @@ def _get(url: str, params: dict, tolerate_400_fixups: bool = True) -> dict:
     except Exception:
         p["limit"] = str(MAX_LIMIT)
     s = requests.Session()
-    s.headers.update({"Accept":"application/json","User-Agent":UA})
+    s.headers.update({"Accept": "application/json", "User-Agent": UA})
     r = s.get(url, params=p, timeout=(10, 60))
     if r.status_code == 400 and tolerate_400_fixups:
         p.pop("order_by", None)
@@ -78,9 +80,10 @@ def _get(url: str, params: dict, tolerate_400_fixups: bool = True) -> dict:
     except json.JSONDecodeError:
         raise SystemExit(f"Non-JSON response. Payload head: {r.text[:600]}")
 
+
 def fetch_snapshot(url: str) -> List[dict]:
     # count(*) first so we don’t miss rows if that ever changes from 5
-    data = _get(url, {"select":"count(*) as n", "limit":"1"})
+    data = _get(url, {"select": "count(*) as n", "limit": "1"})
     total = int(data.get("results", [{}])[0].get("n", 0)) if data.get("results") else 0
     if total == 0:
         return []
@@ -91,6 +94,7 @@ def fetch_snapshot(url: str) -> List[dict]:
         data = _get(url, {"select": FIELDS, "limit": str(MAX_LIMIT), "offset": str(off)})
         rows.extend(data.get("results", []))
     return rows
+
 
 def fmt_num(x, d=1):
     if x is None:
@@ -103,15 +107,18 @@ def fmt_num(x, d=1):
     except Exception:
         return str(x)
 
+
 def station_key(row: dict) -> str:
     # Prefer fiwareid, fallback to objectid
     return row.get("fiwareid") or f"objectid:{row.get('objectid')}"
+
 
 def short_name(full: str) -> str:
     if not full:
         return ""
     # keep it compact for printing blocks
     return full.replace("ESTACIÓN", "EST.").replace("JARDINES DE ", "JD ")
+
 
 def collect_ticks(rows: List[dict]) -> Tuple[datetime, List[datetime]]:
     ticks = []
@@ -122,6 +129,7 @@ def collect_ticks(rows: List[dict]) -> Tuple[datetime, List[datetime]]:
     if not ticks:
         raise SystemExit("Snapshot rows lacked 'fecha_carg'.")
     return max(ticks), sorted(set(ticks))
+
 
 def print_block(
     title: str,
@@ -151,23 +159,22 @@ def print_block(
             f"{(r.get('fiwareid') or '').ljust(22)}  "
             f"{tick.strftime('%Y-%m-%d %H:%M:%S').ljust(20)}  "
             f"{'Y' if advanced else 'N':>8}  "
-            f"{fmt_num(r.get('viento_dir'),0).rjust(5)}  "
-            f"{fmt_num(r.get('viento_vel'),1).rjust(8)}  "
-            f"{fmt_num(r.get('temperatur'),1).rjust(8)}  "
-            f"{fmt_num(r.get('humedad_re'),0).rjust(6)}  "
-            f"{fmt_num(r.get('presion_ba'),1).rjust(10)}  "
-            f"{fmt_num(r.get('precipitac'),1).rjust(8)}  "
-            f"{short_name(r.get('nombre',''))}"
+            f"{fmt_num(r.get('viento_dir'), 0).rjust(5)}  "
+            f"{fmt_num(r.get('viento_vel'), 1).rjust(8)}  "
+            f"{fmt_num(r.get('temperatur'), 1).rjust(8)}  "
+            f"{fmt_num(r.get('humedad_re'), 0).rjust(6)}  "
+            f"{fmt_num(r.get('presion_ba'), 1).rjust(10)}  "
+            f"{fmt_num(r.get('precipitac'), 1).rjust(8)}  "
+            f"{short_name(r.get('nombre', ''))}"
         )
         print(line)
     print("=" * len(header))
 
+
 def main():
     ap = argparse.ArgumentParser(description="Watch weather snapshot; print station values on updates.")
-    ap.add_argument("-u","--url_or_dataset", default=DATASET_DEFAULT,
-                    help="Dataset id or full records URL.")
-    ap.add_argument("-i","--interval", type=int, default=60,
-                    help="Poll interval in seconds (default: 60).")
+    ap.add_argument("-u", "--url_or_dataset", default=DATASET_DEFAULT, help="Dataset id or full records URL.")
+    ap.add_argument("-i", "--interval", type=int, default=60, help="Poll interval in seconds (default: 60).")
     args = ap.parse_args()
 
     url = build_url(args.url_or_dataset)
@@ -218,8 +225,7 @@ def main():
                         updated_rows.append(r)
                 if updated_rows:
                     title = (
-                        f"[{wall}] PARTIAL ADVANCE → stations caught up to "
-                        f"{max_tick.strftime('%Y-%m-%d %H:%M:%S')} UTC"
+                        f"[{wall}] PARTIAL ADVANCE → stations caught up to {max_tick.strftime('%Y-%m-%d %H:%M:%S')} UTC"
                     )
                     print_block(title, rows=updated_rows, last_seen=last_seen, show_only_updated=True)
                     for r in updated_rows:
@@ -229,6 +235,7 @@ def main():
             time.sleep(max(1, args.interval))
     except KeyboardInterrupt:
         print("\nStopped by user.")
+
 
 if __name__ == "__main__":
     main()
