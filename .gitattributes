@@ -1,0 +1,19 @@
+* text=auto eol=lf
+
+# Shell / Python / YAML definitely LF
+*.sh   text eol=lf
+*.py   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.sql  text eol=lf
+*.md   text eol=lf
+
+# Windows-only things can be CRLF
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.pdf binary
+*.jar binary
