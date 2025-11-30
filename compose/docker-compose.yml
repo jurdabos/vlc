@@ -39,7 +39,7 @@ services:
       KAFKA_JMX_HOSTNAME: kafka
     restart: unless-stopped
     healthcheck:
-      # Healthy if a java process named kafka.Kafka is running
+      # Healthy if kafka.Kafka is running
       test: ["CMD-SHELL", "ps aux | grep -q '[k]afka.Kafka'"]
       interval: 15s
       timeout: 5s
@@ -49,7 +49,7 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka/data
 
-  # For if we swap to Avro in a later phase
+  # For if we swap to Avro in phase 4 maybe
   schema-registry:
     image: confluentinc/cp-schema-registry:7.6.1
     container_name: schema-registry
@@ -150,7 +150,8 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${VLC_DEV_PASSWORD}
-      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
+      VLC_DEV_PASSWORD: ${VLC_DEV_PASSWORD}
+      GF_SERVER_ROOT_URL: "http://localhost:8080/grafana/"
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
     restart: unless-stopped
     profiles: ["ui"]
@@ -257,4 +258,56 @@ services:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
     restart: unless-stopped
     profiles: ["ui"]
+
+  air-sink:
+    build:
+      context: ../consumer
+      dockerfile: Dockerfile
+    image: vlc/sink:latest
+    container_name: air-sink
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+      PG_HOST: timescaledb
+      PG_PORT: "5432"
+      PG_DB: vlc
+      PG_USER: vlc_dev
+      PG_PASSWORD: ${VLC_DEV_PASSWORD}
+      TOPICS: vlc.air
+      SINK_TYPE: air
+      GROUP_ID: vlc-sink-air
+      BATCH_SIZE: "100"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    networks: [vlc_internal]
+    restart: unless-stopped
+    profiles: ["infra"]
+
+  weather-sink:
+    build:
+      context: ../consumer
+      dockerfile: Dockerfile
+    image: vlc/sink:latest
+    container_name: weather-sink
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+      PG_HOST: timescaledb
+      PG_PORT: "5432"
+      PG_DB: vlc
+      PG_USER: vlc_dev
+      PG_PASSWORD: ${VLC_DEV_PASSWORD}
+      TOPICS: vlc.weather
+      SINK_TYPE: weather
+      GROUP_ID: vlc-sink-weather
+      BATCH_SIZE: "100"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    networks: [vlc_internal]
+    restart: unless-stopped
+    profiles: ["infra"]
 
