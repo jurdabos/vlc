@@ -62,8 +62,8 @@ class TestKafkaConnectDockerImage:
         # Counting RUN commands (should be minimal)
         run_commands = re.findall(r"^RUN\s", content, re.MULTILINE)
 
-        # Multi-stage build: 2 in builder stage, 1 in final stage = 3 total
-        assert len(run_commands) == 3, f"Expected 3 RUN commands (multi-stage build), found {len(run_commands)}"
+        # Optimized build: 2 RUN commands (connector install + driver download)
+        assert len(run_commands) == 2, f"Expected 2 RUN commands (optimized build), found {len(run_commands)}"
 
     def test_compose_builds_custom_image(self, compose_file: Path):
         """Verifies that docker-compose.yml builds the custom Connect image."""
@@ -78,8 +78,8 @@ class TestKafkaConnectDockerImage:
         assert "image" in connect_service
         assert "build" in connect_service
 
-        # Checking build context
-        assert connect_service["build"] == "./connect"
+        # Checking build context (relative from compose location)
+        assert connect_service["build"] == "../connect"
 
     def test_compose_mounts_connector_configs(self, compose_file: Path):
         """Verifies that docker-compose.yml mounts the connector configuration directory."""
@@ -92,7 +92,7 @@ class TestKafkaConnectDockerImage:
 
         # Checking for volume mount
         assert "volumes" in connect_service
-        assert "./connect/config:/config" in connect_service["volumes"]
+        assert "../connect/config:/config" in connect_service["volumes"]
 
     def test_dockerfile_commands_use_long_format_flags(self, dockerfile_path: Path):
         """Verifies that Dockerfile commands use long-format flags for readability."""
