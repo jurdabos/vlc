@@ -109,7 +109,7 @@ services:
       PG_JDBC_URL: jdbc:postgresql://timescaledb:5432/vlc?ApplicationName=vlc-connect&reWriteBatchedInserts=true
       PG_USER: postgres
       PG_PASSWORD: postgres
-      CONNECT_OPTS: >-
+      KAFKA_OPTS: >-
         -javaagent:/jmx/jmx_prometheus_javaagent.jar=9406:/jmx/connect.yml
     volumes:
       - ../connect/config:/config
