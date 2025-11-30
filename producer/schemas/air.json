@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AirQualityReading",
+  "type": "object",
+  "properties": {
+    "fiwareid": {
+      "type": "string",
+      "description": "Station identifier"
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp in ISO 8601 format"
+    },
+    "so2": {
+      "type": ["number", "null"],
+      "description": "SO2 concentration"
+    },
+    "no2": {
+      "type": ["number", "null"],
+      "description": "NO2 concentration"
+    },
+    "o3": {
+      "type": ["number", "null"],
+      "description": "O3 concentration"
+    },
+    "co": {
+      "type": ["number", "null"],
+      "description": "CO concentration"
+    },
+    "pm10": {
+      "type": ["number", "null"],
+      "description": "PM10 concentration"
+    },
+    "pm25": {
+      "type": ["number", "null"],
+      "description": "PM2.5 concentration"
+    },
+    "air_quality_summary": {
+      "type": ["string", "null"],
+      "description": "Air quality summary text"
+    },
+    "lat": {
+      "type": ["number", "null"],
+      "description": "Latitude"
+    },
+    "lon": {
+      "type": ["number", "null"],
+      "description": "Longitude"
+    }
+  },
+  "required": ["fiwareid", "ts"]
+}

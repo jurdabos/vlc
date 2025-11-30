@@ -1,33 +1,25 @@
 \# VLC Pipeline Monitoring
 
 
-
 \## Overview
 
 Prometheus-based monitoring for Kafka, Connect, and data ingestion health.
 
 
-
 \## Components
 
-\- \*\*Prometheus\*\*: Scrapes JMX exporters on port 9404
+\- \*\*Prometheus\*\*: Scrapes JMX exporters
 
 \- \*\*Grafana\*\*: Dashboards at `/grafana/` (via reverse proxy)
 
 
-
 \## Scraped Targets
 
-| Service         | Endpoint             | Metrics                           	|
+Kafka for broker state, partitions and throughput
 
-|-----------------|----------------------|--------------------------------------|
+Connect for connector/task status and failures
 
-| Kafka           | kafka:9404           | Broker state, partitions, throughput |
-
-| Connect         | connect:9404         | Connector/task status, failures   	|
-
-| Schema Registry | schema-registry:9404 | Registry health                   	|
-
+Schema Registry for registry health to be included in ph3/4/5
 
 
 \## Alerts
@@ -38,11 +30,6 @@ Prometheus-based monitoring for Kafka, Connect, and data ingestion health.
 
 \- \*\*NoAirDataIngested / NoWeatherDataIngested\*\*: Warning if no data for 30min
 
-
-
-\## Adding Prometheus to docker-compose.yml
-
-Prometheus has been added to the compose file.
 
 
 

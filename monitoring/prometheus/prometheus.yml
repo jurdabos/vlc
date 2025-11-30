@@ -5,26 +5,21 @@ global:
 alerting:
   alertmanagers:
     - static_configs:
-        - targets: []  # Add alertmanager:9093 when deployed
+        - targets: ["alertmanager:9093"]
 
 rule_files:
   - alerts.yml
 
 scrape_configs:
-  # Kafka broker (JMX exporter)
-  - job_name: kafka
-    static_configs:
-      - targets: ["kafka:9404"]
-
-  # Kafka Connect (JMX exporter)
+  # Kafka Connect (JMX exporter on port 9406)
   - job_name: connect
     static_configs:
-      - targets: ["connect:9404"]
+      - targets: ["connect:9406"]
 
-  # Schema Registry (JMX exporter)
+  # Schema Registry (JMX exporter on port 9405)
   - job_name: schema-registry
     static_configs:
-      - targets: ["schema-registry:9404"]
+      - targets: ["schema-registry:9405"]
 
   # Prometheus self-monitoring
   - job_name: prometheus

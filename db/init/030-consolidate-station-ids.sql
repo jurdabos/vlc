@@ -14,10 +14,10 @@
 -- A05_POLITECNIC_60m        | Politecnico          | ✓ Already mapped
 -- A06_VIVERS_60m            | Viveros              | ✓ Already mapped
 -- A07_VALENCIACENTRE_60m    | Valencia Centro      | ✓ Already mapped
--- A08_DR_LLUCH_60m          | -                    | NEW STATION (no historical)
--- A09_CABANYAL_60m          | -                    | NEW STATION (no historical)
+-- A08_DR_LLUCH_60m          | -                    | no historical
+-- A09_CABANYAL_60m          | -                    | no historical
 -- A10_OLIVERETA_60m         | Valencia Olivereta   | ✓ Already mapped
--- A11_PATRAIX_60m           | -                    | NEW STATION (no historical)
+-- A11_PATRAIX_60m           | -                    | no historical
 
 -- =============================================================================
 -- WEATHER STATIONS MAPPING
@@ -26,7 +26,7 @@
 -- --------------------------|----------------------|------------------------------
 -- W01_AVFRANCIA_10m         | Avda. Francia        | ✓ Already mapped
 -- W02_NAZARET_10m           | Nazaret Meteo        | ✓ Already mapped
--- W03_VALENCIAAEROPUERTO_10m| -                    | NEW STATION (AEMET 8414A possible)
+-- W03_VALENCIAAEROPUERTO_10m| -                    | no historical (AEMET 8414A possible)
 -- W04_VALENCIADT_10m        | Viveros              | ✓ COORD MATCH (Jardines de Viveros)
 -- W05_VALENCIA_UPV_10m      | Politecnico          | ✓ COORD MATCH (UPV campus)
 
@@ -34,7 +34,7 @@
 -- MIGRATE OLD FIWARE IDs TO CORRECT ONES
 -- =============================================================================
 
--- If any data was loaded with incorrect IDs from previous mapping, fix them
+-- If any data was loaded with incorrect IDs from previous mappings, fix them
 -- W06_VIVERS_10m → W04_VALENCIADT_10m (same location, Viveros/Jardines de Viveros)
 UPDATE weather.hyper
 SET fiwareid = 'W04_VALENCIADT_10m'

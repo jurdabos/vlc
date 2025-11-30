@@ -37,7 +37,7 @@ Two independent producer services that poll Valencia OpenDataSoft API and produc
    - All dependencies from pyproject.toml
    - Proper psycopg2 version (>=2.9.11)
 
-### 🔨 Features
+### Features
 - **Polling**: Every 5 minutes (configurable via `POLL_EVERY_SECONDS`)
 - **Pagination**: Using ODS v2.1 `limit`/`offset` parameters
 - **Incremental ingestion**: Using `where=fecha_carg>date'{offset}'`
@@ -48,37 +48,6 @@ Two independent producer services that poll Valencia OpenDataSoft API and produc
 - **Graceful shutdown**: SIGINT/SIGTERM handling
 - **Field flattening**: `geo_point_2d` → `lat`/`lon`
 - **Timestamp normalization**: All timestamps to `YYYY-MM-DDTHH:MM:SSZ` format
-
-### 📋 Next Steps
-
-1. **Database schema** (TODO for 25 Nov Tuesday):
-   - Create TimescaleDB schemas: `air` and `weather`
-   - Create tables: `air.air_station_readings` and `weather.weather_station_readings`
-   - Define proper column types and indexes
-   - Set up TimescaleDB hypertables for time-series optimization
-
-2. **Kafka Connect sinks** (TODO for 26 Nov Wednesday):
-   - Create JDBC Sink connector config for `vlc.air` → TimescaleDB
-   - Create JDBC Sink connector config for `vlc.weather` → TimescaleDB
-   - Handle NULL values properly (partial station measurements)
-   - Configure upsert mode if needed
-
-3. **Historical backfill** (TODO for 30 Nov Sunday):
-   - Use ODS exports endpoint for bulk data (no pagination limit)
-   - Options:
-     - Direct load via `psql \copy` into TimescaleDB
-     - Kafka Connect File Pulse → Kafka → JDBC Sink
-   - Set proper offsets after backfill to avoid duplication
-
-4. **Monitoring** (TODO for 29 Nov Friday):
-   - Add Prometheus metrics (records produced, API latency, errors)
-   - Grafana dashboards for producer health
-   - Alert on API failures or stale offsets
-
-5. **Documentation**:
-   - API field mapping reference
-   - Troubleshooting guide
-   - Offset reset procedures
 
 ## Environment Variables
 

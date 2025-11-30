@@ -1,9 +1,11 @@
 """
 Transforms and loads historical RVVCCA data into TimescaleDB.
 """
+
 import csv
 import os
 from datetime import datetime, timezone
+
 import psycopg2
 from psycopg2.extras import execute_values
 
@@ -105,18 +107,20 @@ def load_air_data(conn, csv_path, batch_size=5000):
                 skipped += 1
                 continue
             coords = STATION_COORDS.get(station, (None, None))
-            batch.append((
-                fiwareid,
-                ts,
-                parse_float(row.get("no2")),
-                parse_float(row.get("o3")),
-                parse_float(row.get("so2")),
-                parse_float(row.get("co")),
-                parse_float(row.get("pm10")),
-                parse_float(row.get("pm2_5")),
-                coords[0],
-                coords[1],
-            ))
+            batch.append(
+                (
+                    fiwareid,
+                    ts,
+                    parse_float(row.get("no2")),
+                    parse_float(row.get("o3")),
+                    parse_float(row.get("so2")),
+                    parse_float(row.get("co")),
+                    parse_float(row.get("pm10")),
+                    parse_float(row.get("pm2_5")),
+                    coords[0],
+                    coords[1],
+                )
+            )
             if len(batch) >= batch_size:
                 with conn.cursor() as cur:
                     execute_values(cur, sql, batch)
@@ -138,7 +142,10 @@ def load_weather_data(conn, csv_path, batch_size=5000):
     """Loads weather data from historical CSV."""
     print(f"[weather] Loading from {csv_path}")
     sql = """
-        INSERT INTO weather.hyper (fiwareid, ts, wind_dir_deg, wind_speed_ms, temperature_c, humidity_pct, pressure_hpa, precip_mm, lat, lon)
+        INSERT INTO weather.hyper (
+            fiwareid, ts, wind_dir_deg, wind_speed_ms, temperature_c,
+            humidity_pct, pressure_hpa, precip_mm, lat, lon
+        )
         VALUES %s
         ON CONFLICT (fiwareid, ts) DO UPDATE SET
             wind_dir_deg = EXCLUDED.wind_dir_deg,
@@ -171,18 +178,20 @@ def load_weather_data(conn, csv_path, batch_size=5000):
                 skipped += 1
                 continue
             coords = STATION_COORDS.get(station, (None, None))
-            batch.append((
-                fiwareid,
-                ts,
-                parse_float(row.get("direccion_del_viento")),
-                parse_float(row.get("velocidad_del_viento")),
-                temp,
-                parse_float(row.get("humedad_relativa")),
-                parse_float(row.get("presion")),
-                parse_float(row.get("precipitacion")),
-                coords[0],
-                coords[1],
-            ))
+            batch.append(
+                (
+                    fiwareid,
+                    ts,
+                    parse_float(row.get("direccion_del_viento")),
+                    parse_float(row.get("velocidad_del_viento")),
+                    temp,
+                    parse_float(row.get("humedad_relativa")),
+                    parse_float(row.get("presion")),
+                    parse_float(row.get("precipitacion")),
+                    coords[0],
+                    coords[1],
+                )
+            )
             if len(batch) >= batch_size:
                 with conn.cursor() as cur:
                     execute_values(cur, sql, batch)
@@ -203,6 +212,7 @@ def load_weather_data(conn, csv_path, batch_size=5000):
 def main():
     """Main backfill function."""
     import sys
+
     print(f"Connecting to {PG_HOST}:{PG_PORT}/{PG_DB}")
     conn = psycopg2.connect(
         host=PG_HOST,

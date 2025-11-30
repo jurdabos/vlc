@@ -85,7 +85,10 @@
         },
         "value.converter": {
           "type": "string",
-          "const": "org.apache.kafka.connect.json.JsonConverter"
+          "enum": [
+            "org.apache.kafka.connect.json.JsonConverter",
+            "io.confluent.connect.json.JsonSchemaConverter"
+          ]
         },
         "value.converter.schemas.enable": {
           "type": "string",

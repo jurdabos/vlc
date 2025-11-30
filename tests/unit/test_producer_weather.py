@@ -32,6 +32,11 @@ class DummyResilientProducer:
         return 0
 
 
+def mock_serializer(data: Dict[str, Any], ctx=None) -> bytes:
+    """Mock JSON serializer for testing."""
+    return json.dumps(data).encode("utf-8")
+
+
 def test_weather_map_record_field_renames():
     row = {
         "fiwareid": "W01",
@@ -59,7 +64,7 @@ def test_weather_map_record_field_renames():
 def test_weather_produce_all(monkeypatch):
     dummy = DummyResilientProducer()
     ev = {"fiwareid": "W01", "ts": "2025-10-18T17:00:00Z", "temperature_c": 22.5, "_fp": "f"}
-    wp.produce_all(dummy, [ev])
+    wp.produce_all(dummy, [ev], mock_serializer)
     assert len(dummy.calls) == 1
     call = dummy.calls[0]
     assert call["key"].decode() == "W01|2025-10-18T17:00:00Z"
@@ -384,7 +389,7 @@ def test_weather_produce_all_skips_no_ts():
         {"fiwareid": "W01", "ts": None, "temperature_c": 22.5, "_fp": "a"},
         {"fiwareid": "W02", "ts": "2025-10-18T18:00:00Z", "temperature_c": 23.0, "_fp": "b"},
     ]
-    wp.produce_all(dummy, events)
+    wp.produce_all(dummy, events, mock_serializer)
     assert len(dummy.calls) == 1
     assert dummy.calls[0]["key"].decode() == "W02|2025-10-18T18:00:00Z"
 

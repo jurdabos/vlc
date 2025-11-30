@@ -1,14 +1,16 @@
 """
 Consumes messages from Kafka topics and sinks them to TimescaleDB.
 """
+
 import json
 import os
 import signal
-import sys
-from datetime import datetime, timezone
-from kafka import KafkaConsumer
+from datetime import datetime
+
 import psycopg2
+from kafka import KafkaConsumer
 from psycopg2.extras import execute_values
+
 KAFKA_BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP", "kafka:9092")
 PG_HOST = os.getenv("PG_HOST", "timescaledb")
 PG_PORT = os.getenv("PG_PORT", "5432")
@@ -18,13 +20,19 @@ PG_PASSWORD = os.getenv("PG_PASSWORD", "")
 TOPICS = os.getenv("TOPICS", "vlc.air").split(",")
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "100"))
 running = True
+
+
 def signal_handler(sig, frame):
     """Handles shutdown signals."""
     global running
     print("[sink] shutting down...")
     running = False
+
+
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
+
+
 def get_pg_conn():
     """Returns a psycopg2 connection."""
     return psycopg2.connect(
@@ -34,11 +42,15 @@ def get_pg_conn():
         user=PG_USER,
         password=PG_PASSWORD,
     )
+
+
 def parse_timestamp(ts_str):
     """Parses ISO timestamp string to datetime."""
     if ts_str.endswith("Z"):
         ts_str = ts_str[:-1] + "+00:00"
     return datetime.fromisoformat(ts_str)
+
+
 def sink_air_batch(conn, records):
     """Inserts air records into air.hyper using upsert."""
     if not records:
@@ -59,29 +71,36 @@ def sink_air_batch(conn, records):
     """
     values = []
     for r in records:
-        values.append((
-            r.get("fiwareid"),
-            parse_timestamp(r.get("ts")),
-            r.get("no2"),
-            r.get("o3"),
-            r.get("so2"),
-            r.get("co"),
-            r.get("pm10"),
-            r.get("pm25"),
-            r.get("air_quality_summary"),
-            r.get("lat"),
-            r.get("lon"),
-        ))
+        values.append(
+            (
+                r.get("fiwareid"),
+                parse_timestamp(r.get("ts")),
+                r.get("no2"),
+                r.get("o3"),
+                r.get("so2"),
+                r.get("co"),
+                r.get("pm10"),
+                r.get("pm25"),
+                r.get("air_quality_summary"),
+                r.get("lat"),
+                r.get("lon"),
+            )
+        )
     with conn.cursor() as cur:
         execute_values(cur, sql, values)
     conn.commit()
     return len(values)
+
+
 def sink_weather_batch(conn, records):
     """Inserts weather records into weather.hyper using upsert."""
     if not records:
         return 0
     sql = """
-        INSERT INTO weather.hyper (fiwareid, ts, wind_dir_deg, wind_speed_ms, temperature_c, humidity_pct, pressure_hpa, precip_mm, lat, lon)
+        INSERT INTO weather.hyper (
+            fiwareid, ts, wind_dir_deg, wind_speed_ms, temperature_c,
+            humidity_pct, pressure_hpa, precip_mm, lat, lon
+        )
         VALUES %s
         ON CONFLICT (fiwareid, ts) DO UPDATE SET
             wind_dir_deg = EXCLUDED.wind_dir_deg,
@@ -95,24 +114,30 @@ def sink_weather_batch(conn, records):
     """
     values = []
     for r in records:
-        values.append((
-            r.get("fiwareid"),
-            parse_timestamp(r.get("ts")),
-            r.get("wind_dir_deg"),
-            r.get("wind_speed_ms"),
-            r.get("temperature_c"),
-            r.get("humidity_pct"),
-            r.get("pressure_hpa"),
-            r.get("precip_mm"),
-            r.get("lat"),
-            r.get("lon"),
-        ))
+        values.append(
+            (
+                r.get("fiwareid"),
+                parse_timestamp(r.get("ts")),
+                r.get("wind_dir_deg"),
+                r.get("wind_speed_ms"),
+                r.get("temperature_c"),
+                r.get("humidity_pct"),
+                r.get("pressure_hpa"),
+                r.get("precip_mm"),
+                r.get("lat"),
+                r.get("lon"),
+            )
+        )
     with conn.cursor() as cur:
         execute_values(cur, sql, values)
     conn.commit()
     return len(values)
+
+
 SINK_TYPE = os.getenv("SINK_TYPE", "air")  # "air" or "weather"
 GROUP_ID = os.getenv("GROUP_ID", f"vlc-sink-{SINK_TYPE}")
+
+
 def main():
     """Main consumer loop."""
     sink_func = sink_air_batch if SINK_TYPE == "air" else sink_weather_batch
@@ -153,5 +178,7 @@ def main():
     consumer.close()
     conn.close()
     print(f"[{SINK_TYPE}-sink] shutdown complete")
+
+
 if __name__ == "__main__":
     main()

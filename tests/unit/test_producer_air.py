@@ -42,6 +42,11 @@ class DummyResilientProducer:
         return 0
 
 
+def mock_serializer(data: Dict[str, Any], ctx=None) -> bytes:
+    """Mock JSON serializer for testing."""
+    return json.dumps(data).encode("utf-8")
+
+
 def test_normalize_ts_variants():
     assert ap.normalize_ts("2025-10-18T17:00:00+00:00") == "2025-10-18T17:00:00Z"
     assert ap.normalize_ts("2025-10-18T17:00:00Z") == "2025-10-18T17:00:00Z"
@@ -99,7 +104,7 @@ def test_compute_select_includes_ts_when_missing():
 def test_produce_all_uses_topic_and_key(monkeypatch):
     dummy = DummyResilientProducer()
     events = [{"fiwareid": "A01", "ts": "2025-10-18T18:00:00Z", "pm10": 10, "_fp": "abc"}]
-    ap.produce_all(dummy, events)
+    ap.produce_all(dummy, events, mock_serializer)
     assert len(dummy.calls) == 1
     call = dummy.calls[0]
     assert call["key"].decode() == "A01|2025-10-18T18:00:00Z"
@@ -174,7 +179,7 @@ def test_fetch_since_emits_new_and_advances_offset(monkeypatch, tmp_path):
 
     # And produce_all should emit two messages
     dummy = DummyResilientProducer()
-    ap.produce_all(dummy, out)
+    ap.produce_all(dummy, out, mock_serializer)
     assert len(dummy.calls) == 2
 
 
@@ -185,7 +190,7 @@ def test_produce_all_skips_events_without_ts():
         {"fiwareid": "A01", "ts": None, "pm10": 10, "_fp": "abc"},  # No ts - should skip
         {"fiwareid": "A02", "ts": "2025-10-18T18:00:00Z", "pm10": 20, "_fp": "def"},  # Valid
     ]
-    ap.produce_all(dummy, events)
+    ap.produce_all(dummy, events, mock_serializer)
     assert len(dummy.calls) == 1
     assert dummy.calls[0]["key"].decode() == "A02|2025-10-18T18:00:00Z"
 

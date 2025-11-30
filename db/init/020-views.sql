@@ -1,4 +1,4 @@
 -- ==================================================================
--- To be populated once in need of “presentation layer” views
+-- To be populated once in need of later-phase presentation views
 -- that should not mix into the core hypertable/cagg bootstrap.
 -- ==================================================================
