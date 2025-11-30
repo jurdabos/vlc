@@ -182,7 +182,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT \n  ts as time,\n  no2\nFROM air.hyper\nWHERE nombre ILIKE 'Patraix'\n  AND ts >= NOW() - INTERVAL '24 hours'\nORDER BY ts;",
+          "rawSql": "SELECT \n  ts as time,\n  no2\nFROM air.hyper\nWHERE fiwareid = 'A03_MOLISOL_60m'\n  AND ts >= NOW() - INTERVAL '24 hours'\nORDER BY ts;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -203,7 +203,7 @@
           }
         }
       ],
-      "title": "NO2 Levels - Patraix (Last 24h)",
+      "title": "NO2 Levels - Molí del Sol (Last 24h)",
       "type": "timeseries"
     },
     {
@@ -265,7 +265,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT ts, nombre, no2\nFROM air.hyper\nWHERE nombre ILIKE 'Patraix'\nORDER BY ts DESC\nLIMIT 5;",
+          "rawSql": "SELECT ts, fiwareid, no2\nFROM air.hyper\nWHERE fiwareid = 'A03_MOLISOL_60m'\nORDER BY ts DESC\nLIMIT 5;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -286,7 +286,7 @@
           }
         }
       ],
-      "title": "Latest 5 NO2 Readings - Patraix",
+      "title": "Latest 5 NO2 Readings - Molí del Sol",
       "type": "table"
     },
     {
@@ -348,7 +348,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT nombre, direccion\nFROM air.hyper\nWHERE ST_DWithin(\n  geom,\n  ST_SetSRID(ST_MakePoint(-0.376, 39.470), 4326)::geography,\n  1000\n)\nGROUP BY nombre, direccion\nORDER BY nombre;",
+          "rawSql": "SELECT fiwareid\nFROM air.hyper\nWHERE ST_DWithin(\n  geo,\n  ST_SetSRID(ST_MakePoint(-0.4026670632153834, 39.493804279841314), 4326)::geography,\n  1000\n)\nGROUP BY fiwareid\nORDER BY fiwareid;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -369,7 +369,7 @@
           }
         }
       ],
-      "title": "Stations within 1km of 39.47°N, -0.376°E",
+      "title": "Stations within 1km of 39.49°N, -0.403°E",
       "type": "table"
     },
     {
@@ -453,7 +453,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT \n  ts as time,\n  nombre as metric,\n  no2 as value\nFROM air.hyper\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND no2 IS NOT NULL\nORDER BY ts;",
+          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  no2 as value\nFROM air.hyper\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND no2 IS NOT NULL\nORDER BY ts;",
           "refId": "A",
           "sql": {
             "columns": [

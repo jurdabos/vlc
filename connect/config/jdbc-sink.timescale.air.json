@@ -12,9 +12,8 @@
 
     "auto.create": "false",
     "auto.evolve": "false",
-    "insert.mode": "upsert",
-    "pk.mode": "record_value",
-    "pk.fields": "fiwareid,ts",
+    "insert.mode": "insert",
+    "pk.mode": "none",
     "table.name.format": "air.hyper",
 
     "value.converter": "org.apache.kafka.connect.json.JsonConverter",
