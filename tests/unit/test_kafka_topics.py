@@ -65,7 +65,9 @@ class TestKafkaDataTopics:
 
         # Checking for kafka-topics --describe command to verify creation
         assert "kafka-topics --bootstrap-server ${BOOTSTRAP} --describe" in content
-        assert "--topic ${DATA_TOPIC} ${DATA_TOPIC_2}" in content
+        # Script describes each topic separately
+        assert "--topic ${DATA_TOPIC}" in content
+        assert "--topic ${DATA_TOPIC_2}" in content
 
 
 class TestKafkaConnectInternalTopics:

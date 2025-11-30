@@ -35,7 +35,7 @@ class TestKafkaConnectService:
             compose_config = yaml.safe_load(f)
 
         connect_service = compose_config["services"]["connect"]
-        assert connect_service["build"] == "./connect"
+        assert connect_service["build"] == "../connect"
 
     def test_connect_service_depends_on_kafka(self, compose_file: Path):
         """Verifies that the Connect service depends on Kafka and waits for health check."""
@@ -130,8 +130,8 @@ class TestKafkaConnectService:
         connect_service = compose_config["services"]["connect"]
         volumes = connect_service["volumes"]
 
-        # Checking for secrets volume mount
-        assert any("./connect/secrets:/opt/kafka/connect/secrets" in vol for vol in volumes)
+        # Checking for secrets volume mount (relative from compose location)
+        assert any("../connect/secrets:/opt/kafka/connect/secrets" in vol for vol in volumes)
 
 
 class TestJdbcSinkConnectorConfiguration:
@@ -192,18 +192,18 @@ class TestJdbcSinkConnectorConfiguration:
         with open(air_connector_config_path) as f:
             config = json.load(f)
 
-        assert config["config"]["connection.url"] == "${file:secrets.properties:TS_JDBC_URL}"
-        assert config["config"]["connection.user"] == "${file:secrets.properties:TS_USERNAME}"
-        assert config["config"]["connection.password"] == "${file:secrets.properties:TS_PASSWORD}"
+        assert config["config"]["connection.url"] == "${file:/opt/kafka/connect/secrets/secrets.properties:TS_JDBC_URL}"
+        assert config["config"]["connection.user"] == "${file:/opt/kafka/connect/secrets/secrets.properties:TS_USERNAME}"
+        assert config["config"]["connection.password"] == "${file:/opt/kafka/connect/secrets/secrets.properties:TS_PASSWORD}"
 
     def test_weather_connector_uses_file_config_for_connection(self, weather_connector_config_path: Path):
         """Verifies that the weather connector uses file-based config provider for database connection."""
         with open(weather_connector_config_path) as f:
             config = json.load(f)
 
-        assert config["config"]["connection.url"] == "${file:secrets.properties:TS_JDBC_URL}"
-        assert config["config"]["connection.user"] == "${file:secrets.properties:TS_USERNAME}"
-        assert config["config"]["connection.password"] == "${file:secrets.properties:TS_PASSWORD}"
+        assert config["config"]["connection.url"] == "${file:/opt/kafka/connect/secrets/secrets.properties:TS_JDBC_URL}"
+        assert config["config"]["connection.user"] == "${file:/opt/kafka/connect/secrets/secrets.properties:TS_USERNAME}"
+        assert config["config"]["connection.password"] == "${file:/opt/kafka/connect/secrets/secrets.properties:TS_PASSWORD}"
 
     def test_air_connector_uses_upsert_mode(self, air_connector_config_path: Path):
         """Verifies that the air connector uses upsert insert mode."""
