@@ -71,6 +71,24 @@ Query TimescaleDB directly:
 docker exec timescaledb psql -U vlc_dev -d vlc -c "SELECT COUNT(*) FROM air.hyper;"
 ```
 
+## Historical Backfill (Optional)
+Load historical RVVCCA data into TimescaleDB before starting the streaming producers.
+
+Historical CSVs are included in `backfill/`:
+- `hourly_2021_2022.csv` — hourly readings (air + weather)
+- `daily_2004_2022.csv` — daily aggregates
+```bash
+# Set DB connection (defaults: localhost:5432/vlc)
+export PG_PASSWORD=<your_password>
+
+# Run the backfill script
+uv run python backfill/load_historical.py backfill/hourly_2021_2022.csv
+```
+The script:
+- Maps historical station names to current `fiwareid` values
+- Loads both air quality and weather data from the same CSV
+- Uses upsert (ON CONFLICT) so re-runs are safe and streaming data won't duplicate
+
 ## Quick Reference
 
 | Action 		| Command 												|
@@ -85,6 +103,7 @@ docker exec timescaledb psql -U vlc_dev -d vlc -c "SELECT COUNT(*) FROM air.hype
 
 ```
 vlc/
+├── backfill/          # Historical data loading scripts
 ├── compose/           # Docker Compose + nginx config
 ├── connect/           # Kafka Connect Dockerfile + sink configs
 ├── consumer/          # (placeholder for future consumers)
