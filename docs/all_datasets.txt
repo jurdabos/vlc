@@ -1,11 +1,13 @@
 **Command Executed:**
 ```bash
-# Round 1: Concept note
-cd "D:\tanul\iu\subjects\project_data_engineering\vlc"
-# Round 2: Development
-cd "C:\acidvuca\vlc"
-# Round 3: Finalization
+# Phase 1: Concept note
+	cd "D:\tanul\iu\subjects\project_data_engineering\vlc"
+# Phase 2: Development
+cd "\\wsl.localhost\Ubuntu\home\acidvuca\vlc"
+# Phase 3: Finalization
 # Get into container
+	ssh -L 8080:127.0.0.1:8080 azureuser@158.158.107.246
+
 cd scripts
 uv run print_all_datasets.py
 ```

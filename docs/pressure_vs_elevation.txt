@@ -1,4 +1,4 @@
-VLCi seems to be publishing station pressure uncorrected rather than sea-level-reduced pressure (SLP).
+VLCi is publishing station pressure uncorrected rather than sea-level-reduced pressure (SLP).
 Across a city the horizontal pressure gradient at one instant is tiny (fractions of a hPa), so big differences mainly reflect elevation, plus minor effects from timestamp offsets and sensor calibration.
 
 As elevation increases, there is less overlying atmospheric mass, so atmospheric pressure decreases with increasing elevation.

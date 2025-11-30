@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WeatherReading",
+  "type": "object",
+  "properties": {
+    "fiwareid": {
+      "type": "string",
+      "description": "Station identifier"
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp in ISO 8601 format"
+    },
+    "wind_dir_deg": {
+      "type": ["number", "null"],
+      "description": "Wind direction in degrees"
+    },
+    "wind_speed_ms": {
+      "type": ["number", "null"],
+      "description": "Wind speed in m/s"
+    },
+    "temperature_c": {
+      "type": ["number", "null"],
+      "description": "Temperature in Celsius"
+    },
+    "humidity_pct": {
+      "type": ["number", "null"],
+      "description": "Relative humidity percentage"
+    },
+    "pressure_hpa": {
+      "type": ["number", "null"],
+      "description": "Barometric pressure in hPa"
+    },
+    "precip_mm": {
+      "type": ["number", "null"],
+      "description": "Precipitation in mm"
+    },
+    "lat": {
+      "type": ["number", "null"],
+      "description": "Latitude"
+    },
+    "lon": {
+      "type": ["number", "null"],
+      "description": "Longitude"
+    }
+  },
+  "required": ["fiwareid", "ts"]
+}

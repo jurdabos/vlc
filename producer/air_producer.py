@@ -5,10 +5,14 @@ import re
 import signal
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import requests
 from confluent_kafka import Producer
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.json_schema import JSONSerializer
+from confluent_kafka.serialization import MessageField, SerializationContext
 from resilience import (
     InflightLimiter,
     ResilientProducer,
@@ -24,8 +28,14 @@ BASES = [BASE1, BASE2]
 DATASET_ID = os.getenv("VLC_DATASET_ID", "estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas")
 TOPIC = os.getenv("KAFKA_TOPIC", "vlc.air")
 BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+SCHEMA_REGISTRY_URL = os.getenv("SCHEMA_REGISTRY_URL", "http://schema-registry:8081")
 POLL_SECS = int(os.getenv("POLL_EVERY_SECONDS", "300"))
 LIMIT = int(os.getenv("PAGE_LIMIT", "100"))
+
+# Loading JSON schema for Schema Registry
+SCHEMA_PATH = Path(__file__).parent / "schemas" / "air.json"
+with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
+    AIR_SCHEMA_STR = f.read()
 
 STATE_DIR = os.getenv("STATE_DIR", "/state")
 OFFSET_FILE = os.path.join(STATE_DIR, "offset.txt")
@@ -139,17 +149,23 @@ POINT_RX = re.compile(r"POINT\s*\(\s*([-\d\.]+)\s+([-\d\.]+)\s*\)")
 
 
 def extract_lat_lon(geo: Any) -> Tuple[Optional[float], Optional[float]]:
+    """
+    Extracts lat/lon from geo_point_2d, rounding to 6 decimals (~11cm) to
+    normalize inconsistent API precision for the same station.
+    """
+    lat, lon = None, None
     if isinstance(geo, dict):
         # ODS v2.1 often returns {"lat":..., "lon":...}
         try:
-            return float(geo.get("lat")), float(geo.get("lon"))
+            lat, lon = float(geo.get("lat")), float(geo.get("lon"))
         except Exception:
             return (None, None)
-    if isinstance(geo, str):
+    elif isinstance(geo, str):
         m = POINT_RX.match(geo)
         if m:
             lon, lat = float(m.group(1)), float(m.group(2))
-            return lat, lon
+    if lat is not None and lon is not None:
+        return round(lat, 6), round(lon, 6)
     return (None, None)
 
 
@@ -207,13 +223,17 @@ def map_record(r: Dict[str, Any], ts_field: str) -> Dict[str, Any]:
     return out
 
 
-def produce_all(p: ResilientProducer, events: Iterable[Dict[str, Any]]) -> None:
+def produce_all(p: ResilientProducer, events: Iterable[Dict[str, Any]], serializer: JSONSerializer) -> None:
     """Produces events to Kafka with resilience (DLQ on failure)."""
+    ctx = SerializationContext(TOPIC, MessageField.VALUE)
     for ev in events:
         if not ev.get("ts"):  # skip malformed rows without timestamp
             continue
+        # Removing internal fingerprint field before sending to Kafka
+        kafka_ev = {k: v for k, v in ev.items() if k != "_fp"}
         key = f"{ev['fiwareid']}|{ev['ts']}"
-        p.produce(key=key.encode("utf-8"), value=json.dumps(ev).encode("utf-8"))
+        value_bytes = serializer(kafka_ev, ctx)
+        p.produce(key=key.encode("utf-8"), value=value_bytes)
     p.flush()
 
 
@@ -408,6 +428,10 @@ def main():
         f"backoff_base={RETRY_CONFIG.base_delay_ms}ms, "
         f"max_retries={RETRY_CONFIG.max_retries}"
     )
+    # Setting up Schema Registry client and serializer
+    schema_registry_client = SchemaRegistryClient({"url": SCHEMA_REGISTRY_URL})
+    json_serializer = JSONSerializer(AIR_SCHEMA_STR, schema_registry_client)
+    print(f"[air] using Schema Registry at {SCHEMA_REGISTRY_URL}")
     raw_producer = Producer(
         {
             "bootstrap.servers": BOOTSTRAP,
@@ -426,7 +450,7 @@ def main():
             with INFLIGHT_LIMITER:
                 items, new_offset, new_seen = fetch_since(offset, seen, BASES, select, ts_field)
             if items:
-                produce_all(producer, items)
+                produce_all(producer, items, json_serializer)
                 save_state(new_offset, new_seen)
                 offset, seen = new_offset, new_seen
                 stats = producer.stats

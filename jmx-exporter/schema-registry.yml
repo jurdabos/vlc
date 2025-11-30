@@ -1,26 +1,31 @@
-startDelaySeconds: 20
+startDelaySeconds: 0
 lowercaseOutputName: true
 lowercaseOutputLabelNames: true
 
 rules:
-  # HTTP request metrics
-  - pattern: 'io.confluent.kafka.schemaregistry<type=jetty-metrics, endpoint=(.+), metric=(requests|responses)><>Count'
-    name: schema_registry_http_$2_total
-    labels:
-      endpoint: "$1"
+  # Jersey metrics (Confluent Schema Registry uses Jersey)
+  - pattern: 'kafka\.schema\.registry<type=jersey-metrics><>request-total'
+    name: schema_registry_request_total
     type: COUNTER
 
-  - pattern: 'io.confluent.kafka.schemaregistry<type=jetty-metrics, endpoint=(.+), metric=requestTimeMs><>99thPercentile'
-    name: schema_registry_http_request_time_ms_p99
-    labels:
-      endpoint: "$1"
+  - pattern: 'kafka\.schema\.registry<type=jersey-metrics><>request-error-total'
+    name: schema_registry_request_error_total
+    type: COUNTER
+
+  - pattern: 'kafka\.schema\.registry<type=jersey-metrics><>request-latency-avg'
+    name: schema_registry_request_latency_avg
     type: GAUGE
 
-  # Registry-level metrics
-  - pattern: 'io.confluent.kafka.schemaregistry<type=schema-registry-metrics, name=schema_count><>Value'
-    name: schema_registry_schema_count
+  - pattern: 'kafka\.schema\.registry<type=jersey-metrics><>request-latency-max'
+    name: schema_registry_request_latency_max
     type: GAUGE
 
-  - pattern: 'io.confluent.kafka.schemaregistry<type=schema-registry-metrics, name=subject_count><>Value'
-    name: schema_registry_subject_count
+  # Master election
+  - pattern: 'kafka\.schema\.registry<type=master-slave-role><>master-slave-role'
+    name: schema_registry_is_master
     type: GAUGE
+
+  # Generic registry metrics
+  - pattern: 'kafka\.schema\.registry<type=([^,]+)><>([^:]+)'
+    name: schema_registry_$1_$2
+    type: UNTYPED

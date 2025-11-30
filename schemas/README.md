@@ -1,4 +1,4 @@
-\# schemas/\*.avsc is just a little ramp-up option note for future Avro seriousness if/when VLC grows up
+\# schemas/\*.avsc just ramp-up option note for future Avro seriousness for ph3/4/5
 
 \# for current phase, deliberately left blank
 

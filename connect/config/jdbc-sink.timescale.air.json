@@ -12,12 +12,13 @@
 
     "auto.create": "false",
     "auto.evolve": "false",
-    "insert.mode": "insert",
-    "pk.mode": "none",
+    "insert.mode": "upsert",
+    "pk.mode": "record_value",
+    "pk.fields": "fiwareid,ts",
     "table.name.format": "air.hyper",
 
-    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-    "value.converter.schemas.enable": "false",
+    "value.converter": "io.confluent.connect.json.JsonSchemaConverter",
+    "value.converter.schema.registry.url": "http://schema-registry:8081",
 
     "transforms": "tsToTimestamp",
     "transforms.tsToTimestamp.type": "org.apache.kafka.connect.transforms.TimestampConverter$Value",
@@ -27,6 +28,7 @@
 
     "batch.size": "3000",
     "max.retries": "10",
-    "retry.backoff.ms": "2000"
+    "retry.backoff.ms": "2000",
+    "consumer.override.auto.offset.reset": "latest"
   }
 }

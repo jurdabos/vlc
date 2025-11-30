@@ -192,18 +192,20 @@ class TestJdbcSinkConnectorConfiguration:
         with open(air_connector_config_path) as f:
             config = json.load(f)
 
-        assert config["config"]["connection.url"] == "${file:/opt/kafka/connect/secrets/secrets.properties:TS_JDBC_URL}"
-        assert config["config"]["connection.user"] == "${file:/opt/kafka/connect/secrets/secrets.properties:TS_USERNAME}"
-        assert config["config"]["connection.password"] == "${file:/opt/kafka/connect/secrets/secrets.properties:TS_PASSWORD}"
+        secret_path = "${file:/opt/kafka/connect/secrets/secrets.properties"
+        assert config["config"]["connection.url"] == f"{secret_path}:TS_JDBC_URL}}"
+        assert config["config"]["connection.user"] == f"{secret_path}:TS_USERNAME}}"
+        assert config["config"]["connection.password"] == f"{secret_path}:TS_PASSWORD}}"
 
     def test_weather_connector_uses_file_config_for_connection(self, weather_connector_config_path: Path):
         """Verifies that the weather connector uses file-based config provider for database connection."""
         with open(weather_connector_config_path) as f:
             config = json.load(f)
 
-        assert config["config"]["connection.url"] == "${file:/opt/kafka/connect/secrets/secrets.properties:TS_JDBC_URL}"
-        assert config["config"]["connection.user"] == "${file:/opt/kafka/connect/secrets/secrets.properties:TS_USERNAME}"
-        assert config["config"]["connection.password"] == "${file:/opt/kafka/connect/secrets/secrets.properties:TS_PASSWORD}"
+        secret_path = "${file:/opt/kafka/connect/secrets/secrets.properties"
+        assert config["config"]["connection.url"] == f"{secret_path}:TS_JDBC_URL}}"
+        assert config["config"]["connection.user"] == f"{secret_path}:TS_USERNAME}}"
+        assert config["config"]["connection.password"] == f"{secret_path}:TS_PASSWORD}}"
 
     def test_air_connector_uses_upsert_mode(self, air_connector_config_path: Path):
         """Verifies that the air connector uses upsert insert mode."""
@@ -238,13 +240,16 @@ class TestJdbcSinkConnectorConfiguration:
         assert config["config"]["table.name.format"] == "weather.hyper"
 
     def test_connectors_use_json_converter(self, air_connector_config_path: Path, weather_connector_config_path: Path):
-        """Verifies that both connectors use JSON converter without schemas."""
+        """Verifies that both connectors use a JSON-compatible converter."""
+        valid_converters = [
+            "org.apache.kafka.connect.json.JsonConverter",
+            "io.confluent.connect.json.JsonSchemaConverter",
+        ]
         for config_path in [air_connector_config_path, weather_connector_config_path]:
             with open(config_path) as f:
                 config = json.load(f)
 
-            assert config["config"]["value.converter"] == "org.apache.kafka.connect.json.JsonConverter"
-            assert config["config"]["value.converter.schemas.enable"] == "false"
+            assert config["config"]["value.converter"] in valid_converters
 
     def test_connectors_have_timestamp_transformation(
         self, air_connector_config_path: Path, weather_connector_config_path: Path
