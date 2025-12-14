@@ -13,7 +13,7 @@ PG_HOST = os.getenv("PG_HOST", "localhost")
 PG_PORT = os.getenv("PG_PORT", "5432")
 PG_DB = os.getenv("PG_DB", "vlc")
 PG_USER = os.getenv("PG_USER", "vlc_dev")
-PG_PASSWORD = os.getenv("PG_PASSWORD", "itt-csak")
+PG_PASSWORD = os.getenv("PG_PASSWORD", os.getenv("VLC_DEV_PASSWORD", ""))
 
 # Mapping historical station names to current fiwareids
 STATION_TO_AIR_FIWAREID = {

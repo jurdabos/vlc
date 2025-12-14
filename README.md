@@ -35,6 +35,7 @@ This creates `.htpasswd`, JDBC credentials, and DB password files:
 ```bash
 chmod +x scripts/*.sh
 ./scripts/sync-dev-secrets.sh
+chmod 644 compose/.htpasswd
 ```
 
 ### 3. Start infrastructure (Kafka, TimescaleDB, Connect, Schema Registry)
@@ -52,20 +53,16 @@ docker ps --format 'table {{.Names}}\t{{.Status}}'
 ```
 This creates topics (`vlc.air`, `vlc.weather`, Connect internal topics) and deploys JDBC sink connectors.
 
-### 5. Start UI services (Grafana, Kafka UI, nginx proxy)
+### 5. Start services (Grafana, Kafka UI, nginx proxy)
 ```bash
-docker compose -f compose/docker-compose.yml --profile ui up -d
+docker compose -f compose/docker-compose.yml --profile infra --profile schema --profile ui --profile producer up -d --build
 ```
 
-### 6. Start producers
-```bash
-docker compose -f compose/docker-compose.yml --profile producer up -d
-```
-
-### 7. Verify data flow
-- **Kafka UI**: http://localhost:8080/kafka-ui/ (admin / your VLC_DEV_PASSWORD)
-- **Grafana**: http://localhost:8080/grafana/ (admin / your VLC_DEV_PASSWORD)
-- **Connect API**: `docker exec connect curl -s http://localhost:8083/connectors?expand=status | jq`
+### 6. Verify data flow
+- **Kafka UI**: http://localhost:8080/kafka-ui/ (admin / VLC_DEV_PASSWORD)
+- **Grafana**: http://localhost:8080/grafana/ (admin / VLC_DEV_PASSWORD)
+- **Connect API**:
+docker exec connect curl -s http://localhost:8083/connectors?expand=status | jq
 Query TimescaleDB directly:
 ```bash
 docker exec timescaledb psql -U vlc_dev -d vlc -c "SELECT COUNT(*) FROM air.hyper;"

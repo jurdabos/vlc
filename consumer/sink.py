@@ -3,9 +3,16 @@ Consumes messages from Kafka topics and sinks them to TimescaleDB.
 """
 
 import json
+import logging
 import os
 import signal
 from datetime import datetime
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 import psycopg2
 from kafka import KafkaConsumer
@@ -138,36 +145,58 @@ SINK_TYPE = os.getenv("SINK_TYPE", "air")  # "air" or "weather"
 GROUP_ID = os.getenv("GROUP_ID", f"vlc-sink-{SINK_TYPE}")
 
 
+def safe_json_deserializer(raw_bytes):
+    """
+    Deserializes JSON bytes safely.
+
+    Handles Confluent Schema Registry wire format (5-byte header: magic byte + 4-byte schema ID).
+    Returns None for empty, null, or malformed messages instead of raising.
+    """
+    if raw_bytes is None or len(raw_bytes) == 0:
+        logger.warning("Received empty or null message, skipping")
+        return None
+    # Stripping Confluent Schema Registry header if present (magic byte 0x00 + 4-byte schema ID)
+    if len(raw_bytes) > 5 and raw_bytes[0] == 0:
+        raw_bytes = raw_bytes[5:]
+    try:
+        return json.loads(raw_bytes.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        logger.warning(f"Failed to decode message: {e}, raw={raw_bytes[:100]!r}")
+        return None
+
+
 def main():
     """Main consumer loop."""
     sink_func = sink_air_batch if SINK_TYPE == "air" else sink_weather_batch
-    print(f"[{SINK_TYPE}-sink] connecting to Kafka at {KAFKA_BOOTSTRAP}")
-    print(f"[{SINK_TYPE}-sink] topics: {TOPICS}, group: {GROUP_ID}")
+    logger.info(f"[{SINK_TYPE}-sink] connecting to Kafka at {KAFKA_BOOTSTRAP}")
+    logger.info(f"[{SINK_TYPE}-sink] topics: {TOPICS}, group: {GROUP_ID}")
     consumer = KafkaConsumer(
         *TOPICS,
         bootstrap_servers=KAFKA_BOOTSTRAP,
         auto_offset_reset="earliest",
         enable_auto_commit=True,
         group_id=GROUP_ID,
-        value_deserializer=lambda m: json.loads(m.decode("utf-8")),
+        value_deserializer=safe_json_deserializer,
     )
-    print(f"[{SINK_TYPE}-sink] connecting to TimescaleDB at {PG_HOST}:{PG_PORT}/{PG_DB}")
+    logger.info(f"[{SINK_TYPE}-sink] connecting to TimescaleDB at {PG_HOST}:{PG_PORT}/{PG_DB}")
     conn = get_pg_conn()
-    print(f"[{SINK_TYPE}-sink] ready, consuming...")
+    logger.info(f"[{SINK_TYPE}-sink] ready, consuming...")
     batch = []
     while running:
         # Polling with timeout to allow graceful shutdown
         msg_pack = consumer.poll(timeout_ms=1000, max_records=BATCH_SIZE)
         for tp, messages in msg_pack.items():
             for msg in messages:
-                batch.append(msg.value)
+                # Skipping None values from failed deserialization
+                if msg.value is not None:
+                    batch.append(msg.value)
         if batch:
             try:
                 count = sink_func(conn, batch)
-                print(f"[{SINK_TYPE}-sink] inserted {count} records")
+                logger.info(f"[{SINK_TYPE}-sink] inserted {count} records")
                 batch = []
             except Exception as e:
-                print(f"[{SINK_TYPE}-sink] error inserting batch: {e}")
+                logger.error(f"[{SINK_TYPE}-sink] error inserting batch: {e}")
                 conn.rollback()
                 # Reconnecting on error
                 try:
@@ -177,7 +206,7 @@ def main():
                 conn = get_pg_conn()
     consumer.close()
     conn.close()
-    print(f"[{SINK_TYPE}-sink] shutdown complete")
+    logger.info(f"[{SINK_TYPE}-sink] shutdown complete")
 
 
 if __name__ == "__main__":
