@@ -62,7 +62,9 @@ docker compose -f compose/docker-compose.yml --profile infra --profile schema --
 - **Kafka UI**: http://localhost:8080/kafka-ui/ (admin / VLC_DEV_PASSWORD)
 - **Grafana**: http://localhost:8080/grafana/ (admin / VLC_DEV_PASSWORD)
 - **Connect API**:
+```bash
 docker exec connect curl -s http://localhost:8083/connectors?expand=status | jq
+```
 Query TimescaleDB directly:
 ```bash
 docker exec timescaledb psql -U vlc_dev -d vlc -c "SELECT COUNT(*) FROM air.hyper;"
