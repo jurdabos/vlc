@@ -11,7 +11,7 @@
 2. **Browser Access**:
    - Navigate to http://localhost:8080/grafana/
    - Browser will prompt for HTTP Basic Auth credentials
-   - Then you'll see Grafana login page
+   - Then you'll see the Grafana login page
 ## Updating HTTP Basic Auth Password
 
 ```bash

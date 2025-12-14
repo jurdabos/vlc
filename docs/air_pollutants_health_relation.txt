@@ -1,0 +1,25 @@
+1. **PM2.5** (fine particles)
+   The heavyweight villain: strongest and broadest evidence for **premature mortality + cardiovascular/respiratory disease**, and it’s pervasive. In Europe, PM2.5 is consistently identified as causing the **largest health impacts**. ([European Environment Agency][1])
+
+2. **NO2**
+   A major **traffic-related** pollutant tied to airway inflammation, asthma outcomes, and broader cardiopulmonary risk. Also a useful “this area is traffic-polluted” indicator, though separating NO2’s *independent* effect from the rest of traffic pollution is tricky. ([US EPA][2])
+
+3. **O3** (ozone)
+   A classic “bad-air day” gas: strong links to **asthma attacks, hospital admissions, and short-term mortality markers**, especially in warm/sunny periods. ([Environmental Protection Agency][3])
+
+4. **PM10** (coarse particles)
+   Still harmful (especially for respiratory irritation), but generally **less potent per µg/m³ than PM2.5**, and the evidence base is typically less strong than for PM2.5. ([GHD][4])
+
+5. **SO2**
+   Mostly a **short-term irritant** problem: spikes can trigger **bronchoconstriction and asthma symptoms**, especially near specific sources (industry, shipping). Important when it peaks, but in many cities it’s not the main chronic burden driver. ([Environmental Protection Agency][5])
+
+6. **CO**
+   CO is *absolutely* dangerous (it’s an asphyxiant), but **outdoor urban ambient levels** are usually controlled well enough that it tends to be a smaller *day-to-day citywide* health burden than the others; it becomes “top-tier” mainly in **enclosed/indoor or micro-environment** scenarios (garages, faulty heaters, etc.). ([Environmental Protection Agency][6])
+
+
+[1]: https://www.eea.europa.eu/en/topics/in-depth/air-pollution/how-it-affects-our-health?utm_source=chatgpt.com "Ηow air pollution affects our health"
+[2]: https://assessments.epa.gov/isa/document/%26deid%3D310879?utm_source=chatgpt.com "Integrated Science Assessment (ISA) for Oxides of Nitrogen"
+[3]: https://www.epa.gov/ozone-pollution-and-your-patients-health/health-effects-ozone-general-population?utm_source=chatgpt.com "Health Effects of Ozone in the General Population"
+[4]: https://www.ghd.pku.edu.cn/docs/2021-09/2f00edbd847d4b3183f17393e43afa86.pdf?utm_source=chatgpt.com "WHO global air quality guidelines"
+[5]: https://www.epa.gov/sites/default/files/2016-05/documents/final_primary_naaqs_factsheet.pdf?utm_source=chatgpt.com "1 FACT SHEET REVISIONS TO THE PRIMARY NATIONAL ..."
+[6]: https://www.epa.gov/isa/integrated-science-assessment-isa-carbon-monoxide?utm_source=chatgpt.com "Integrated Science Assessment (ISA) for Carbon Monoxide"

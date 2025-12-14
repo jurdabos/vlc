@@ -62,7 +62,7 @@ networks:
 - Each producer writes to /state/state.json inside its container, with separate volumes to prevent cross-contamination.
 > For offset rollbacks, we need to: 1. Reset the state file in the volume, or 2. Use PG_BOOTSTRAP=true to re-bootstrap from TimescaleDB's max(ts)
 
-## 7) Backups & restore drill (PROCRASTINATED INTO THE FUTURE BASED ON PROF FEEDBACK)
+## 7) Backups & restore drill (PROCRASTINATED INTO P4 BASED ON PROF FEEDBACK)
 
 > Nightly dump; periodic restore proof.
 

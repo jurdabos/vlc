@@ -12,8 +12,9 @@ grafana/
 │   └── system_metrics.json    # System metrics dashboard
 └── provisioning/
     ├── datasources/
+    │   ├── alertmanager.yml
     │   ├── timescaledb.yml    # TimescaleDB PostgreSQL datasource
-    │   └── prometheus.yml     # Prometheus datasource
+    │   └── prometheus.yml
     └── dashboards/
         └── dashboards.yml     # Dashboard provider config
 ```
@@ -37,7 +38,7 @@ Grafana's native Postgres data source works with TimescaleDB out of the box.
 ### Valencia Air Quality
 Visualizes air quality data from the Valencia open data API:
 - Total row count in air.hyper
-- Spatial query: stations within 1km of baseline home coordinates (make this changeable in ph 3/4/5)
+- Spatial query: stations within given radius of baseline home coordinates (make this easily adjustable in P3/4/5)
 - Levels for all stations (last 7 days)
 
 ### Valencia Weather
@@ -45,7 +46,7 @@ Visualizes meteorological data from Valencia weather stations:
 - Total row count in weather.hyper
 - Temperature trends across stations (last 24h)
 - Latest weather readings by station
-- Spatial query: stations within 1km of coordinates
+- Spatial query: stations within given radius of baseline home coordinates (make this easily adjustable in P3/4/5)
 - Humidity and pressure charts (last 7 days)
 
 ### System Metrics
@@ -117,14 +118,14 @@ FROM weather.hyper
 ORDER BY fiwareid, ts DESC;
 "
 
--- Spatial: weather stations within 3 km of 39.494N, -0.403E
+-- Spatial: weather stations within 3250 m of 39.494N, -0.403E
 docker exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT DISTINCT fiwareid, lat, lon
 FROM weather.hyper
 WHERE ST_DWithin(
   geo,
   ST_SetSRID(ST_MakePoint(-0.403, 39.494), 4326)::geography,
-  3000
+  3250
 );
 "
 
@@ -136,21 +137,41 @@ WHERE bucket_day > NOW() - INTERVAL '7 days'
 ORDER BY bucket_day DESC, fiwareid;
 "
 
--- Historical data for 1 Dec to 8 Dec
+-- Historical data for 18 Dec to 22 Dec
 docker exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT 
-    EXTRACT(DAY FROM bucket_day)::int AS day_of_dec,
+    EXTRACT(DAY FROM ts)::int AS day_of_dec,
     fiwareid,
-    ROUND(AVG(temp_avg_c)::numeric, 2) AS temp_avg_c,
-    ROUND(AVG(humidity_avg)::numeric, 2) AS humidity_avg,
-    ROUND(AVG(pressure_avg)::numeric, 2) AS pressure_avg,
-    ROUND(AVG(precip_max_mm)::numeric, 2) AS precip_max_mm,
-    ROUND(AVG(wind_avg_deg)::numeric, 2) AS wind_avg_deg,
-    ROUND(AVG(wind_avg_ms)::numeric, 2) AS wind_avg_ms,
-    COUNT(*) AS years_of_data
-FROM weather.daily
-WHERE EXTRACT(MONTH FROM bucket_day) = 12
-  AND EXTRACT(DAY FROM bucket_day) BETWEEN 1 AND 8
+    ROUND(AVG(temperature_c)::numeric, 2) AS temp_avg_c,
+    ROUND(AVG(humidity_pct)::numeric, 2) AS humidity_avg,
+    ROUND(AVG(pressure_hpa)::numeric, 2) AS pressure_avg,
+    ROUND(MAX(precip_mm)::numeric, 2) AS precip_max_mm,
+    ROUND(AVG(wind_dir_deg)::numeric, 2) AS wind_avg_deg,
+    ROUND(AVG(wind_speed_ms)::numeric, 2) AS wind_avg_ms,
+    COUNT(*) AS records
+FROM weather.hyper
+WHERE EXTRACT(MONTH FROM ts) = 12
+  AND EXTRACT(DAY FROM ts) BETWEEN 18 AND 22
+GROUP BY day_of_dec, fiwareid
+ORDER BY day_of_dec, fiwareid;
+"
+
+-- Historical data for 18 Dec to 22 Dec for W05_VALENCIA_UPV_10m
+docker exec timescaledb psql -U vlc_dev -d vlc -c "
+SELECT 
+    EXTRACT(DAY FROM ts)::int AS day_of_dec,
+    fiwareid,
+    ROUND(AVG(temperature_c)::numeric, 2) AS temp_avg_c,
+    ROUND(AVG(humidity_pct)::numeric, 2) AS humidity_avg,
+    ROUND(AVG(pressure_hpa)::numeric, 2) AS pressure_avg,
+    ROUND(MAX(precip_mm)::numeric, 2) AS precip_max_mm,
+    ROUND(AVG(wind_dir_deg)::numeric, 2) AS wind_avg_deg,
+    ROUND(AVG(wind_speed_ms)::numeric, 2) AS wind_avg_ms,
+    COUNT(*) AS records
+FROM weather.hyper
+WHERE EXTRACT(MONTH FROM ts) = 12
+  AND EXTRACT(DAY FROM ts) BETWEEN 18 AND 22
+  AND fiwareid = 'W05_VALENCIA_UPV_10m'
 GROUP BY day_of_dec, fiwareid
 ORDER BY day_of_dec, fiwareid;
 "

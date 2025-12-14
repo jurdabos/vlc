@@ -79,8 +79,9 @@ Historical CSVs are included in `backfill/`:
 ```bash
 # Set DB connection (defaults: localhost:5432/vlc)
 export PG_PASSWORD=<your_password>
-
-# Run the backfill script
+# Direct SQL COPY using provided .csv files
+Run "\backfill\backfill.sql"
+# Alternatively, use the backfill script with e. g.
 uv run python backfill/load_historical.py backfill/hourly_2021_2022.csv
 ```
 The script:
