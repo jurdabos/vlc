@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "AirQualityReading",
+  "namespace": "vlc.air",
+  "fields": [
+    {"name": "fiwareid", "type": "string"},
+    {"name": "ts", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "so2", "type": ["null", "double"], "default": null},
+    {"name": "no2", "type": ["null", "double"], "default": null},
+    {"name": "o3", "type": ["null", "double"], "default": null},
+    {"name": "co", "type": ["null", "double"], "default": null},
+    {"name": "pm10", "type": ["null", "double"], "default": null},
+    {"name": "pm25", "type": ["null", "double"], "default": null},
+    {"name": "air_quality_summary", "type": ["null", "string"], "default": null},
+    {"name": "lat", "type": ["null", "double"], "default": null},
+    {"name": "lon", "type": ["null", "double"], "default": null}
+  ]
+}

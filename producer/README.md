@@ -77,8 +77,8 @@ docker-compose --profile producer up --build
 
 ### View logs:
 ```bash
-docker-compose logs -f air-producer
-docker-compose logs -f weather-producer
+docker compose -f /home/acidvuca/vlc/compose/docker-compose.yml --profile producer --profile infra logs -f air-producer
+docker compose -f /home/acidvuca/vlc/compose/docker-compose.yml --profile producer --profile infra logs -f weather-producer
 ```
 
 ### Stop producers:

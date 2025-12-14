@@ -29,7 +29,3 @@ Schema Registry for registry health to be included in ph3/4/5
 \- \*\*ConnectTaskFailed\*\*: Critical if JDBC sink tasks fail
 
 \- \*\*NoAirDataIngested / NoWeatherDataIngested\*\*: Warning if no data for 30min
-
-
-
-

@@ -1,5 +1,5 @@
-# vlc
-Valencia air quality and weather data pipeline — a data engineering study project for IU.
+# vlc/README.md
+VLC air quality and weather data pipeline — a data engineering study project for IU.
 
 ## Data Flow
 ```
@@ -7,9 +7,9 @@ Valencia ODS API (v2.1)
          ↓ poll every 5 min
 Producers (air_producer + weather_producer)
          ↓ fingerprint dedup, JSON Schema
-Kafka (vlc.air / vlc.weather topics)
+Kafka (vlc.air/vlc.weather topics)
          ↓ JDBC Sink Connector (upsert on fiwareid+ts)
-TimescaleDB (air.hyper / weather.hyper hypertables)
+TimescaleDB (air.hyper/weather.hyper hypertables)
          ↓ SQL queries
 Grafana Dashboards
 ```
@@ -49,7 +49,7 @@ docker ps --format 'table {{.Names}}\t{{.Status}}'
 
 ### 4. Bootstrap Kafka topics and deploy connectors
 ```bash
-./scripts/bootstrap_kafka.sh
+./scripts/bootstrap_kafka.sh 2>&1 | grep -v "WARNING.*metric names"
 ```
 This creates topics (`vlc.air`, `vlc.weather`, Connect internal topics) and deploys JDBC sink connectors.
 
@@ -103,17 +103,21 @@ The script:
 
 ```
 vlc/
-├── backfill/          # Historical data loading scripts
-├── compose/           # Docker Compose + nginx config
-├── connect/           # Kafka Connect Dockerfile + sink configs
-├── consumer/          # (placeholder for future consumers)
-├── db/init/           # TimescaleDB init scripts (extensions, schemas, views)
-├── grafana/           # Grafana provisioning
-├── producer/          # air + weather Python producers
-│   └── schemas/       # JSON schemas for validation
-├── scripts/           # bootstrap, secrets, analysis utilities
-├── schemas/           # (placeholder for future Avro schemas)
-└── tests/             # pytest test suite
+├── backfill/				# Historical data loading scripts
+├── compose/				# Docker Compose + nginx config
+├── connect/				# Kafka Connect Dockerfile + sink configs
+├── consumer/				# (placeholder for future consumers)
+├── db/init/				# TimescaleDB init scripts (extensions, schemas, views)
+├── docs/
+├── grafana/				# Grafana provisioning
+├── infra/				# infrastructure setup for Azure deployment
+├── jmx-exporter/
+├── monitoring/
+├── producer/				# air + weather Python producers
+│   └── schemas/			# JSON schemas for validation
+├── schemas/				# (placeholder for future Avro schemas)
+├── scripts/				# bootstrap, secrets, analysis utilities
+└── tests/				# pytest test suite
 ```
 
 ## Azure Deployment

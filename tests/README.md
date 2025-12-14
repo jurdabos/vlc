@@ -63,24 +63,24 @@ tests/
 ### Install Dependencies
 
 Using `uv`:
-```powershell
+```
 uv pip install -e ".[dev]"
 ```
 
 Or using pip:
-```powershell
+```
 pip install -e ".[dev]"
 ```
 
 ### Run All Tests
 
-```powershell
+```
 pytest
 ```
 
 ### Run Specific Test Files
 
-```powershell
+```
 # Topic tests only
 pytest tests/unit/test_kafka_topics.py
 
