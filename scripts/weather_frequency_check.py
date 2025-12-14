@@ -2,12 +2,10 @@
 """
 weather_frequency_check.py
 Poll the Valencia Opendatasoft WEATHER snapshot and count how often the live tick advances.
-
 - Prints a one-line status each poll.
 - Persists last observed tick in ./state/weather_last_tick.txt so restarts "remember".
 - Appends a CSV row on every tick advance to ./state/weather_ticks.csv.
 - Robust HTTP (clamps limit, retries light 400s like your air script) and graceful Ctrl+C summary.
-
 Usage:
   uv run python weather_frequency_check.py               # default 300s interval
   uv run python weather_frequency_check.py -i 120        # poll every 2 minutes
@@ -15,7 +13,6 @@ Usage:
 """
 
 from __future__ import annotations
-
 import argparse
 import csv
 import json
@@ -26,18 +23,15 @@ import sys
 import time
 from datetime import datetime, timezone
 from statistics import mean
-
 import requests
 
 # Defaults for the WEATHER dataset (5 stations, live snapshot)
 DATASET_DEFAULT = "estacions-atmosferiques-estaciones-atmosfericas"
 BASE = "https://valencia.opendatasoft.com/api/explore/v2.1"
 MAX_LIMIT = 100  # Explore v2.1 hard cap; clamp just like our air checker.  :contentReference[oaicite:1]{index=1}
-
 STATE_DIR = os.path.join(".", "state")
 STATE_FILE = os.path.join(STATE_DIR, "weather_last_tick.txt")
 CSV_FILE = os.path.join(STATE_DIR, "weather_ticks.csv")
-
 UA = "vlc-weather-frequency/1.0 (+github.com/acidvuca)"
 
 
@@ -76,7 +70,6 @@ def _get(url: str, params: dict, tolerate_400_fixups: bool = True) -> dict:
         p["limit"] = str(min(int(p.get("limit", MAX_LIMIT)), MAX_LIMIT))
     except Exception:
         p["limit"] = str(MAX_LIMIT)
-
     s = requests.Session()
     s.headers.update({"Accept": "application/json", "User-Agent": UA})
     r = s.get(url, params=p, timeout=(10, 60))
@@ -84,13 +77,11 @@ def _get(url: str, params: dict, tolerate_400_fixups: bool = True) -> dict:
         p.pop("order_by", None)
         p["limit"] = str(MAX_LIMIT)
         r = s.get(url, params=p, timeout=(10, 60))
-
     try:
         r.raise_for_status()
     except requests.HTTPError as e:
         snippet = r.text[:600].replace("\n", " ")
         raise SystemExit(f"HTTP {r.status_code} {r.reason}. Params={p}. Payload head: {snippet}") from e
-
     try:
         return r.json()
     except json.JSONDecodeError:

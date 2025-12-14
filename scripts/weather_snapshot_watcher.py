@@ -2,7 +2,6 @@
 """
 weather_snapshot_watcher.py
 Poll the Valencia WEATHER live snapshot and print station values *only* when updates land.
-
 What it does
 - Polls the Explore v2.1 records endpoint for the weather dataset (5-row live snapshot).
 - Detects:
@@ -12,7 +11,6 @@ What it does
        → Prints a smaller block for those newly-advanced stations.
 - Helps verify whether *each* station publishes fresh values (dir/vel/temp/hum/press/rain)
   at the new tick, or whether some rows lag.
-
 Usage
   uv run python weather_snapshot_watcher.py             # default dataset + 60s interval
   uv run python weather_snapshot_watcher.py -i 120      # poll every 2 minutes
@@ -21,21 +19,17 @@ Usage
 """
 
 from __future__ import annotations
-
 import argparse
 import json
 import math
 import time
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple
-
 import requests
-
 BASE = "https://valencia.opendatasoft.com/api/explore/v2.1"
 DATASET_DEFAULT = "estacions-atmosferiques-estaciones-atmosfericas"
 MAX_LIMIT = 100
 UA = "vlc-weather-watcher/1.0 (+github.com/acidvuca)"
-
 FIELDS = (
     "objectid,nombre,fiwareid,fecha_carg,viento_dir,viento_vel,temperatur,humedad_re,presion_ba,precipitac,geo_point_2d"
 )
@@ -153,7 +147,6 @@ def print_block(
         advanced = (prev is None) or (tick > prev)
         if show_only_updated and not advanced:
             continue
-
         line = (
             f"{str(r.get('objectid')).rjust(8)}  "
             f"{(r.get('fiwareid') or '').ljust(22)}  "
@@ -176,13 +169,10 @@ def main():
     ap.add_argument("-u", "--url_or_dataset", default=DATASET_DEFAULT, help="Dataset id or full records URL.")
     ap.add_argument("-i", "--interval", type=int, default=60, help="Poll interval in seconds (default: 60).")
     args = ap.parse_args()
-
     url = build_url(args.url_or_dataset)
-
     # State: last seen tick per station + last max tick
     last_seen: Dict[str, datetime] = {}
     last_max_tick: datetime | None = None
-
     print("Starting weather snapshot watcher… (Ctrl+C to stop)")
     try:
         while True:
@@ -193,16 +183,13 @@ def main():
                 print(f"[{now}] transient network error: {e}; retry next cycle…")
                 time.sleep(max(1, args.interval))
                 continue
-
             if not rows:
                 now = datetime.now(timezone.utc).strftime("%H:%M:%S")
                 print(f"[{now}] no rows; retry next cycle…")
                 time.sleep(max(1, args.interval))
                 continue
-
             max_tick, tick_set = collect_ticks(rows)
             wall = datetime.now(timezone.utc).strftime("%H:%M:%S")
-
             # Dataset-level advance
             if last_max_tick is None or max_tick > last_max_tick:
                 if len(tick_set) > 1:

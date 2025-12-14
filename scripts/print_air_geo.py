@@ -1,5 +1,4 @@
 import re
-
 import requests
 
 BASE = "https://valencia.opendatasoft.com/api/explore/v2.1"

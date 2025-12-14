@@ -6,13 +6,11 @@ Supports validating single records, arrays of records, or newline-delimited JSON
 """
 
 from __future__ import annotations
-
 import argparse
 import json
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
 import jsonschema
 from jsonschema import Draft7Validator
 
@@ -42,7 +40,6 @@ def validate_record(
 ) -> List[str]:
     """
     Validates a single record against the schema.
-
     Returns a list of error messages (empty if valid).
     """
     errors = []
@@ -56,7 +53,6 @@ def validate_record(
 def parse_input(data_str: str) -> List[Dict[str, Any]]:
     """
     Parses input data as JSON array, single object, or NDJSON.
-
     Returns a list of records.
     """
     data_str = data_str.strip()
@@ -95,7 +91,6 @@ def validate_data(
 ) -> tuple[int, int, List[str]]:
     """
     Validates a list of records against the specified schema.
-
     Returns (valid_count, invalid_count, all_errors).
     """
     schema = load_schema(schema_type)
@@ -126,10 +121,8 @@ def parse_args() -> argparse.Namespace:
 Examples:
   # Validating a single JSON file
   python validate_schema.py -t air data.json
-
   # Validating from stdin
   echo '{"fiwareid": "test", "ts": "2024-01-01T00:00:00Z"}' | python validate_schema.py -t air
-
   # Validating NDJSON
   python validate_schema.py -t weather readings.ndjson
 """,
@@ -179,7 +172,6 @@ def list_schemas() -> None:
 def main() -> int:
     """
     Main entry point.
-
     Returns exit code (0 = all valid, 1 = validation errors, 2 = other errors).
     """
     args = parse_args()

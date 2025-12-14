@@ -1,26 +1,22 @@
 #!/usr/bin/env python3
 """
 Replay historical data from TimescaleDB to Kafka.
-
 Reads air and/or weather data from TimescaleDB and produces to Kafka topics
 using JSON Schema serialization. Useful for:
 - Testing the pipeline with historical data
 - Backfilling after schema changes
 - Development and debugging
 - Replaying data to new Kafka cluster
-
 Usage:
     uv run scripts/replay_from_timescale.py --help
     uv run scripts/replay_from_timescale.py --dataset air --since 2025-11-01
     uv run scripts/replay_from_timescale.py --dataset weather --since 2025-11-01 --until 2025-11-15
     uv run scripts/replay_from_timescale.py --dataset both --dry-run
-
 Environment variables:
     KAFKA_BOOTSTRAP_SERVERS - Kafka broker (default: kafka:9092)
     SCHEMA_REGISTRY_URL     - Schema Registry URL (default: http://schema-registry:8081)
     PG_HOST, PG_PORT, PG_DB, PG_USER, PG_PASSWORD - Database connection
 """
-
 import argparse
 import os
 import sys
@@ -28,7 +24,6 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Generator, Optional
-
 import psycopg2
 from confluent_kafka import Producer
 from confluent_kafka.schema_registry import SchemaRegistryClient
@@ -38,7 +33,6 @@ from confluent_kafka.serialization import MessageField, SerializationContext
 # --- Configuration ---
 KAFKA_BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
 SCHEMA_REGISTRY_URL = os.getenv("SCHEMA_REGISTRY_URL", "http://schema-registry:8081")
-
 PG_HOST = os.getenv("PG_HOST", "timescaledb")
 PG_PORT = int(os.getenv("PG_PORT", "5432"))
 PG_DB = os.getenv("PG_DB", "vlc")
@@ -260,33 +254,27 @@ def replay_dataset(
         schema_name = "weather"
         table = "weather.hyper"
         fetch_fn = fetch_weather_data
-
     # Counting records
     total = count_records(conn, table, since, until)
     if total == 0:
         print(f"[{dataset}] No records found in range.")
         return 0, 0
-
     print(f"[{dataset}] Replaying {total:,} records to {topic} ...")
     if dry_run:
         print(f"[{dataset}] DRY RUN - no messages will be sent.")
-
     producer = ReplayProducer(topic, schema_name, dry_run)
     start_time = time.time()
     last_report = start_time
     count = 0
-
     for record in fetch_fn(conn, since, until, batch_size):
         producer.produce(record)
         count += 1
-
         # Rate limiting
         if rate_limit > 0:
             expected_time = count / rate_limit
             elapsed = time.time() - start_time
             if elapsed < expected_time:
                 time.sleep(expected_time - elapsed)
-
         # Progress reporting every 10 seconds
         now = time.time()
         if now - last_report >= 10:
@@ -294,15 +282,12 @@ def replay_dataset(
             rate = count / (now - start_time)
             print(f"[{dataset}] Progress: {count:,}/{total:,} ({pct:.1f}%) - {rate:.0f} msg/s")
             last_report = now
-
     producer.flush()
     elapsed = time.time() - start_time
     produced, failed = producer.stats
-
     print(f"[{dataset}] Completed: {produced:,} produced, {failed:,} failed in {elapsed:.1f}s")
     if elapsed > 0:
         print(f"[{dataset}] Average rate: {produced / elapsed:.0f} msg/s")
-
     return produced, failed
 
 
@@ -377,7 +362,6 @@ Examples:
         help="Count records without producing to Kafka",
     )
     args = parser.parse_args()
-
     print("=" * 60)
     print("TimescaleDB → Kafka Replay")
     print("=" * 60)
@@ -397,10 +381,8 @@ Examples:
     except Exception as e:
         print(f"ERROR: Failed to connect to database: {e}")
         sys.exit(1)
-
     total_produced = 0
     total_failed = 0
-
     try:
         if args.dataset in ("air", "both"):
             produced, failed = replay_dataset(
@@ -414,7 +396,6 @@ Examples:
             )
             total_produced += produced
             total_failed += failed
-
         if args.dataset in ("weather", "both"):
             produced, failed = replay_dataset(
                 conn,
@@ -427,10 +408,8 @@ Examples:
             )
             total_produced += produced
             total_failed += failed
-
     finally:
         conn.close()
-
     print("=" * 60)
     print(f"Total: {total_produced:,} produced, {total_failed:,} failed")
     if total_failed > 0:
