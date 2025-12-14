@@ -119,11 +119,9 @@ def main() -> None:
     url = expand_url(args.url)
     requested = [s.strip() for s in args.metrics.split(",") if s.strip()]
     catalog = metric_catalog()
-
     data = fetch_records(url, args.limit)
     results: List[Dict[str, Any]] = data.get("results", [])
     total_count = data.get("total_count", len(results))
-
     print("Station Weather Metrics Report")
     print("=" * 80)
     print(f"Total count from API: {total_count}")
@@ -141,14 +139,12 @@ def main() -> None:
         ts = record.get("fecha_carg", "N/A")
         lat, lon = extract_latlon(record)
         addr = record.get("direccion")
-
         print(f"\nObjectID {oid}: {name:<30} ({fid})")
         print(f"  Timestamp : {ts}")
         if lat is not None and lon is not None:
             print(f"  Location  : lat {lat:.6f}, lon {lon:.6f}")
         if addr not in (None, "", "None"):
             print(f"  Address   : {addr}")
-
         print("  Measurements:")
         for key in requested:
             label, unit, dec = catalog.get(key, (key, "", 1))

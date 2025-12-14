@@ -210,10 +210,8 @@ Examples:
     if args.all:
         dataset_ids = fetch_all_dataset_ids()
         print(f"Starting bulk download of {len(dataset_ids)} datasets...\n")
-
         success_count = 0
         failed = []
-
         for idx, dataset_id in enumerate(sorted(dataset_ids), 1):
             print(f"\n{'=' * 80}")
             print(f"[{idx}/{len(dataset_ids)}] Processing: {dataset_id}")
@@ -225,7 +223,6 @@ Examples:
             except Exception as e:
                 print(f"✗ Failed to download {dataset_id}: {e}")
                 failed.append(dataset_id)
-
         print(f"\n{'=' * 80}")
         print("Bulk download complete!")
         print(f"Successful: {success_count}/{len(dataset_ids)}")

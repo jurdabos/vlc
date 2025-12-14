@@ -127,6 +127,8 @@ upsert_connector() {
 wait_for_broker
 
 # Data topics (delete policy + retention)
+# NOTE: Kafka warns about '.' in topic names (metric collision with '_').
+#       Safe to ignore since we consistently use dots, not a mix of both.
 create_topic "${DATA_TOPIC}"   "${DATA_PARTITIONS}" "${DATA_RF}" "--config cleanup.policy=delete --config retention.ms=${DATA_RETENTION_MS}"
 create_topic "${DATA_TOPIC_2}" "${DATA_PARTITIONS}" "${DATA_RF}" "--config cleanup.policy=delete --config retention.ms=${DATA_RETENTION_MS}"
 
