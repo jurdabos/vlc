@@ -187,6 +187,7 @@ services:
     build:
       context: ../producer
       dockerfile: Dockerfile.air
+    container_name: air-producer
     image: vlc/air-producer:latest
     env_file:
       - ../.env
@@ -212,6 +213,7 @@ services:
     build:
       context: ../producer
       dockerfile: Dockerfile.weather
+    container_name: weather-producer
     image: vlc/weather-producer:latest
     env_file:
       - ../.env

@@ -29,7 +29,7 @@ docker exec connect curl -s -X POST http://localhost:8083/connectors `
 
 Alternatively, since configs are mounted at `/config` inside the container:
 
-```powershell
+```
 docker exec connect curl -s -X POST http://localhost:8083/connectors `
   -H "Content-Type: application/json" `
   -d '@/config/jdbc-sink.timescale.air.json'
@@ -38,32 +38,32 @@ docker exec connect curl -s -X POST http://localhost:8083/connectors `
 ## Managing Connectors
 
 ### List all connectors
-```powershell
-docker exec connect curl -s http://localhost:8083/connectors | ConvertFrom-Json
+```
+docker exec connect curl -s http://localhost:8083/connectors | jq
 ```
 
 ### Check connector status
-```powershell
-docker exec connect curl -s http://localhost:8083/connectors/jdbc-sink-timescale-air/status | ConvertFrom-Json
-docker exec connect curl -s http://localhost:8083/connectors/jdbc-sink-timescale-weather/status | ConvertFrom-Json
+```
+docker exec connect curl -s http://localhost:8083/connectors/jdbc-sink-timescale-air/status | jq
+docker exec connect curl -s http://localhost:8083/connectors/jdbc-sink-timescale-weather/status | jq
 ```
 
 ### Pause/Resume connector
-```powershell
+```
 docker exec connect curl -s -X PUT http://localhost:8083/connectors/jdbc-sink-timescale-air/pause
 docker exec connect curl -s -X PUT http://localhost:8083/connectors/jdbc-sink-timescale-air/resume
 ```
 
 ### Delete connector
-```powershell
+```
 docker exec connect curl -s -X DELETE http://localhost:8083/connectors/jdbc-sink-timescale-air
 ```
 
 ### Update connector config
 ```powershell
-docker exec connect curl -s -X PUT http://localhost:8083/connectors/jdbc-sink-timescale-air/config `
-  -H "Content-Type: application/json" `
-  -d (Get-Content connect/config/jdbc-sink.timescale.air.json -Raw)
+cat connect/config/jdbc-sink.timescale.air.json | docker exec -i connect curl -s -X PUT http://localhost:8083/connectors/jdbc-sink-timescale-air/config \
+  -H "Content-Type: application/json" \
+  -d @-
 ```
 
 ## Secrets

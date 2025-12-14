@@ -22,7 +22,6 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Hypertable air.hyper does not exist';
   END IF;
-
   IF NOT EXISTS (
     SELECT 1
     FROM timescaledb_information.hypertables
@@ -36,6 +35,6 @@ $$;
 -- Compression/retention jobs exist
 SELECT job_id, application_name, hypertable_schema, hypertable_name
 FROM timescaledb_information.jobs
-WHERE application_name IN ('Compression Policy', 'Retention Policy')
-  AND hypertable_schema IN ('air', 'weather');
+WHERE application_name LIKE 'Compression Policy%' 
+   OR application_name LIKE 'Retention Policy%';
 
