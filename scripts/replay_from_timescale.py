@@ -17,6 +17,7 @@ Environment variables:
     SCHEMA_REGISTRY_URL     - Schema Registry URL (default: http://schema-registry:8081)
     PG_HOST, PG_PORT, PG_DB, PG_USER, PG_PASSWORD - Database connection
 """
+
 import argparse
 import os
 import sys
