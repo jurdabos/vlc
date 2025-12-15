@@ -109,6 +109,7 @@ target/
 # Scrapy stuff
 .scrapy
 # Secrets
+db/init/020-vlc-password.override.sql
 compose/.htpasswd
 connect/secrets
 connect/secrets/

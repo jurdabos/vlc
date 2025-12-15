@@ -24,6 +24,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Generator, Optional
+
 import psycopg2
 from confluent_kafka import Producer
 from confluent_kafka.schema_registry import SchemaRegistryClient

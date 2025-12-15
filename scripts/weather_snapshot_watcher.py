@@ -19,13 +19,16 @@ Usage
 """
 
 from __future__ import annotations
+
 import argparse
 import json
 import math
 import time
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple
+
 import requests
+
 BASE = "https://valencia.opendatasoft.com/api/explore/v2.1"
 DATASET_DEFAULT = "estacions-atmosferiques-estaciones-atmosfericas"
 MAX_LIMIT = 100

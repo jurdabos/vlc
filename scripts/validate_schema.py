@@ -6,11 +6,13 @@ Supports validating single records, arrays of records, or newline-delimited JSON
 """
 
 from __future__ import annotations
+
 import argparse
 import json
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
 import jsonschema
 from jsonschema import Draft7Validator
 

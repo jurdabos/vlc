@@ -13,6 +13,7 @@ Usage:
 """
 
 from __future__ import annotations
+
 import argparse
 import csv
 import json
@@ -23,6 +24,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from statistics import mean
+
 import requests
 
 # Defaults for the WEATHER dataset (5 stations, live snapshot)
