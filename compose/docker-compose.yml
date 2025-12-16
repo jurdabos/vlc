@@ -104,10 +104,10 @@ services:
       CONNECT_CONFIG_PROVIDERS_FILE_CLASS: org.apache.kafka.common.config.provider.FileConfigProvider
       CONNECT_CONFIG_PROVIDERS_FILE_PARAM_PATH: /opt/kafka/connect/secrets
       # "connection.password": "${file:/opt/kafka/connect/secrets/secrets.properties:TS_PASSWORD}"
-      # --- sidecar / JDBC convenience (original envs) ---
+      # --- sidecar / JDBC convenience ---
       PG_JDBC_URL: jdbc:postgresql://timescaledb:5432/vlc?ApplicationName=vlc-connect&reWriteBatchedInserts=true
-      PG_USER: postgres
-      PG_PASSWORD: postgres
+      PG_USER: vlc_dev
+      PG_PASSWORD: ${VLC_DEV_PASSWORD}
       KAFKA_OPTS: >-
         -javaagent:/jmx/jmx_prometheus_javaagent.jar=9406:/jmx/connect.yml
     volumes:
@@ -131,7 +131,7 @@ services:
       POSTGRES_PASSWORD: ${VLC_DEV_PASSWORD}
     ports: []  # intentionally nothing
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d vlc -h 127.0.0.1"]
+      test: ["CMD-SHELL", "pg_isready -U vlc_dev -d vlc -h 127.0.0.1"]
       interval: 10s
       timeout: 5s
       retries: 5
