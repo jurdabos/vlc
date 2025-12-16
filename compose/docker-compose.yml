@@ -240,7 +240,7 @@ services:
 
   reverse_proxy:
     image: nginx:1.27-alpine
-    container_name: nginx
+    container_name: reverse_proxy
     depends_on: [grafana, kafka-ui]
     networks: [vlc_frontend]
     ports:
