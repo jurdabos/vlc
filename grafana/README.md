@@ -95,7 +95,7 @@ docker exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT count(*) FROM weather.hyper;
 "
 
--- Latest 5 readings for temperature at a station
+-- Latest 5 readings for temperature at any station
 docker exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT ts, fiwareid, temperature_c, humidity_pct, wind_speed_ms
 FROM weather.hyper

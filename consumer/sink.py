@@ -8,15 +8,16 @@ import os
 import signal
 from datetime import datetime
 
+import psycopg2
+from kafka import KafkaConsumer
+from psycopg2.extras import execute_values
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 logger = logging.getLogger(__name__)
 
-import psycopg2
-from kafka import KafkaConsumer
-from psycopg2.extras import execute_values
 
 KAFKA_BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP", "kafka:9092")
 PG_HOST = os.getenv("PG_HOST", "timescaledb")

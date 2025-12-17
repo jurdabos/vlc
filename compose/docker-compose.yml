@@ -238,9 +238,9 @@ services:
     restart: unless-stopped
     profiles: ["producer"]
 
-  reverse_proxy:
+  reverse-proxy:
     image: nginx:1.27-alpine
-    container_name: reverse_proxy
+    container_name: reverse-proxy
     depends_on: [grafana, kafka-ui]
     networks: [vlc_frontend]
     ports:
