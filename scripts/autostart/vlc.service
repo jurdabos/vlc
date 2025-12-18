@@ -1,0 +1,16 @@
+[Unit]
+Description=VLC Data Pipeline Stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/vlc/compose
+ExecStart=/opt/vlc/scripts/vlc-start.sh
+ExecStop=/opt/vlc/scripts/vlc-stop.sh
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

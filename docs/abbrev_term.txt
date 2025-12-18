@@ -2,6 +2,9 @@ al.
 aliī
 others
 
+API
+application programming interface
+
 AV
 avenida
 avenue
@@ -22,6 +25,9 @@ continuous integration/continuous delivery/deployment
 
 CO
 carbon monoxide
+
+DB
+database
 
 deg
 degree
@@ -54,6 +60,12 @@ una plataforma, impulsada por la Unión Europea, para el desarrollo y despliegue
 geom
 types of spatial data that represent geographic features in the context of GIS and spatial DBs
 
+gh
+github
+
+GIS
+geographic information system
+
 hpa
 hPa 
 hectopascal
@@ -64,6 +76,9 @@ International University of Applied Sciences
 JDBC
 Java Database Connectivity
 a standard Java API that allows Java applications to connect to RDBs, and execute SQL queries
+
+JMX
+Java Management Extensions
 
 JSONB
 binary-format JSON
@@ -89,8 +104,17 @@ nondispersive infrared sensor
 NO2
 nitrogen dioxide
 
+NSG
+Network Security Group
+
 O3
 ozone
+
+ODS
+Opendatasoft
+
+opt
+optional
 
 p./pp.
 page/pages
@@ -110,16 +134,31 @@ particulate matter
 RBAC
 Role-Based Access Control
 
+RSS
+resident set size 
+
 rvvcca/RVVCA
 Red Valenciana de Vigilancia y Control de la Contaminación Atmosférica
 Valencian Network for Monitoring and Control of Air Pollution
 
+serde
+serializer/deserializer
+
 SO2
 sulphur dioxide
+
+SSH
+Secure Shell
 
 UPV
 Universitat Politècnica de València
 Polytechnic University of Valencia
 
+VM
+virtual machine
+
 W
 weather
+
+(.)y(a)ml
+Yet Another Markup Language
