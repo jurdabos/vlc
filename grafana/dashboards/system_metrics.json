@@ -335,8 +335,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "connect_worker_connector_count or vector(0)",
-          "legendFormat": "Connectors",
+          "expr": "sum(connect_worker_connector_count) or vector(0)",
+          "legendFormat": "Total Connectors",
           "range": true,
           "refId": "A"
         }
@@ -399,8 +399,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "connect_task_record_failures_total or vector(0)",
-          "legendFormat": "Failures",
+          "expr": "sum(connect_task_record_failures_total) or vector(0)",
+          "legendFormat": "Total Failures",
           "range": true,
           "refId": "A"
         }
@@ -738,8 +738,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "schema_registry_avro_schemas_created_avro_schemas or vector(0)",
-          "legendFormat": "Schemas",
+          "expr": "sum(schema_registry_avro_schemas_created_avro_schemas) or vector(0)",
+          "legendFormat": "Total Schemas",
           "range": true,
           "refId": "A"
         }
@@ -797,8 +797,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "schema_registry_api_success_count_api_success_count or vector(0)",
-          "legendFormat": "Subjects",
+          "expr": "sum(schema_registry_api_success_count_api_success_count) or vector(0)",
+          "legendFormat": "Total Success",
           "range": true,
           "refId": "A"
         }
