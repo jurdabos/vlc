@@ -77,17 +77,14 @@ Historical CSVs are included in `backfill/`:
 - `hourly_2021_2022.csv` — hourly readings (air + weather)
 - `daily_2004_2022.csv` — daily aggregates
 ```bash
-# Set DB connection (defaults: localhost:5432/vlc)
-export PG_PASSWORD=<your_password>
-# Direct SQL COPY using provided .csv files
-Run "\backfill\backfill.sql"
-# Alternatively, use the backfill script with e. g.
-uv run python backfill/load_historical.py backfill/hourly_2021_2022.csv
+# Copying CSV into the container and running the backfill script
+docker cp backfill/hourly_2021_2022.csv timescaledb:/tmp/
+docker exec timescaledb psql -U vlc_dev -d vlc -f /tmp/backfill.sql
 ```
 The script:
 - Maps historical station names to current `fiwareid` values
 - Loads both air quality and weather data from the same CSV
-- Uses upsert (ON CONFLICT) so re-runs are safe and streaming data won't duplicate
+- Uses `ON CONFLICT DO NOTHING` so re-runs are safe and streaming data won't duplicate
 
 ## Quick Reference
 

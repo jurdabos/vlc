@@ -47,7 +47,7 @@ These stations appear in RVVCCA historical data but don't have current FIWARE eq
 
 ## Database Files
 - `db/init/030-consolidate-station-ids.sql` - Migration script for consolidating station IDs
-- `backfill/load_historical.py` - Python script for loading historical CSV data
+- `backfill/backfill.sql` - SQL script for loading historical CSV data
 
 ## Station Coordinates (Current API)
 ```

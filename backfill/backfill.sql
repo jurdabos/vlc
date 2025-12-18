@@ -85,15 +85,7 @@ WHERE estacion IN ('Avda. Francia', 'Bulevard Sud', 'Moli del Sol', 'Pista Silla
                    'Politecnico', 'Viveros', 'Valencia Centro', 'Valencia Olivereta')
   AND fecha IS NOT NULL
   AND hora IS NOT NULL
-ON CONFLICT (fiwareid, ts) DO UPDATE SET
-    no2 = EXCLUDED.no2,
-    o3 = EXCLUDED.o3,
-    so2 = EXCLUDED.so2,
-    co = EXCLUDED.co,
-    pm10 = EXCLUDED.pm10,
-    pm25 = EXCLUDED.pm25,
-    lat = EXCLUDED.lat,
-    lon = EXCLUDED.lon;
+ON CONFLICT (fiwareid, ts) DO NOTHING;
 
 -- Inserting weather data with station mapping
 INSERT INTO weather.hyper (fiwareid, ts, wind_dir_deg, wind_speed_ms, temperature_c, 
@@ -129,15 +121,7 @@ WHERE estacion IN ('Avda. Francia', 'Nazaret Meteo', 'Viveros', 'Politecnico')
   AND fecha IS NOT NULL
   AND hora IS NOT NULL
   AND NULLIF(temperatura, '') IS NOT NULL
-ON CONFLICT (fiwareid, ts) DO UPDATE SET
-    wind_dir_deg = EXCLUDED.wind_dir_deg,
-    wind_speed_ms = EXCLUDED.wind_speed_ms,
-    temperature_c = EXCLUDED.temperature_c,
-    humidity_pct = EXCLUDED.humidity_pct,
-    pressure_hpa = EXCLUDED.pressure_hpa,
-    precip_mm = EXCLUDED.precip_mm,
-    lat = EXCLUDED.lat,
-    lon = EXCLUDED.lon;
+ON CONFLICT (fiwareid, ts) DO NOTHING;
 
 -- Cleaning up staging
 DROP TABLE staging.hourly_raw;
