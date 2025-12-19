@@ -2,17 +2,18 @@
   "type": "record",
   "name": "AirQualityReading",
   "namespace": "vlc.air",
+  "doc": "Air quality measurement from Valencia atmospheric monitoring stations.",
   "fields": [
-    {"name": "fiwareid", "type": "string"},
-    {"name": "ts", "type": {"type": "long", "logicalType": "timestamp-millis"}},
-    {"name": "so2", "type": ["null", "double"], "default": null},
-    {"name": "no2", "type": ["null", "double"], "default": null},
-    {"name": "o3", "type": ["null", "double"], "default": null},
-    {"name": "co", "type": ["null", "double"], "default": null},
-    {"name": "pm10", "type": ["null", "double"], "default": null},
-    {"name": "pm25", "type": ["null", "double"], "default": null},
-    {"name": "air_quality_summary", "type": ["null", "string"], "default": null},
-    {"name": "lat", "type": ["null", "double"], "default": null},
-    {"name": "lon", "type": ["null", "double"], "default": null}
+    {"name": "fiwareid", "type": "string", "doc": "Station identifier"},
+    {"name": "ts", "type": {"type": "long", "logicalType": "timestamp-millis"}, "doc": "Measurement timestamp in milliseconds since epoch (UTC)"},
+    {"name": "so2", "type": ["null", "double"], "default": null, "doc": "Sulfur dioxide concentration in µg/m³"},
+    {"name": "no2", "type": ["null", "double"], "default": null, "doc": "Nitrogen dioxide concentration in µg/m³"},
+    {"name": "o3", "type": ["null", "double"], "default": null, "doc": "Ozone concentration in µg/m³"},
+    {"name": "co", "type": ["null", "double"], "default": null, "doc": "Carbon monoxide concentration in mg/m³"},
+    {"name": "pm10", "type": ["null", "double"], "default": null, "doc": "Particulate matter ≤10µm concentration in µg/m³"},
+    {"name": "pm25", "type": ["null", "double"], "default": null, "doc": "Particulate matter ≤2.5µm concentration in µg/m³"},
+    {"name": "air_quality_summary", "type": ["null", "string"], "default": null, "doc": "Air quality summary text (calidad_am from source)"},
+    {"name": "lat", "type": ["null", "double"], "default": null, "doc": "Latitude in decimal degrees (WGS84)"},
+    {"name": "lon", "type": ["null", "double"], "default": null, "doc": "Longitude in decimal degrees (WGS84)"}
   ]
 }

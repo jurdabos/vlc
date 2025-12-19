@@ -38,7 +38,7 @@ Grafana's native Postgres data source works with TimescaleDB out of the box.
 ### Valencia Air Quality
 Visualizes air quality data from the Valencia open data API:
 - Total row count in air.hyper
-- Spatial query: stations within given radius of baseline home coordinates (make this easily adjustable in P3/4/5)
+- Spatial query: stations within given radius of baseline home coordinates (make this adjustable in P3/4/5)
 - Levels for all stations (last 7 days)
 
 ### Valencia Weather

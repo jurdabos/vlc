@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "WeatherReading",
+  "namespace": "vlc.weather",
+  "doc": "Weather measurement from Valencia atmospheric monitoring stations.",
+  "fields": [
+    {"name": "fiwareid", "type": "string", "doc": "Station identifier"},
+    {"name": "ts", "type": {"type": "long", "logicalType": "timestamp-millis"}, "doc": "Measurement timestamp in milliseconds since epoch (UTC)"},
+    {"name": "wind_dir_deg", "type": ["null", "double"], "default": null, "doc": "Wind direction in degrees (0-360, meteorological convention)"},
+    {"name": "wind_speed_ms", "type": ["null", "double"], "default": null, "doc": "Wind speed in m/s"},
+    {"name": "temperature_c", "type": ["null", "double"], "default": null, "doc": "Air temperature in Celsius"},
+    {"name": "humidity_pct", "type": ["null", "double"], "default": null, "doc": "Relative humidity percentage (0-100)"},
+    {"name": "pressure_hpa", "type": ["null", "double"], "default": null, "doc": "Barometric pressure in hPa"},
+    {"name": "precip_mm", "type": ["null", "double"], "default": null, "doc": "Precipitation in mm"},
+    {"name": "lat", "type": ["null", "double"], "default": null, "doc": "Latitude in decimal degrees (WGS84)"},
+    {"name": "lon", "type": ["null", "double"], "default": null, "doc": "Longitude in decimal degrees (WGS84)"}
+  ]
+}

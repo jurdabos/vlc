@@ -9,7 +9,7 @@
         },
         "enable": true,
         "hide": true,
-        "iconColor": "rgba(0, 211, 255, 1)",
+        "iconColor": "#7ebce6",
         "name": "Annotations & Alerts",
         "type": "dashboard"
       }
@@ -37,7 +37,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#16697a",
                 "value": null
               }
             ]
@@ -115,7 +115,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#16697a",
                 "value": null
               }
             ]
@@ -193,7 +193,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#16697a",
                 "value": null
               }
             ]
@@ -278,7 +278,8 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "#7ebce6"
           },
           "custom": {
             "axisCenteredZero": false,
@@ -315,15 +316,15 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#16697a",
                 "value": null
               },
               {
-                "color": "yellow",
+                "color": "#bf9f6f",
                 "value": 40
               },
               {
-                "color": "red",
+                "color": "#a24936",
                 "value": 200
               }
             ]
@@ -392,7 +393,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "blue",
+            "fixedColor": "#7ebce6",
             "mode": "fixed"
           },
           "custom": {
@@ -430,15 +431,15 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#16697a",
                 "value": null
               },
               {
-                "color": "yellow",
+                "color": "#bf9f6f",
                 "value": 40
               },
               {
-                "color": "red",
+                "color": "#a24936",
                 "value": 200
               }
             ]
@@ -520,7 +521,8 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "#79af91"
           },
           "custom": {
             "axisCenteredZero": false,
@@ -557,15 +559,15 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#16697a",
                 "value": null
               },
               {
-                "color": "yellow",
+                "color": "#bf9f6f",
                 "value": 15
               },
               {
-                "color": "red",
+                "color": "#a24936",
                 "value": 25
               }
             ]
@@ -634,7 +636,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "purple",
+            "fixedColor": "#79af91",
             "mode": "fixed"
           },
           "custom": {
@@ -672,15 +674,15 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#16697a",
                 "value": null
               },
               {
-                "color": "yellow",
+                "color": "#bf9f6f",
                 "value": 15
               },
               {
-                "color": "red",
+                "color": "#a24936",
                 "value": 25
               }
             ]
@@ -762,7 +764,8 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "#e6beae"
           },
           "custom": {
             "axisCenteredZero": false,
@@ -799,15 +802,15 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#16697a",
                 "value": null
               },
               {
-                "color": "yellow",
+                "color": "#bf9f6f",
                 "value": 100
               },
               {
-                "color": "red",
+                "color": "#a24936",
                 "value": 180
               }
             ]
@@ -876,7 +879,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "orange",
+            "fixedColor": "#e6beae",
             "mode": "fixed"
           },
           "custom": {
@@ -914,15 +917,15 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#16697a",
                 "value": null
               },
               {
-                "color": "yellow",
+                "color": "#bf9f6f",
                 "value": 100
               },
               {
-                "color": "red",
+                "color": "#a24936",
                 "value": 180
               }
             ]
