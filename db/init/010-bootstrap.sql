@@ -112,7 +112,7 @@ ALTER TABLE weather.hyper SET (
   timescaledb.compress_orderby = 'ts DESC'
 );
 SELECT add_compression_policy('weather.hyper', INTERVAL '7 days');
-SELECT add_retention_policy('weather.hyper',  INTERVAL '365 days');
+SELECT add_retention_policy('weather.hyper',  INTERVAL '6000 days');
 
 -- Continuous aggregates
 -- Circular mean for wind direction: atan2(avg(sin), avg(cos)) converted to degrees
