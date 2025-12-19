@@ -34,9 +34,15 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_JMX_PORT: 999
+      KAFKA_JMX_PORT: 9999
       KAFKA_JMX_HOSTNAME: kafka
+      KAFKA_OPTS: >-
+        -javaagent:/jmx/jmx_prometheus_javaagent.jar=9404:/jmx/kafka.yml
     restart: unless-stopped
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+      - ../jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
+      - ../jmx-exporter/kafka.yml:/jmx/kafka.yml:ro
     healthcheck:
       # Healthy if kafka.Kafka is running
       test: ["CMD-SHELL", "ps aux | grep -q '[k]afka.Kafka'"]
@@ -45,8 +51,6 @@ services:
       retries: 5
       start_period: 30s
     profiles: ["infra"]
-    volumes:
-      - kafka_data:/var/lib/kafka/data
 
   # For if we swap to Avro in phase 4 maybe
   schema-registry:

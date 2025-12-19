@@ -7,9 +7,9 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-WorkingDirectory=/opt/vlc/compose
-ExecStart=/opt/vlc/scripts/vlc-start.sh
-ExecStop=/opt/vlc/scripts/vlc-stop.sh
+WorkingDirectory={{VLC_ROOT}}/compose
+ExecStart={{VLC_ROOT}}/scripts/vlc-start.sh
+ExecStop={{VLC_ROOT}}/scripts/vlc-stop.sh
 TimeoutStartSec=300
 
 [Install]

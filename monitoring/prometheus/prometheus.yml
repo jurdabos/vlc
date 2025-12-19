@@ -11,6 +11,11 @@ rule_files:
   - alerts.yml
 
 scrape_configs:
+  # Kafka broker (JMX exporter on port 9404)
+  - job_name: kafka
+    static_configs:
+      - targets: ["kafka:9404"]
+
   # Kafka Connect (JMX exporter on port 9406)
   - job_name: connect
     static_configs:
