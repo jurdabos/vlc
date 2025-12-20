@@ -32,6 +32,7 @@ log() { echo "[connectors] $*"; }
 err() { echo "[connectors] ERROR: $*" >&2; }
 
 exec_in_connect() {
+  # Using sh -c (not -lc) to avoid re-initializing JMX agent from login profile
   docker compose -f "${COMPOSE_FILE}" exec -T "${CONNECT_SERVICE}" sh -c "$*"
 }
 

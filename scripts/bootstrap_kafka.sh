@@ -41,11 +41,12 @@ SCHEMA_REGISTRY_URL="${SCHEMA_REGISTRY_URL:-http://schema-registry:8081}"
 # --- Helpers ---
 exec_in_broker() {
   # Using service name via docker compose exec for scalability
-  docker compose -f "${COMPOSE_FILE}" exec -T "${BROKER_SERVICE}" sh -lc "$*"
+  # Unsetting KAFKA_OPTS to prevent JMX agent from trying to bind to an already-used port
+  docker compose -f "${COMPOSE_FILE}" exec -T "${BROKER_SERVICE}" sh -c "unset KAFKA_OPTS && $*"
 }
 
 exec_in_connect() {
-  docker compose -f "${COMPOSE_FILE}" exec -T "${CONNECT_SERVICE}" sh -lc "$*"
+  docker compose -f "${COMPOSE_FILE}" exec -T "${CONNECT_SERVICE}" sh -c "$*"
 }
 
 http_ok() {
@@ -106,7 +107,7 @@ upsert_connector() {
   # 1) Try PUT (update-or-create), streaming only .config from the host into the container
   local code
   code=$(
-    jq -c '.config' "${cfg_file}" | docker compose -f "${COMPOSE_FILE}" exec -T "${CONNECT_SERVICE}" sh -lc "
+    jq -c '.config' "${cfg_file}" | docker compose -f "${COMPOSE_FILE}" exec -T "${CONNECT_SERVICE}" sh -c "
       curl -s -o /dev/null -w '%{http_code}' \
            -X PUT -H 'Content-Type: application/json' \
            --data @- '${CONNECT_URL}/connectors/${name}/config'
@@ -115,7 +116,7 @@ upsert_connector() {
   # 2) If 404, try POST (create) with full payload
   if [ "${code}" = "404" ]; then
     code=$(
-      docker compose -f "${COMPOSE_FILE}" exec -T "${CONNECT_SERVICE}" sh -lc "
+      docker compose -f "${COMPOSE_FILE}" exec -T "${CONNECT_SERVICE}" sh -c "
         curl -s -o /dev/null -w '%{http_code}' \
              -X POST -H 'Content-Type: application/json' \
              --data @- '${CONNECT_URL}/connectors'
