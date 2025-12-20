@@ -22,7 +22,7 @@ Grafana Dashboards
 
 ## Local Setup
 ### 1. Clone and configure environment
-```bash
+```
 git clone https://github.com/jurdabos/vlc.git && cd vlc
 cp .env.example .env
 # Edit .env and set VLC_DEV_PASSWORD to a strong password
@@ -32,34 +32,34 @@ ln -sf ../.env compose/.env
 
 ### 2. Generate derived secrets
 This creates `.htpasswd`, JDBC credentials, and DB password files:
-```bash
+```
 chmod +x scripts/*.sh
 ./scripts/sync-dev-secrets.sh
 chmod 644 compose/.htpasswd
 ```
 
 ### 3. Start infrastructure (Kafka, TimescaleDB)
-```bash
+```
 docker compose -f compose/docker-compose.yml --profile infra up -d --build
 ```
 Wait for services to be healthy (~30-60s):
-```bash
+```
 docker ps --format 'table {{.Names}}\t{{.Status}}'
 ```
 
 ### 4. Start Schema Registry and Kafka Connect
-```bash
+```
 docker compose -f compose/docker-compose.yml --profile infra --profile schema up -d --build
 ```
 
 ### 5. Bootstrap Kafka topics and deploy connectors
-```bash
+```
 ./scripts/bootstrap_kafka.sh 2>&1 | grep -v "WARNING.*metric names"
 ```
 This creates topics (`vlc.air`, `vlc.weather`, Connect internal topics) and deploys JDBC sink connectors.
 
 ### 6. Start UI services (Grafana, Kafka UI, nginx proxy) and producers
-```bash
+```
 docker compose -f compose/docker-compose.yml --profile infra --profile schema --profile ui --profile producer up -d --build
 ```
 
@@ -69,18 +69,18 @@ Instead of Kafka Connect, you can use Python-based sink consumers for simpler de
 ### 1-3. Same as above (clone, secrets, infra)
 
 ### 4. Bootstrap Kafka (skip Connect)
-```bash
+```
 ./scripts/bootstrap_kafka.sh --skip-connect 2>&1 | grep -v "WARNING.*metric names"
 ```
 This creates only the data topics (`vlc.air`, `vlc.weather`) without Connect internal topics.
 
 ### 5. Start producers, and alt-sink consumers
-```bash
+```
 docker compose -f compose/docker-compose.yml --profile infra --profile producer --profile alt-sink up -d --build
 ```
 
 ### 6. Optionally start UI services (Grafana, Kafka UI, nginx proxy) – be careful as these might rely on info from Connect JVM
-```bash
+```
 docker compose -f compose/docker-compose.yml --profile infra --profile ui --profile producer --profile alt-sink up -d --build
 ```
 
@@ -88,13 +88,27 @@ docker compose -f compose/docker-compose.yml --profile infra --profile ui --prof
 - **Kafka UI**: http://localhost:8080/kafka-ui/ (admin / VLC_DEV_PASSWORD)
 - **Grafana**: http://localhost:8080/grafana/ (admin / VLC_DEV_PASSWORD)
 - **Connect API**:
-```bash
+```
 docker compose -f compose/docker-compose.yml exec connect curl -s http://localhost:8083/connectors?expand=status | jq
 ```
 Query TimescaleDB directly:
-```bash
+```
 docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "SELECT COUNT(*) FROM air.hyper;"
 ```
+Producers behaving:
+```
+docker compose -f compose/docker-compose.yml --profile infra --profile producer logs air-producer --tail=50
+docker compose -f compose/docker-compose.yml --profile infra --profile producer logs weather-producer --tail=50
+```
+Optional Connect sinks behaving:
+```
+   docker compose -f compose/docker-compose.yml --profile infra --profile schema logs connect 2>&1 | grep -i 'jdbc-sink'
+```
+```
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT max(ts) FROM air.hyper;"
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT max(ts) FROM weather.hyper;"
+---
+If `max(ts)` is recent, the pipeline has been happily doing its thing recently.
 
 ## Historical Backfill (Optional)
 Load historical RVVCCA data into TimescaleDB before starting the streaming producers.

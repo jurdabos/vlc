@@ -35,7 +35,7 @@ degree
 DLBDSEDE02
 Distance Learning Bachelor Data Science Elective Data Engineering – course #2
 
-DR
+DR/Dr(.)
 doctor
 
 DT
@@ -49,6 +49,9 @@ for example
 etc.
 et cetera
 
+ext4 
+fourth extended filesystem
+
 fecha_carg
 fecha de carga
 upload date
@@ -56,6 +59,9 @@ upload date
 FIWARE
 Future Internet WARE
 una plataforma, impulsada por la Unión Europea, para el desarrollo y despliegue global de aplicaciones de Internet del Futuro
+
+Gi 
+Gibibyte
 
 geom
 types of spatial data that represent geographic features in the context of GIS and spatial DBs
@@ -82,6 +88,9 @@ Java Management Extensions
 
 JSONB
 binary-format JSON
+
+JVM
+Java virtual machine
 
 m
 meter
@@ -113,6 +122,9 @@ ozone
 ODS
 Opendatasoft
 
+OOM
+out of memory
+
 opt
 optional
 
@@ -131,6 +143,9 @@ PostgreSQL Java Database Connectivity Driver
 pm
 particulate matter
 
+RAM
+random-access memory
+
 RBAC
 Role-Based Access Control
 
@@ -147,8 +162,14 @@ serializer/deserializer
 SO2
 sulphur dioxide
 
+SQL
+standard query language
+
 SSH
 Secure Shell
+
+sshd 
+Secure Shell daemon
 
 UPV
 Universitat Politècnica de València

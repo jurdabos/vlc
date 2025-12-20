@@ -1,0 +1,8 @@
+| View 						| Purpose 						|
+|-----------------------------------------------|-------------------------------------------------------|
+| air.latest/weather.latest 			| Most recent reading per station (dashboard cards) 	|
+| public.station_snapshot 			| Combined air + weather in one row per station 	|
+| air.aqi_status 				| Categorized AQI levels for alerts/color-coding 	|
+| public.stations 				| Station inventory with first/last seen timestamps 	|
+| air.daily_trends/weather.daily_trends 	| Day-over-day deltas for sparklines/charts 		|
+| public.data_freshness 			| Monitoring view showing stale/offline sensors 	|

@@ -1,38 +1,11 @@
--- ==================================================================
--- Presentation views for dashboards and API consumption
--- ==================================================================
-
--- =====================
--- Latest readings per station
--- =====================
-
 -- Most recent air quality reading per station
-CREATE OR REPLACE VIEW air.latest AS
-SELECT DISTINCT ON (fiwareid)
-  fiwareid,
-  ts,
-  no2, o3, so2, co, pm10, pm25,
-  air_quality_summary,
-  lat, lon
-FROM air.hyper
-ORDER BY fiwareid, ts DESC;
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT DISTINCT ON (fiwareid)  fiwareid,  ts,  no2, o3, so2, co, pm10, pm25,  air_quality_summary,  lat, lon FROM air.hyper ORDER BY fiwareid, ts DESC;"
 
 -- Most recent weather reading per station
-CREATE OR REPLACE VIEW weather.latest AS
-SELECT DISTINCT ON (fiwareid)
-  fiwareid,
-  ts,
-  temperature_c, humidity_pct, pressure_hpa,
-  wind_dir_deg, wind_speed_ms, precip_mm,
-  lat, lon
-FROM weather.hyper
-ORDER BY fiwareid, ts DESC;
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT DISTINCT ON (fiwareid) fiwareid, ts, temperature_c, humidity_pct, pressure_hpa, wind_dir_deg, wind_speed_ms, precip_mm, lat, lon FROM weather.hyper ORDER BY fiwareid, ts DESC;"
 
--- =====================
 -- Combined air + weather snapshot
--- =====================
-CREATE OR REPLACE VIEW public.station_snapshot AS
-SELECT
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT
   COALESCE(a.fiwareid, w.fiwareid) AS fiwareid,
   a.ts AS air_ts,
   w.ts AS weather_ts,
@@ -43,13 +16,10 @@ SELECT
   COALESCE(a.lat, w.lat) AS lat,
   COALESCE(a.lon, w.lon) AS lon
 FROM air.latest a
-FULL OUTER JOIN weather.latest w USING (fiwareid);
+FULL OUTER JOIN weather.latest w USING (fiwareid);"
 
--- =====================
 -- Air Quality Index (AQI) categorization
--- =====================
-CREATE OR REPLACE VIEW air.aqi_status AS
-SELECT
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT
   fiwareid,
   ts,
   pm25, pm10, no2, o3, so2, co,
@@ -62,13 +32,10 @@ SELECT
     ELSE 'Hazardous'
   END AS aqi_category,
   lat, lon
-FROM air.latest;
+FROM air.latest;"
 
--- =====================
 -- Station inventory/metadata
--- =====================
-CREATE OR REPLACE VIEW public.stations AS
-SELECT
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT
   fiwareid,
   'air' AS data_type,
   MIN(ts) AS first_seen,
@@ -88,35 +55,28 @@ SELECT
   AVG(lat) AS lat,
   AVG(lon) AS lon
 FROM weather.hyper
-GROUP BY fiwareid;
+GROUP BY fiwareid;"
 
--- =====================
 -- Daily trends (for charting)
--- =====================
-CREATE OR REPLACE VIEW air.daily_trends AS
-SELECT
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT
   fiwareid,
   bucket_day::date AS day,
   co_avg, no2_avg, o3_avg, pm10_avg, pm25_avg, so2_avg,
   LAG(pm25_avg) OVER (PARTITION BY fiwareid ORDER BY bucket_day) AS pm25_prev,
   pm25_avg - LAG(pm25_avg) OVER (PARTITION BY fiwareid ORDER BY bucket_day) AS pm25_delta
-FROM air.daily;
+FROM air.daily;"
 
-CREATE OR REPLACE VIEW weather.daily_trends AS
-SELECT
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT
   fiwareid,
   bucket_day::date AS day,
   temp_avg_c, humidity_avg, pressure_avg, precip_max_mm,
   wind_avg_deg, wind_avg_ms,
   LAG(temp_avg_c) OVER (PARTITION BY fiwareid ORDER BY bucket_day) AS temp_prev,
   temp_avg_c - LAG(temp_avg_c) OVER (PARTITION BY fiwareid ORDER BY bucket_day) AS temp_delta
-FROM weather.daily;
+FROM weather.daily;"
 
--- =====================
 -- Data freshness monitoring
--- =====================
-CREATE OR REPLACE VIEW public.data_freshness AS
-SELECT
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT
   'air' AS schema_name,
   fiwareid,
   MAX(ts) AS last_update,
@@ -140,11 +100,10 @@ SELECT
     ELSE 'Offline'
   END AS status
 FROM weather.hyper
-GROUP BY fiwareid;
+GROUP BY fiwareid;"
 
--- =====================
 -- Grant SELECT on views to vlc_dev
--- =====================
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
 GRANT SELECT ON air.latest TO vlc_dev;
 GRANT SELECT ON air.aqi_status TO vlc_dev;
 GRANT SELECT ON air.daily_trends TO vlc_dev;
@@ -152,4 +111,4 @@ GRANT SELECT ON weather.latest TO vlc_dev;
 GRANT SELECT ON weather.daily_trends TO vlc_dev;
 GRANT SELECT ON public.station_snapshot TO vlc_dev;
 GRANT SELECT ON public.stations TO vlc_dev;
-GRANT SELECT ON public.data_freshness TO vlc_dev;
+GRANT SELECT ON public.data_freshness TO vlc_dev;"
