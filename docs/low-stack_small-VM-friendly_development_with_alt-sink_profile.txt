@@ -1,0 +1,8 @@
+20251220
+We have modified the bootstrap_kafka.sh script to make sure we can skip summoning Connect & Schema Registry for small-stack deployment.
+
+# Full stack (with Kafka Connect)
+./scripts/bootstrap_kafka.sh
+
+# Alt-sink mode (Python consumers instead of Kafka Connect)
+./scripts/bootstrap_kafka.sh --skip-connect

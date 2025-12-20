@@ -10,7 +10,11 @@
 #   5. Waits for Connect and deploys JDBC sink connectors
 #
 # Usage:
-#   ./scripts/bootstrap_kafka.sh
+#   ./scripts/bootstrap_kafka.sh [--skip-connect]
+#
+# Options:
+#   --skip-connect  Skip Schema Registry, Connect, and connector deployment
+#                   (use when running alt-sink profile instead of Kafka Connect)
 #
 # Prerequisites:
 #   - Docker Compose infra profile running
@@ -18,6 +22,20 @@
 #
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+# --- Parse arguments ---
+SKIP_CONNECT=false
+for arg in "$@"; do
+  case "$arg" in
+    --skip-connect) SKIP_CONNECT=true ;;
+    -h|--help)
+      echo "Usage: $0 [--skip-connect]"
+      echo "  --skip-connect  Skip Schema Registry, Connect, and connector deployment"
+      exit 0
+      ;;
+    *) echo "Unknown option: $arg"; exit 1 ;;
+  esac
+done
 
 # --- Defaults (override via env) ---
 BROKER_SERVICE="${BROKER_SERVICE:-kafka}"
@@ -139,28 +157,38 @@ wait_for_broker
 create_topic "${DATA_TOPIC}"   "${DATA_PARTITIONS}" "${DATA_RF}" "--config cleanup.policy=delete --config retention.ms=${DATA_RETENTION_MS}"
 create_topic "${DATA_TOPIC_2}" "${DATA_PARTITIONS}" "${DATA_RF}" "--config cleanup.policy=delete --config retention.ms=${DATA_RETENTION_MS}"
 
-# Connect internal topics (compact, single partition)
-create_topic "${CFG_TOPIC}" 1 "${DATA_RF}" "--config cleanup.policy=compact"
-create_topic "${OFF_TOPIC}" 1 "${DATA_RF}" "--config cleanup.policy=compact"
-create_topic "${STS_TOPIC}" 1 "${DATA_RF}" "--config cleanup.policy=compact"
+# Connect internal topics (compact, single partition) - only needed for Kafka Connect
+if [ "${SKIP_CONNECT}" = false ]; then
+  create_topic "${CFG_TOPIC}" 1 "${DATA_RF}" "--config cleanup.policy=compact"
+  create_topic "${OFF_TOPIC}" 1 "${DATA_RF}" "--config cleanup.policy=compact"
+  create_topic "${STS_TOPIC}" 1 "${DATA_RF}" "--config cleanup.policy=compact"
+fi
 
 echo "[bootstrap] Topics present:"
-exec_in_broker "kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${DATA_TOPIC}; kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${DATA_TOPIC_2}; kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${CFG_TOPIC}; kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${OFF_TOPIC}; kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${STS_TOPIC}"
+if [ "${SKIP_CONNECT}" = false ]; then
+  exec_in_broker "kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${DATA_TOPIC}; kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${DATA_TOPIC_2}; kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${CFG_TOPIC}; kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${OFF_TOPIC}; kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${STS_TOPIC}"
+else
+  exec_in_broker "kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${DATA_TOPIC}; kafka-topics --bootstrap-server ${BOOTSTRAP} --describe --topic ${DATA_TOPIC_2}"
+fi
 
-# Schema Registry (required for JSON Schema serialization)
-wait_for_schema_registry || true
+if [ "${SKIP_CONNECT}" = false ]; then
+  # Schema Registry (required for JSON Schema serialization)
+  wait_for_schema_registry || true
 
-# Connectors (after broker + topics + schema registry)
-if wait_for_connect; then
-  echo "[bootstrap] Deploying JDBC sink connectors ..."
-  upsert_connector "connect/config/jdbc-sink.timescale.air.json"
-  upsert_connector "connect/config/jdbc-sink.timescale.weather.json"
-  
-  # Showing connector status
-  sleep 3
-  echo "[bootstrap] Connector status:"
-  exec_in_connect "curl -s '${CONNECT_URL}/connectors?expand=status'" 2>/dev/null | \
-    jq -r 'to_entries[] | "  \(.key): connector=\(.value.status.connector.state), task=\(.value.status.tasks[0].state // "NO_TASK")"' || true
+  # Connectors (after broker + topics + schema registry)
+  if wait_for_connect; then
+    echo "[bootstrap] Deploying JDBC sink connectors ..."
+    upsert_connector "connect/config/jdbc-sink.timescale.air.json"
+    upsert_connector "connect/config/jdbc-sink.timescale.weather.json"
+
+    # Showing connector status
+    sleep 3
+    echo "[bootstrap] Connector status:"
+    exec_in_connect "curl -s '${CONNECT_URL}/connectors?expand=status'" 2>/dev/null | \
+      jq -r 'to_entries[] | "  \(.key): connector=\(.value.status.connector.state), task=\(.value.status.tasks[0].state // "NO_TASK")"' || true
+  fi
+else
+  echo "[bootstrap] Skipping Schema Registry, Connect, and connector deployment (--skip-connect)"
 fi
 
 echo ""
@@ -169,7 +197,14 @@ echo ""
 echo "[bootstrap] Quick reference:"
 echo "  - Kafka UI:     http://localhost:8080/kafka-ui/"
 echo "  - Grafana:      http://localhost:8080/grafana/"
-echo "  - Connect API:  http://localhost:8083/connectors"
+if [ "${SKIP_CONNECT}" = false ]; then
+  echo "  - Connect API:  http://localhost:8083/connectors"
+fi
 echo ""
-echo "[bootstrap] To start producers:"
-echo "  docker compose --profile producer up -d"
+if [ "${SKIP_CONNECT}" = false ]; then
+  echo "[bootstrap] To start producers:"
+  echo "  docker compose --profile producer up -d"
+else
+  echo "[bootstrap] To start alt-sink consumers:"
+  echo "  docker compose --profile alt-sink up -d"
+fi

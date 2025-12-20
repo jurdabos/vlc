@@ -63,6 +63,27 @@ This creates topics (`vlc.air`, `vlc.weather`, Connect internal topics) and depl
 docker compose -f compose/docker-compose.yml --profile infra --profile schema --profile ui --profile producer up -d --build
 ```
 
+## Alternative: Python Sinks (alt-sink profile)
+Instead of Kafka Connect, you can use Python-based sink consumers for simpler deployments.
+
+### 1-3. Same as above (clone, secrets, infra)
+
+### 4. Bootstrap Kafka (skip Connect)
+```bash
+./scripts/bootstrap_kafka.sh --skip-connect 2>&1 | grep -v "WARNING.*metric names"
+```
+This creates only the data topics (`vlc.air`, `vlc.weather`) without Connect internal topics.
+
+### 5. Start producers, and alt-sink consumers
+```bash
+docker compose -f compose/docker-compose.yml --profile infra --profile producer --profile alt-sink up -d --build
+```
+
+### 6. Optionally start UI services (Grafana, Kafka UI, nginx proxy) – be careful as these might rely on info from Connect JVM
+```bash
+docker compose -f compose/docker-compose.yml --profile infra --profile ui --profile producer --profile alt-sink up -d --build
+```
+
 ### 7. Verify data flow
 - **Kafka UI**: http://localhost:8080/kafka-ui/ (admin / VLC_DEV_PASSWORD)
 - **Grafana**: http://localhost:8080/grafana/ (admin / VLC_DEV_PASSWORD)
@@ -95,11 +116,13 @@ The script:
 
 | Action | Command |
 |--------|----------|
-| Start all | `docker compose -f compose/docker-compose.yml --profile infra --profile schema --profile ui --profile producer up -d` |
-| Stop all | `docker compose -f compose/docker-compose.yml --profile infra --profile schema --profile ui --profile producer down` |
+| Start all (Connect) | `docker compose -f compose/docker-compose.yml --profile infra --profile schema --profile ui --profile producer up -d` |
+| Start all (alt-sink) | `docker compose -f compose/docker-compose.yml --profile infra --profile ui --profile producer --profile alt-sink up -d` |
+| Stop all | `docker compose -f compose/docker-compose.yml down` |
 | View logs | `docker compose -f compose/docker-compose.yml logs -f <service>` |
 | Connector status | `./scripts/post_connectors.sh status` |
-| Re-bootstrap Kafka | `./scripts/bootstrap_kafka.sh` |
+| Bootstrap (Connect) | `./scripts/bootstrap_kafka.sh` |
+| Bootstrap (alt-sink) | `./scripts/bootstrap_kafka.sh --skip-connect` |
 
 ## Docker Compose Profiles
 
