@@ -15,10 +15,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # --- Configuration ---
-CONNECT_CONTAINER="${CONNECT_CONTAINER:-connect}"
+CONNECT_SERVICE="${CONNECT_SERVICE:-connect}"
 CONNECT_URL="${CONNECT_URL:-http://localhost:8083}"
 CONFIG_DIR="${CONFIG_DIR:-connect/config}"
 SCHEMA_REGISTRY_URL="${SCHEMA_REGISTRY_URL:-http://schema-registry:8081}"
+COMPOSE_FILE="${COMPOSE_FILE:-compose/docker-compose.yml}"
 
 # Connector config files to deploy
 CONNECTOR_CONFIGS=(
@@ -31,7 +32,7 @@ log() { echo "[connectors] $*"; }
 err() { echo "[connectors] ERROR: $*" >&2; }
 
 exec_in_connect() {
-  docker exec "${CONNECT_CONTAINER}" sh -c "$*"
+  docker compose -f "${COMPOSE_FILE}" exec -T "${CONNECT_SERVICE}" sh -c "$*"
 }
 
 http_code() {
@@ -99,7 +100,7 @@ deploy_connector() {
   
   # Using PUT for idempotent upsert
   local code
-  code=$(jq -c '.config' "${cfg_file}" | docker exec -i "${CONNECT_CONTAINER}" sh -c "
+  code=$(jq -c '.config' "${cfg_file}" | docker compose -f "${COMPOSE_FILE}" exec -T "${CONNECT_SERVICE}" sh -c "
     curl -s -o /dev/null -w '%{http_code}' \
          -X PUT -H 'Content-Type: application/json' \
          --data @- '${CONNECT_URL}/connectors/${name}/config'
@@ -107,7 +108,7 @@ deploy_connector() {
   
   # If connector doesn't exist, try POST
   if [ "${code}" = "404" ]; then
-    code=$(docker exec -i "${CONNECT_CONTAINER}" sh -c "
+    code=$(docker compose -f "${COMPOSE_FILE}" exec -T "${CONNECT_SERVICE}" sh -c "
       curl -s -o /dev/null -w '%{http_code}' \
            -X POST -H 'Content-Type: application/json' \
            --data @- '${CONNECT_URL}/connectors'

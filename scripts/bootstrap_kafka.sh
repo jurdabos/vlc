@@ -20,8 +20,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # --- Defaults (override via env) ---
-BROKER_CONTAINER="${BROKER_CONTAINER:-kafka}"
+BROKER_SERVICE="${BROKER_SERVICE:-kafka}"
+CONNECT_SERVICE="${CONNECT_SERVICE:-connect}"
 BOOTSTRAP="${BOOTSTRAP:-kafka:9092}"
+COMPOSE_FILE="${COMPOSE_FILE:-compose/docker-compose.yml}"
 
 DATA_TOPIC="${DATA_TOPIC:-vlc.air}"
 DATA_TOPIC_2="${DATA_TOPIC_2:-vlc.weather}"
@@ -38,12 +40,16 @@ SCHEMA_REGISTRY_URL="${SCHEMA_REGISTRY_URL:-http://schema-registry:8081}"
 
 # --- Helpers ---
 exec_in_broker() {
-  # Using /bin/sh to avoid bash dependency
-  docker exec "${BROKER_CONTAINER}" sh -lc "$*"
+  # Using service name via docker compose exec for scalability
+  docker compose -f "${COMPOSE_FILE}" exec -T "${BROKER_SERVICE}" sh -lc "$*"
+}
+
+exec_in_connect() {
+  docker compose -f "${COMPOSE_FILE}" exec -T "${CONNECT_SERVICE}" sh -lc "$*"
 }
 
 http_ok() {
-  docker exec connect curl -s -o /dev/null -w "%{http_code}" "$1" | grep -qE '^(200|201)$'
+  exec_in_connect "curl -s -o /dev/null -w '%{http_code}' '$1'" 2>/dev/null | grep -qE '^(200|201)$'
 }
 
 wait_for_broker() {
@@ -78,7 +84,7 @@ wait_for_connect() {
 wait_for_schema_registry() {
   echo "[bootstrap] Waiting for Schema Registry at ${SCHEMA_REGISTRY_URL} ..."
   for _ in $(seq 1 30); do
-    if docker exec connect curl -s -o /dev/null -w "%{http_code}" "${SCHEMA_REGISTRY_URL}/subjects" 2>/dev/null | grep -q "200"; then
+    if exec_in_connect "curl -s -o /dev/null -w '%{http_code}' '${SCHEMA_REGISTRY_URL}/subjects'" 2>/dev/null | grep -q "200"; then
       echo "[bootstrap] Schema Registry is up at ${SCHEMA_REGISTRY_URL}"
       return 0
     fi
@@ -100,7 +106,7 @@ upsert_connector() {
   # 1) Try PUT (update-or-create), streaming only .config from the host into the container
   local code
   code=$(
-    jq -c '.config' "${cfg_file}" | docker exec -i connect sh -lc "
+    jq -c '.config' "${cfg_file}" | docker compose -f "${COMPOSE_FILE}" exec -T "${CONNECT_SERVICE}" sh -lc "
       curl -s -o /dev/null -w '%{http_code}' \
            -X PUT -H 'Content-Type: application/json' \
            --data @- '${CONNECT_URL}/connectors/${name}/config'
@@ -109,7 +115,7 @@ upsert_connector() {
   # 2) If 404, try POST (create) with full payload
   if [ "${code}" = "404" ]; then
     code=$(
-      docker exec -i connect sh -lc "
+      docker compose -f "${COMPOSE_FILE}" exec -T "${CONNECT_SERVICE}" sh -lc "
         curl -s -o /dev/null -w '%{http_code}' \
              -X POST -H 'Content-Type: application/json' \
              --data @- '${CONNECT_URL}/connectors'
@@ -152,7 +158,7 @@ if wait_for_connect; then
   # Showing connector status
   sleep 3
   echo "[bootstrap] Connector status:"
-  docker exec connect curl -s "${CONNECT_URL}/connectors?expand=status" 2>/dev/null | \
+  exec_in_connect "curl -s '${CONNECT_URL}/connectors?expand=status'" 2>/dev/null | \
     jq -r 'to_entries[] | "  \(.key): connector=\(.value.status.connector.state), task=\(.value.status.tasks[0].state // "NO_TASK")"' || true
 fi
 
