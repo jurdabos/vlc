@@ -17,5 +17,5 @@
 ```bash
 cd /opt/vlc/compose
 echo "admin:$(openssl passwd -apr1 YOUR_NEW_PASSWORD)" > .htpasswd
-docker exec compose-reverse_proxy-1 nginx -s reload
+docker compose -f docker-compose.yml exec reverse-proxy nginx -s reload
 ```

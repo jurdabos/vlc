@@ -5,6 +5,7 @@ Implements the backoff & shed contract:
 - Cap concurrent polls via VLC_MAX_INFLIGHT_POLLS
 - Detect Kafka pressure → reduce produce rate
 - Never drop data silently; on-disk queue for retries when Kafka is down
+- Auto-reconnect when Kafka broker restarts
 """
 
 import json
@@ -14,10 +15,10 @@ import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import requests
-from confluent_kafka import KafkaError, Producer
+from confluent_kafka import KafkaError, KafkaException, Producer
 
 
 # ------------- Configuration -------------
@@ -319,6 +320,70 @@ class RateThrottler:
         return self._stats
 
 
+# ------------- Kafka Connection Health Check -------------
+class KafkaHealthChecker:
+    """Monitors Kafka connection health and triggers reconnection when needed.
+
+    Uses consecutive failure counting to detect broker unavailability.
+    Triggers reconnect callback after threshold is exceeded.
+    """
+
+    def __init__(
+        self,
+        failure_threshold: int = 3,
+        check_interval_secs: float = 30.0,
+    ):
+        self._failure_threshold = int(os.getenv("VLC_KAFKA_FAILURE_THRESHOLD", str(failure_threshold)))
+        self._check_interval = float(os.getenv("VLC_KAFKA_CHECK_INTERVAL_SECS", str(check_interval_secs)))
+        self._consecutive_failures = 0
+        self._last_success_time = time.time()
+        self._last_check_time = 0.0
+        self._lock = threading.Lock()
+
+    def record_success(self) -> None:
+        """Records successful Kafka operation."""
+        with self._lock:
+            self._consecutive_failures = 0
+            self._last_success_time = time.time()
+
+    def record_failure(self) -> None:
+        """Records failed Kafka operation."""
+        with self._lock:
+            self._consecutive_failures += 1
+
+    def needs_reconnect(self) -> bool:
+        """Returns True if consecutive failures exceed threshold."""
+        with self._lock:
+            return self._consecutive_failures >= self._failure_threshold
+
+    def reset(self) -> None:
+        """Resets failure counter after reconnection."""
+        with self._lock:
+            self._consecutive_failures = 0
+            self._last_check_time = time.time()
+
+    def should_check(self) -> bool:
+        """Returns True if enough time has passed since last check."""
+        now = time.time()
+        with self._lock:
+            if now - self._last_check_time >= self._check_interval:
+                self._last_check_time = now
+                return True
+        return False
+
+    @property
+    def consecutive_failures(self) -> int:
+        """Returns current consecutive failure count."""
+        with self._lock:
+            return self._consecutive_failures
+
+    @property
+    def seconds_since_success(self) -> float:
+        """Returns seconds since last successful operation."""
+        with self._lock:
+            return time.time() - self._last_success_time
+
+
 # ------------- Resilient Producer Wrapper -------------
 class ResilientProducer:
     """Wraps confluent_kafka.Producer with resilience features.
@@ -328,6 +393,7 @@ class ResilientProducer:
     - Queues failed messages to disk (DLQ)
     - Retries from disk queue on next produce cycle
     - Implements rate throttling based on failure ratio
+    - Auto-reconnects when Kafka broker becomes unavailable
     """
 
     def __init__(
@@ -336,6 +402,7 @@ class ResilientProducer:
         topic: str,
         dlq_dir: Optional[str] = None,
         throttle_on_failures: bool = True,
+        producer_config: Optional[Dict[str, Any]] = None,
     ):
         self._producer = producer
         self._topic = topic
@@ -343,6 +410,15 @@ class ResilientProducer:
         self._throttler = RateThrottler() if throttle_on_failures else None
         self._pending: Dict[str, Tuple[bytes, bytes]] = {}
         self._lock = threading.Lock()
+        # Storing config for reconnection
+        self._producer_config = producer_config or {}
+        self._health_checker = KafkaHealthChecker()
+        self._reconnect_backoff = ExponentialBackoff(RetryConfig(
+            base_delay_ms=5000,
+            max_delay_ms=60000,
+            max_retries=10,
+        ))
+        self._reconnect_attempts = 0
 
     def _delivery_callback(self, err: Optional[KafkaError], msg) -> None:
         """Handles delivery reports from Kafka."""
@@ -356,25 +432,90 @@ class ResilientProducer:
             self._dlq.enqueue(key, value)
             if self._throttler:
                 self._throttler.record_failure()
+            self._health_checker.record_failure()
             print(f"[resilience] delivery failed: {err}, queued to DLQ")
         else:
             if self._throttler:
                 self._throttler.record_success()
+            self._health_checker.record_success()
+            self._reconnect_attempts = 0  # reset on success
+
+    def _check_and_reconnect(self) -> bool:
+        """Checks connection health and reconnects if needed.
+
+        Returns:
+            True if reconnection was performed, False otherwise.
+        """
+        if not self._health_checker.needs_reconnect():
+            return False
+        if not self._producer_config:
+            print("[resilience] cannot reconnect: no producer config stored")
+            return False
+        print(
+            f"[resilience] Kafka unhealthy ({self._health_checker.consecutive_failures} failures, "
+            f"{self._health_checker.seconds_since_success:.0f}s since success), reconnecting..."
+        )
+        # Applying backoff before reconnection attempt
+        if self._reconnect_attempts > 0:
+            self._reconnect_backoff.sleep(min(self._reconnect_attempts - 1, 9))
+        self._reconnect_attempts += 1
+        try:
+            # Flushing any remaining messages to DLQ
+            with self._lock:
+                for key, value in self._pending.values():
+                    self._dlq.enqueue(key, value)
+                self._pending.clear()
+            # Creating new producer
+            self._producer = Producer(self._producer_config)
+            self._health_checker.reset()
+            print("[resilience] Kafka producer reconnected successfully")
+            return True
+        except KafkaException as e:
+            print(f"[resilience] reconnection failed: {e}")
+            return False
+
+    def check_health(self) -> bool:
+        """Proactively checks Kafka broker health.
+
+        Uses list_topics() with short timeout to verify broker connectivity.
+        Returns True if healthy, False otherwise.
+        """
+        if not self._health_checker.should_check():
+            return True  # skip check, assume healthy
+        try:
+            # list_topics with 5s timeout to verify connectivity
+            self._producer.list_topics(timeout=5)
+            self._health_checker.record_success()
+            return True
+        except KafkaException as e:
+            self._health_checker.record_failure()
+            print(f"[resilience] health check failed: {e}")
+            return False
 
     def produce(self, key: bytes, value: bytes) -> None:
-        """Produces a message with delivery tracking."""
+        """Produces a message with delivery tracking and auto-reconnect."""
+        # Checking connection health and reconnecting if needed
+        self._check_and_reconnect()
         msg_id = f"{key.decode('utf-8', errors='replace')}:{hash(value)}"
         with self._lock:
             self._pending[msg_id] = (key, value)
         # Applying throttle if needed
         if self._throttler:
             self._throttler.maybe_throttle()
-        self._producer.produce(
-            self._topic,
-            key=key,
-            value=value,
-            callback=self._delivery_callback,
-        )
+        try:
+            self._producer.produce(
+                self._topic,
+                key=key,
+                value=value,
+                callback=self._delivery_callback,
+            )
+        except KafkaException as e:
+            # Producer-level error (e.g., queue full) - queue to DLQ
+            with self._lock:
+                self._pending.pop(msg_id, None)
+            self._dlq.enqueue(key, value)
+            self._health_checker.record_failure()
+            print(f"[resilience] produce error: {e}, queued to DLQ")
 
     def flush(self, timeout: float = 30.0) -> int:
         """Flushes pending messages with timeout.
@@ -382,14 +523,21 @@ class ResilientProducer:
         Returns:
             Number of messages still in queue (0 = all delivered)
         """
-        remaining = self._producer.flush(timeout)
+        try:
+            remaining = self._producer.flush(timeout)
+        except KafkaException as e:
+            print(f"[resilience] flush error: {e}")
+            remaining = len(self._pending)
         if remaining > 0:
             # Some messages didn't get delivered - queue pending to DLQ
             with self._lock:
                 for key, value in self._pending.values():
                     self._dlq.enqueue(key, value)
                 self._pending.clear()
+            self._health_checker.record_failure()
             print(f"[resilience] flush timeout, {remaining} msgs queued to DLQ")
+        else:
+            self._health_checker.record_success()
         return remaining
 
     def retry_dlq(self) -> int:
@@ -419,3 +567,8 @@ class ResilientProducer:
     def topic(self) -> str:
         """Returns the topic name."""
         return self._topic
+
+    @property
+    def is_healthy(self) -> bool:
+        """Returns True if producer is in healthy state."""
+        return not self._health_checker.needs_reconnect()

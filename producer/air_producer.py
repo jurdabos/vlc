@@ -432,16 +432,17 @@ def main():
     schema_registry_client = SchemaRegistryClient({"url": SCHEMA_REGISTRY_URL})
     json_serializer = JSONSerializer(AIR_SCHEMA_STR, schema_registry_client)
     print(f"[air] using Schema Registry at {SCHEMA_REGISTRY_URL}")
-    raw_producer = Producer(
-        {
-            "bootstrap.servers": BOOTSTRAP,
-            "linger.ms": 50,
-            "enable.idempotence": True,
-        }
-    )
-    producer = ResilientProducer(raw_producer, TOPIC, dlq_dir=DLQ_DIR)
+    producer_config = {
+        "bootstrap.servers": BOOTSTRAP,
+        "linger.ms": 50,
+        "enable.idempotence": True,
+    }
+    raw_producer = Producer(producer_config)
+    producer = ResilientProducer(raw_producer, TOPIC, dlq_dir=DLQ_DIR, producer_config=producer_config)
     while running:
         try:
+            # Proactively checking Kafka health (triggers reconnect if needed)
+            producer.check_health()
             # Retrying any messages from DLQ first
             dlq_retried = producer.retry_dlq()
             if dlq_retried:

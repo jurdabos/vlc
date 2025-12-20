@@ -11,18 +11,18 @@ This directory contains JDBC Sink connector configurations for streaming data fr
 
 ## Registering Connectors
 
-The Connect REST API runs on port 8083 inside the `connect` container. Since the container is on an internal-only network with no exposed ports (zero-trust bunker), all commands must use `docker exec`.
+The Connect REST API runs on port 8083 inside the `connect` service. Since the container is on an internal-only network with no exposed ports (zero-trust bunker), all commands must use `docker compose exec`.
 
 ### Register connectors
 
 ```powershell
 # Register air connector (from project root)
-docker exec connect curl -s -X POST http://localhost:8083/connectors `
+docker compose -f compose/docker-compose.yml exec connect curl -s -X POST http://localhost:8083/connectors `
   -H "Content-Type: application/json" `
   -d (Get-Content connect/config/jdbc-sink.timescale.air.json -Raw)
 
 # Register weather connector
-docker exec connect curl -s -X POST http://localhost:8083/connectors `
+docker compose -f compose/docker-compose.yml exec connect curl -s -X POST http://localhost:8083/connectors `
   -H "Content-Type: application/json" `
   -d (Get-Content connect/config/jdbc-sink.timescale.weather.json -Raw)
 ```
@@ -30,7 +30,7 @@ docker exec connect curl -s -X POST http://localhost:8083/connectors `
 Alternatively, since configs are mounted at `/config` inside the container:
 
 ```
-docker exec connect curl -s -X POST http://localhost:8083/connectors `
+docker compose -f compose/docker-compose.yml exec connect curl -s -X POST http://localhost:8083/connectors `
   -H "Content-Type: application/json" `
   -d '@/config/jdbc-sink.timescale.air.json'
 ```
@@ -39,29 +39,29 @@ docker exec connect curl -s -X POST http://localhost:8083/connectors `
 
 ### List all connectors
 ```
-docker exec connect curl -s http://localhost:8083/connectors | jq
+docker compose -f compose/docker-compose.yml exec connect curl -s http://localhost:8083/connectors | jq
 ```
 
 ### Check connector status
 ```
-docker exec connect curl -s http://localhost:8083/connectors/jdbc-sink-timescale-air/status | jq
-docker exec connect curl -s http://localhost:8083/connectors/jdbc-sink-timescale-weather/status | jq
+docker compose -f compose/docker-compose.yml exec connect curl -s http://localhost:8083/connectors/jdbc-sink-timescale-air/status | jq
+docker compose -f compose/docker-compose.yml exec connect curl -s http://localhost:8083/connectors/jdbc-sink-timescale-weather/status | jq
 ```
 
 ### Pause/Resume connector
 ```
-docker exec connect curl -s -X PUT http://localhost:8083/connectors/jdbc-sink-timescale-air/pause
-docker exec connect curl -s -X PUT http://localhost:8083/connectors/jdbc-sink-timescale-air/resume
+docker compose -f compose/docker-compose.yml exec connect curl -s -X PUT http://localhost:8083/connectors/jdbc-sink-timescale-air/pause
+docker compose -f compose/docker-compose.yml exec connect curl -s -X PUT http://localhost:8083/connectors/jdbc-sink-timescale-air/resume
 ```
 
 ### Delete connector
 ```
-docker exec connect curl -s -X DELETE http://localhost:8083/connectors/jdbc-sink-timescale-air
+docker compose -f compose/docker-compose.yml exec connect curl -s -X DELETE http://localhost:8083/connectors/jdbc-sink-timescale-air
 ```
 
 ### Update connector config
 ```powershell
-cat connect/config/jdbc-sink.timescale.air.json | docker exec -i connect curl -s -X PUT http://localhost:8083/connectors/jdbc-sink-timescale-air/config \
+cat connect/config/jdbc-sink.timescale.air.json | docker compose -f compose/docker-compose.yml exec -T connect curl -s -X PUT http://localhost:8083/connectors/jdbc-sink-timescale-air/config \
   -H "Content-Type: application/json" \
   -d @-
 ```

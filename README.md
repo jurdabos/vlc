@@ -38,7 +38,7 @@ chmod +x scripts/*.sh
 chmod 644 compose/.htpasswd
 ```
 
-### 3. Start infrastructure (Kafka, TimescaleDB, Connect, Schema Registry)
+### 3. Start infrastructure (Kafka, TimescaleDB)
 ```bash
 docker compose -f compose/docker-compose.yml --profile infra up -d --build
 ```
@@ -47,27 +47,32 @@ Wait for services to be healthy (~30-60s):
 docker ps --format 'table {{.Names}}\t{{.Status}}'
 ```
 
-### 4. Bootstrap Kafka topics and deploy connectors
+### 4. Start Schema Registry and Kafka Connect
+```bash
+docker compose -f compose/docker-compose.yml --profile infra --profile schema up -d --build
+```
+
+### 5. Bootstrap Kafka topics and deploy connectors
 ```bash
 ./scripts/bootstrap_kafka.sh 2>&1 | grep -v "WARNING.*metric names"
 ```
 This creates topics (`vlc.air`, `vlc.weather`, Connect internal topics) and deploys JDBC sink connectors.
 
-### 5. Start services (Grafana, Kafka UI, nginx proxy)
+### 6. Start UI services (Grafana, Kafka UI, nginx proxy) and producers
 ```bash
 docker compose -f compose/docker-compose.yml --profile infra --profile schema --profile ui --profile producer up -d --build
 ```
 
-### 6. Verify data flow
+### 7. Verify data flow
 - **Kafka UI**: http://localhost:8080/kafka-ui/ (admin / VLC_DEV_PASSWORD)
 - **Grafana**: http://localhost:8080/grafana/ (admin / VLC_DEV_PASSWORD)
 - **Connect API**:
 ```bash
-docker exec connect curl -s http://localhost:8083/connectors?expand=status | jq
+docker compose -f compose/docker-compose.yml exec connect curl -s http://localhost:8083/connectors?expand=status | jq
 ```
 Query TimescaleDB directly:
 ```bash
-docker exec timescaledb psql -U vlc_dev -d vlc -c "SELECT COUNT(*) FROM air.hyper;"
+docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "SELECT COUNT(*) FROM air.hyper;"
 ```
 
 ## Historical Backfill (Optional)
@@ -78,8 +83,8 @@ Historical CSVs are included in `backfill/`:
 - `daily_2004_2022.csv` — daily aggregates
 ```bash
 # Copying CSV into the container and running the backfill script
-docker cp backfill/hourly_2021_2022.csv timescaledb:/tmp/
-docker exec timescaledb psql -U vlc_dev -d vlc -f /tmp/backfill.sql
+docker compose -f compose/docker-compose.yml cp backfill/hourly_2021_2022.csv timescaledb:/tmp/
+docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -f /tmp/backfill.sql
 ```
 The script:
 - Maps historical station names to current `fiwareid` values
@@ -88,13 +93,23 @@ The script:
 
 ## Quick Reference
 
-| Action 		| Command 												|
-|-----------------------|-------------------------------------------------------------------------------------------------------|
-| Start all 		| `docker compose -f compose/docker-compose.yml --profile infra --profile ui --profile producer up -d`  |
-| Stop all 		| `docker compose -f compose/docker-compose.yml --profile infra --profile ui --profile producer down` 	|
-| View logs 		| `docker compose -f compose/docker-compose.yml logs -f <service>` 					|
-| Connector status 	| `./scripts/post_connectors.sh status` 								|
-| Re-bootstrap Kafka 	| `./scripts/bootstrap_kafka.sh` 									|
+| Action | Command |
+|--------|----------|
+| Start all | `docker compose -f compose/docker-compose.yml --profile infra --profile schema --profile ui --profile producer up -d` |
+| Stop all | `docker compose -f compose/docker-compose.yml --profile infra --profile schema --profile ui --profile producer down` |
+| View logs | `docker compose -f compose/docker-compose.yml logs -f <service>` |
+| Connector status | `./scripts/post_connectors.sh status` |
+| Re-bootstrap Kafka | `./scripts/bootstrap_kafka.sh` |
+
+## Docker Compose Profiles
+
+| Profile | Services |
+|---------|----------|
+| `infra` | kafka, timescaledb |
+| `schema` | schema-registry, connect |
+| `ui` | grafana, prometheus, kafka-ui, reverse-proxy, alertmanager |
+| `producer` | air-producer, weather-producer |
+| `alt-sink` | air-sink, weather-sink (alternative to Kafka Connect) |
 
 ## Project Structure
 

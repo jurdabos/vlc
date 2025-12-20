@@ -58,18 +58,21 @@ System and infrastructure monitoring:
 **Note:** Kafka broker metrics require adding JMX exporter to the kafka service in docker-compose.yml (planned for future phases).
 
 ## SQL Checks
-Run these queries directly in Grafana's Explore or docker exec timescaledb psql -U vlc_dev -d vlc -c "".
+Run these queries directly in Grafana's Explore or via:
+```bash
+docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "<query>"
+```
 
 ### Air Quality Checks
 
 ```sql
 -- Count arriving rows
-docker exec timescaledb psql -U vlc_dev -d vlc -c "
+docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT count(*) FROM air.hyper;
 "
 
 -- Latest 5 readings for NO2 at around Av. de Francia
-docker exec timescaledb psql -U vlc_dev -d vlc -c "
+docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT ts, fiwareid, no2
 FROM air.hyper
 WHERE fiwareid LIKE '%FRANCIA%'
@@ -78,7 +81,7 @@ LIMIT 5;
 "
 
 -- Spatial: stations within 3 km of 39.494N, -0.403E
-docker exec timescaledb psql -U vlc_dev -d vlc -c "
+docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT DISTINCT fiwareid
 FROM air.hyper
 WHERE ST_DWithin(
@@ -91,12 +94,12 @@ ORDER BY fiwareid;
 
 ### Weather Checks
 -- Count arriving rows
-docker exec timescaledb psql -U vlc_dev -d vlc -c "
+docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT count(*) FROM weather.hyper;
 "
 
 -- Latest 5 readings for temperature at any station
-docker exec timescaledb psql -U vlc_dev -d vlc -c "
+docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT ts, fiwareid, temperature_c, humidity_pct, wind_speed_ms
 FROM weather.hyper
 ORDER BY ts DESC
@@ -104,7 +107,7 @@ LIMIT 5;
 "
 
 -- Current conditions by station
-docker exec timescaledb psql -U vlc_dev -d vlc -c "
+docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT DISTINCT ON (fiwareid)
   fiwareid,
   ts,
@@ -119,7 +122,7 @@ ORDER BY fiwareid, ts DESC;
 "
 
 -- Spatial: weather stations within 3250 m of 39.494N, -0.403E
-docker exec timescaledb psql -U vlc_dev -d vlc -c "
+docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT DISTINCT fiwareid, lat, lon
 FROM weather.hyper
 WHERE ST_DWithin(
@@ -130,7 +133,7 @@ WHERE ST_DWithin(
 "
 
 -- Daily temperature averages (last 7 days)
-docker exec timescaledb psql -U vlc_dev -d vlc -c "
+docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT bucket_day, fiwareid, temp_avg_c, humidity_avg
 FROM weather.daily
 WHERE bucket_day > NOW() - INTERVAL '7 days'
@@ -138,7 +141,7 @@ ORDER BY bucket_day DESC, fiwareid;
 "
 
 -- Historical data for 18 Dec to 22 Dec
-docker exec timescaledb psql -U vlc_dev -d vlc -c "
+docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT 
     EXTRACT(DAY FROM ts)::int AS day_of_dec,
     fiwareid,
@@ -157,7 +160,7 @@ ORDER BY day_of_dec, fiwareid;
 "
 
 -- Historical data for 18 Dec to 22 Dec for W05_VALENCIA_UPV_10m
-docker exec timescaledb psql -U vlc_dev -d vlc -c "
+docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT 
     EXTRACT(DAY FROM ts)::int AS day_of_dec,
     fiwareid,
@@ -177,7 +180,7 @@ ORDER BY day_of_dec, fiwareid;
 "
 
 -- Hourly temperature trend for last 24h across stations
-docker exec timescaledb psql -U vlc_dev -d vlc -c "
+docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "
 SELECT
   time_bucket('1 hour', ts) AS hour,
   AVG(temperature_c) AS avg_temp,
@@ -191,8 +194,7 @@ ORDER BY hour;
 
 ## Starting Grafana
 ```bash
-cd /opt/vlc/compose
-docker compose --profile ui up -d grafana
+docker compose -f compose/docker-compose.yml --profile ui up -d grafana
 ```
 
 ## Notes

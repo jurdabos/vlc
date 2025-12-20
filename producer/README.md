@@ -71,19 +71,18 @@ Two independent producer services that poll Valencia OpenDataSoft API and produc
 
 ### Build and start producers:
 ```bash
-cd compose
-docker-compose --profile producer up --build
+docker compose -f compose/docker-compose.yml --profile infra --profile schema --profile producer up -d --build
 ```
 
 ### View logs:
 ```bash
-docker compose -f /home/acidvuca/vlc/compose/docker-compose.yml --profile producer --profile infra logs -f air-producer
-docker compose -f /home/acidvuca/vlc/compose/docker-compose.yml --profile producer --profile infra logs -f weather-producer
+docker compose -f compose/docker-compose.yml logs -f air-producer
+docker compose -f compose/docker-compose.yml logs -f weather-producer
 ```
 
 ### Stop producers:
 ```bash
-docker-compose --profile producer down
+docker compose -f compose/docker-compose.yml --profile producer down
 ```
 
 ## Data Flow

@@ -12,16 +12,13 @@ volumes:
   weather-producer_state:
 
 services:
-  # Core broker (KRaft, single node)
   kafka:
     image: confluentinc/cp-kafka:7.6.1
-    container_name: kafka
     hostname: kafka
     dns:
       - 8.8.8.8
       - 1.1.1.1
     networks: [vlc_internal]
-    ports: []  # intentionally nothing
     environment:
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
       KAFKA_NODE_ID: 1
@@ -52,10 +49,8 @@ services:
       start_period: 30s
     profiles: ["infra"]
 
-  # For if we swap to Avro in phase 4 maybe
   schema-registry:
     image: confluentinc/cp-schema-registry:7.6.1
-    container_name: schema-registry
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -68,7 +63,7 @@ services:
         -javaagent:/jmx/jmx_prometheus_javaagent.jar=9405:/jmx/schema-registry.yml
     depends_on: [kafka]
     restart: unless-stopped
-    profiles: ["infra", "schema","ui"]
+    profiles: ["schema"]
     volumes:
       - ../jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
       - ../jmx-exporter/schema-registry.yml:/jmx/schema-registry.yml:ro
@@ -76,7 +71,6 @@ services:
   connect:
     image: vlc/connect:7.6.1-jdbc-pg
     build: ../connect
-    container_name: connect
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -120,11 +114,10 @@ services:
       - ../jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
       - ../jmx-exporter/connect.yml:/jmx/connect.yml:ro
     restart: unless-stopped
-    profiles: ["infra"]
+    profiles: ["schema"]
 
   timescaledb:
     image: timescale/timescaledb-ha:pg16-ts2.17-all
-    container_name: timescaledb
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -148,7 +141,6 @@ services:
 
   grafana:
     image: grafana/grafana:11.0.0
-    container_name: grafana
     networks: [vlc_internal, vlc_frontend]
     environment:
       GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
@@ -164,7 +156,6 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.51.0
-    container_name: prometheus
     networks: [vlc_internal, vlc_frontend]
     depends_on:
       alertmanager:
@@ -179,7 +170,6 @@ services:
 
   kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2
-    container_name: kafka-ui
     networks: [vlc_internal, vlc_frontend]
     environment:
       KAFKA_CLUSTERS_0_NAME: vlc
@@ -194,7 +184,6 @@ services:
     build:
       context: ../producer
       dockerfile: Dockerfile.air
-    container_name: air-producer
     image: vlc/air-producer:latest
     env_file:
       - ../.env
@@ -220,7 +209,6 @@ services:
     build:
       context: ../producer
       dockerfile: Dockerfile.weather
-    container_name: weather-producer
     image: vlc/weather-producer:latest
     env_file:
       - ../.env
@@ -244,7 +232,6 @@ services:
 
   reverse-proxy:
     image: nginx:1.27-alpine
-    container_name: reverse-proxy
     depends_on: [grafana, kafka-ui]
     networks: [vlc_frontend]
     ports:
@@ -257,7 +244,6 @@ services:
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
-    container_name: alertmanager
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -274,7 +260,6 @@ services:
       context: ../consumer
       dockerfile: Dockerfile
     image: vlc/sink:latest
-    container_name: air-sink
     environment:
       KAFKA_BOOTSTRAP: kafka:9092
       PG_HOST: timescaledb
@@ -300,7 +285,6 @@ services:
       context: ../consumer
       dockerfile: Dockerfile
     image: vlc/sink:latest
-    container_name: weather-sink
     environment:
       KAFKA_BOOTSTRAP: kafka:9092
       PG_HOST: timescaledb
