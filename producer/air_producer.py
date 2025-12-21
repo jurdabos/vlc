@@ -118,25 +118,39 @@ def load_offset() -> str:
 STATE_JSON = os.path.join(STATE_DIR, "state.json")
 
 
-def load_state() -> Tuple[str, dict]:
-    """Returns the last committed offset and a mapping of station_id to fingerprint for that offset."""
+def load_state() -> Tuple[Dict[str, str], Dict[str, str]]:
+    """
+    Returns per-station offsets and fingerprints.
+
+    Returns:
+        - station_offsets: dict mapping fiwareid → last seen timestamp ISO string
+        - station_fingerprints: dict mapping fiwareid → last seen fingerprint hash
+    """
     os.makedirs(STATE_DIR, exist_ok=True)
     if os.path.exists(STATE_JSON):
         try:
             d = json.load(open(STATE_JSON, "r", encoding="utf-8"))
-            return d.get("offset", START_OFFSET), dict(d.get("seen_for_offset", {}))
+            # New format: per-station offsets
+            if "station_offsets" in d:
+                return dict(d.get("station_offsets", {})), dict(d.get("station_fingerprints", {}))
+            # Migrating from old format: single global offset
+            old_offset = d.get("offset", START_OFFSET)
+            old_seen = d.get("seen_for_offset", {})
+            # Converting old format: all known stations get the old global offset
+            station_offsets = {sid: old_offset for sid in old_seen.keys()}
+            return station_offsets, dict(old_seen)
         except Exception:
             pass
-    # fallback to your old offset.txt if present
+    # Fallback to old offset.txt if present
     off = load_offset()
-    return off, {}  # fallback if migrating
+    return {}, {}  # empty dicts for fresh start
 
 
-def save_state(offset_iso: str, seen_map: dict) -> None:
-    """Saves the current offset and station → fingerprint map to JSON."""
+def save_state(station_offsets: Dict[str, str], station_fingerprints: Dict[str, str]) -> None:
+    """Saves per-station offsets and fingerprints to JSON."""
     os.makedirs(STATE_DIR, exist_ok=True)
     with open(STATE_JSON, "w", encoding="utf-8") as f:
-        json.dump({"offset": offset_iso, "seen_for_offset": seen_map}, f)
+        json.dump({"station_offsets": station_offsets, "station_fingerprints": station_fingerprints}, f)
 
 
 def save_offset(iso: str) -> None:
@@ -310,27 +324,40 @@ def compute_select(avail_fields: List[str], ts_field: str) -> str:
 
 # ------------- fetching loop -------------
 def fetch_since(
-    offset_iso: str, seen_for_offset: dict, bases: List[str], select: str, ts_field: str
-) -> Tuple[List[Dict[str, Any]], str, dict]:
-    """Fetches records since offset, using fingerprint-based deduplication.
+    station_offsets: Dict[str, str],
+    station_fingerprints: Dict[str, str],
+    bases: List[str],
+    select: str,
+    ts_field: str,
+) -> Tuple[List[Dict[str, Any]], Dict[str, str], Dict[str, str]]:
+    """
+    Fetches records using per-station offset tracking.
+
+    Each station has its own offset, so stations that update less frequently
+    don't get skipped when faster stations advance.
+
+    Queries all records ordered by timestamp descending (newest first), then
+    applies per-station filtering. This ensures we always see all stations
+    regardless of their individual update cadence.
 
     Returns:
         - List of new/changed records to emit
-        - New offset (advances only when newer timestamps found)
-        - Updated seen_map for the current offset timestamp
+        - Updated station_offsets dict
+        - Updated station_fingerprints dict
     """
     out: List[Dict[str, Any]] = []
-    max_ts = offset_iso
-    seen_map = dict(seen_for_offset)  # copy to track current window
+    new_offsets = dict(station_offsets)
+    new_fingerprints = dict(station_fingerprints)
     for base in bases:
         page = 0
         while True:
+            # Querying all records ordered by timestamp desc (newest first)
+            # No WHERE filter — per-station logic handles deduplication
             params = {
-                "order_by": ts_field,
+                "order_by": f"{ts_field} desc",
                 "limit": str(LIMIT),
                 "offset": str(page * LIMIT),
                 "select": select,
-                "where": f"{ts_field}>=date'{offset_iso}'",
             }
             try:
                 resp = http_request_with_retry(
@@ -339,11 +366,11 @@ def fetch_since(
                 resp.raise_for_status()
                 rows = resp.json().get("results", [])
             except Exception:
-                # Try next base if nothing collected yet
+                # Trying next base if nothing collected yet
                 if not out:
                     break
                 else:
-                    return out, max_ts, seen_map
+                    return out, new_offsets, new_fingerprints
             if not rows:
                 break
             for r in rows:
@@ -353,43 +380,27 @@ def fetch_since(
                 fp = ev.get("_fp")
                 if not (ts and sid and fp):
                     continue
-                if ts > max_ts:
-                    # New timestamp watermark - reset the seen map
-                    max_ts = ts
-                    seen_map = {}
-                # Decide to emit:
-                # - Newer timestamp than offset: always emit
-                # - Equal to offset timestamp: emit if station unseen OR fingerprint changed
-                # - Equal to max timestamp: emit if not yet seen OR fingerprint different
+                # Per-station logic: compare against this station's offset
+                station_offset = station_offsets.get(sid, START_OFFSET)
+                station_fp = station_fingerprints.get(sid)
                 should_emit = False
-                if ts > offset_iso:
-                    # Strictly newer - always emit
+                if ts > station_offset:
+                    # Strictly newer than this station's last seen ts
                     should_emit = True
-                elif ts == offset_iso:
-                    # Same as offset - emit if value changed
-                    if seen_for_offset.get(sid) != fp:
-                        should_emit = True
-                elif ts == max_ts:
-                    # Same as current max - emit if not yet tracked
-                    if seen_map.get(sid) != fp:
-                        should_emit = True
+                elif ts == station_offset and fp != station_fp:
+                    # Same timestamp but fingerprint changed (data correction)
+                    should_emit = True
                 if should_emit:
                     out.append(ev)
-                    if ts == max_ts:
-                        # Track this station's fingerprint for current timestamp
-                        seen_map[sid] = fp
+                    # Updating this station's offset and fingerprint
+                    new_offsets[sid] = ts
+                    new_fingerprints[sid] = fp
             if len(rows) < LIMIT:
                 break
             page += 1
         if out:
             break  # Got data from this base, don't try others
-    # Determine new offset and seen map to persist
-    # Only advance offset if we found strictly newer timestamps
-    new_offset = max_ts if max_ts > offset_iso else offset_iso
-    # Return the seen map for the current offset timestamp
-    # If offset advanced, seen_map contains stations for new timestamp
-    # If offset stayed same, seen_map contains merged view of all seen stations
-    return out, new_offset, seen_map
+    return out, new_offsets, new_fingerprints
 
 
 def bootstrap_schema() -> Tuple[str, str]:
@@ -419,10 +430,14 @@ def bootstrap_schema() -> Tuple[str, str]:
 
 def main():
     """Main loop with resilience: backoff, inflight limiting, DLQ retry."""
-    offset, seen = load_state()
+    station_offsets, station_fingerprints = load_state()
     select, ts_field = bootstrap_schema()
     print(f"[air] using ts_field='{ts_field}', SELECT='{select}'")
-    print(f"[air] starting with offset {offset}, seen_for_offset={len(seen)}")
+    print(f"[air] per-station offsets: {len(station_offsets)} stations tracked")
+    if station_offsets:
+        min_off = min(station_offsets.values())
+        max_off = max(station_offsets.values())
+        print(f"[air] offset range: {min_off} to {max_off}")
     print(
         f"[air] resilience: max_inflight={INFLIGHT_LIMITER.max_inflight}, "
         f"backoff_base={RETRY_CONFIG.base_delay_ms}ms, "
@@ -449,16 +464,23 @@ def main():
                 producer.flush()
             # Fetching new data with inflight limiting
             with INFLIGHT_LIMITER:
-                items, new_offset, new_seen = fetch_since(offset, seen, BASES, select, ts_field)
+                items, new_offsets, new_fps = fetch_since(
+                    station_offsets, station_fingerprints, BASES, select, ts_field
+                )
             if items:
                 produce_all(producer, items, json_serializer)
-                save_state(new_offset, new_seen)
-                offset, seen = new_offset, new_seen
+                save_state(new_offsets, new_fps)
+                station_offsets, station_fingerprints = new_offsets, new_fps
                 stats = producer.stats
                 stats_str = ""
                 if stats:
                     stats_str = f" (ok={stats.success_count}, fail={stats.failure_count})"
-                print(f"[air] produced {len(items)}; offset={offset}; seen={len(seen)}{stats_str}")
+                # Logging which stations were updated
+                updated_stations = {ev["fiwareid"] for ev in items}
+                print(
+                    f"[air] produced {len(items)} from {len(updated_stations)} stations; "
+                    f"tracking {len(station_offsets)} stations{stats_str}"
+                )
             else:
                 print("[air] no new records")
             # Logging DLQ size if non-empty
