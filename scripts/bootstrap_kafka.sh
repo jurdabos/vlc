@@ -194,7 +194,7 @@ fi
 echo ""
 echo "[bootstrap] Done."
 echo ""
-echo "[bootstrap] Quick reference:"
+echo "[bootstrap] Quick reference in case --profile ui is up:"
 echo "  - Kafka UI:     http://localhost:8080/kafka-ui/"
 echo "  - Grafana:      http://localhost:8080/grafana/"
 if [ "${SKIP_CONNECT}" = false ]; then
