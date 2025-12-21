@@ -91,8 +91,16 @@ def parse_timestamp(ts_value):
     """
     Parses timestamp to datetime.
 
-    Handles both ISO string format (from JSON) and epoch milliseconds (from Avro).
+    Handles:
+    - datetime objects (from fastavro with timestamp-millis logical type)
+    - int (epoch milliseconds from raw Avro)
+    - str (ISO format from JSON)
     """
+    if isinstance(ts_value, datetime):
+        # fastavro returns datetime for timestamp-millis logical type
+        if ts_value.tzinfo is None:
+            return ts_value.replace(tzinfo=timezone.utc)
+        return ts_value
     if isinstance(ts_value, int):
         # Avro timestamp-millis: epoch milliseconds
         return datetime.fromtimestamp(ts_value / 1000, timezone.utc)
