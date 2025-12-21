@@ -413,11 +413,13 @@ class ResilientProducer:
         # Storing config for reconnection
         self._producer_config = producer_config or {}
         self._health_checker = KafkaHealthChecker()
-        self._reconnect_backoff = ExponentialBackoff(RetryConfig(
-            base_delay_ms=5000,
-            max_delay_ms=60000,
-            max_retries=10,
-        ))
+        self._reconnect_backoff = ExponentialBackoff(
+            RetryConfig(
+                base_delay_ms=5000,
+                max_delay_ms=60000,
+                max_retries=10,
+            )
+        )
         self._reconnect_attempts = 0
 
     def _delivery_callback(self, err: Optional[KafkaError], msg) -> None:
