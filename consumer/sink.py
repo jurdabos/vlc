@@ -1,13 +1,19 @@
 """
 Consumes messages from Kafka topics and sinks them to TimescaleDB.
+
+Supports both Avro (with Confluent Schema Registry header) and plain JSON payloads.
+For lean-stack deployment (alt-sink profile), Avro schemas are loaded from local files,
+so Schema Registry is not required.
 """
 
-import json
+import io
 import logging
 import os
 import signal
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
 
+import fastavro
 import psycopg2
 from kafka import KafkaConsumer
 from psycopg2.extras import execute_values
@@ -27,7 +33,36 @@ PG_USER = os.getenv("PG_USER", "vlc_dev")
 PG_PASSWORD = os.getenv("PG_PASSWORD", "")
 TOPICS = os.getenv("TOPICS", "vlc.air").split(",")
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "100"))
+SCHEMAS_DIR = os.getenv("SCHEMAS_DIR", "/schemas")
 running = True
+
+# Avro schemas loaded lazily at startup
+AVRO_SCHEMAS = {}
+
+
+def load_avro_schemas():
+    """
+    Loads Avro schemas from local .avsc files.
+
+    Called once at startup to populate AVRO_SCHEMAS dict.
+    """
+    global AVRO_SCHEMAS
+    schemas_path = Path(SCHEMAS_DIR)
+    if not schemas_path.exists():
+        logger.warning(f"Schemas directory not found: {SCHEMAS_DIR}")
+        return
+    for schema_file in schemas_path.glob("*.avsc"):
+        try:
+            schema = fastavro.schema.load_schema(str(schema_file))
+            # Extracting schema name from namespace.name or just name
+            schema_name = schema.get("name", schema_file.stem)
+            namespace = schema.get("namespace", "")
+            full_name = f"{namespace}.{schema_name}" if namespace else schema_name
+            AVRO_SCHEMAS[schema_file.stem] = schema  # e.g., "air" -> schema
+            AVRO_SCHEMAS[full_name] = schema  # e.g., "vlc.air.AirQualityReading" -> schema
+            logger.info(f"Loaded Avro schema: {schema_file.name} ({full_name})")
+        except Exception as e:
+            logger.warning(f"Failed to load Avro schema {schema_file}: {e}")
 
 
 def signal_handler(sig, frame):
@@ -52,11 +87,20 @@ def get_pg_conn():
     )
 
 
-def parse_timestamp(ts_str):
-    """Parses ISO timestamp string to datetime."""
-    if ts_str.endswith("Z"):
-        ts_str = ts_str[:-1] + "+00:00"
-    return datetime.fromisoformat(ts_str)
+def parse_timestamp(ts_value):
+    """
+    Parses timestamp to datetime.
+
+    Handles both ISO string format (from JSON) and epoch milliseconds (from Avro).
+    """
+    if isinstance(ts_value, int):
+        # Avro timestamp-millis: epoch milliseconds
+        return datetime.fromtimestamp(ts_value / 1000, timezone.utc)
+    if isinstance(ts_value, str):
+        if ts_value.endswith("Z"):
+            ts_value = ts_value[:-1] + "+00:00"
+        return datetime.fromisoformat(ts_value)
+    raise ValueError(f"Unexpected timestamp type: {type(ts_value)}")
 
 
 def sink_air_batch(conn, records):
@@ -146,38 +190,63 @@ SINK_TYPE = os.getenv("SINK_TYPE", "air")  # "air" or "weather"
 GROUP_ID = os.getenv("GROUP_ID", f"vlc-sink-{SINK_TYPE}")
 
 
-def safe_json_deserializer(raw_bytes):
-    """
-    Deserializes JSON bytes safely.
+def get_schema_for_sink(sink_type: str):
+    """Returns the Avro schema for the given sink type."""
+    # Trying direct match first (e.g., "air" -> air.avsc)
+    if sink_type in AVRO_SCHEMAS:
+        return AVRO_SCHEMAS[sink_type]
+    # Trying with vlc. prefix
+    for key, schema in AVRO_SCHEMAS.items():
+        if sink_type in key.lower():
+            return schema
+    return None
 
-    Handles Confluent Schema Registry wire format (5-byte header: magic byte + 4-byte schema ID).
-    Returns None for empty, null, or malformed messages instead of raising.
+
+def avro_deserializer(raw_bytes, schema):
+    """
+    Deserializes Avro bytes with Confluent Schema Registry wire format.
+
+    The wire format is: magic byte (0x00) + 4-byte schema ID + Avro binary.
+    This function strips the header and deserializes using the provided local schema.
     """
     if raw_bytes is None or len(raw_bytes) == 0:
         logger.warning("Received empty or null message, skipping")
         return None
-    # Stripping Confluent Schema Registry header if present (magic byte 0x00 + 4-byte schema ID)
+    # Checking for Confluent Schema Registry header (magic byte 0x00)
     if len(raw_bytes) > 5 and raw_bytes[0] == 0:
-        raw_bytes = raw_bytes[5:]
+        # Stripping 5-byte header: magic byte + 4-byte schema ID
+        avro_payload = raw_bytes[5:]
+    else:
+        # No header, assume raw Avro
+        avro_payload = raw_bytes
     try:
-        return json.loads(raw_bytes.decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError) as e:
-        logger.warning(f"Failed to decode message: {e}, raw={raw_bytes[:100]!r}")
+        reader = io.BytesIO(avro_payload)
+        return fastavro.schemaless_reader(reader, schema)
+    except Exception as e:
+        logger.warning(f"Failed to decode Avro message: {e}, raw={raw_bytes[:100]!r}")
         return None
 
 
 def main():
     """Main consumer loop."""
+    # Loading Avro schemas from local files
+    load_avro_schemas()
     sink_func = sink_air_batch if SINK_TYPE == "air" else sink_weather_batch
+    # Getting Avro schema for this sink type
+    avro_schema = get_schema_for_sink(SINK_TYPE)
+    if avro_schema:
+        logger.info(f"[{SINK_TYPE}-sink] using Avro schema for deserialization")
+    else:
+        logger.warning(f"[{SINK_TYPE}-sink] no Avro schema found, messages will fail to deserialize")
     logger.info(f"[{SINK_TYPE}-sink] connecting to Kafka at {KAFKA_BOOTSTRAP}")
     logger.info(f"[{SINK_TYPE}-sink] topics: {TOPICS}, group: {GROUP_ID}")
+    # Not using value_deserializer — deserializing manually with Avro schema
     consumer = KafkaConsumer(
         *TOPICS,
         bootstrap_servers=KAFKA_BOOTSTRAP,
         auto_offset_reset="earliest",
         enable_auto_commit=True,
         group_id=GROUP_ID,
-        value_deserializer=safe_json_deserializer,
     )
     logger.info(f"[{SINK_TYPE}-sink] connecting to TimescaleDB at {PG_HOST}:{PG_PORT}/{PG_DB}")
     conn = get_pg_conn()
@@ -188,9 +257,10 @@ def main():
         msg_pack = consumer.poll(timeout_ms=1000, max_records=BATCH_SIZE)
         for tp, messages in msg_pack.items():
             for msg in messages:
-                # Skipping None values from failed deserialization
-                if msg.value is not None:
-                    batch.append(msg.value)
+                # Deserializing Avro message
+                record = avro_deserializer(msg.value, avro_schema)
+                if record is not None:
+                    batch.append(record)
         if batch:
             try:
                 count = sink_func(conn, batch)

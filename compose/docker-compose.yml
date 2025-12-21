@@ -273,11 +273,14 @@ services:
       SINK_TYPE: air
       GROUP_ID: vlc-sink-air
       BATCH_SIZE: "100"
+      SCHEMAS_DIR: /schemas
     depends_on:
       kafka:
         condition: service_healthy
       timescaledb:
         condition: service_healthy
+    volumes:
+      - ../schemas:/schemas:ro
     networks: [vlc_internal]
     restart: unless-stopped
     profiles: ["alt-sink"]
@@ -298,11 +301,14 @@ services:
       SINK_TYPE: weather
       GROUP_ID: vlc-sink-weather
       BATCH_SIZE: "100"
+      SCHEMAS_DIR: /schemas
     depends_on:
       kafka:
         condition: service_healthy
       timescaledb:
         condition: service_healthy
+    volumes:
+      - ../schemas:/schemas:ro
     networks: [vlc_internal]
     restart: unless-stopped
     profiles: ["alt-sink"]
