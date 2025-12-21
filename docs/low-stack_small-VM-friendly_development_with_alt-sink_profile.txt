@@ -24,11 +24,14 @@ but the alt-sink consumers still need to deserialize Avro messages. The fix:
 This allows the alt-sink profile to work without Schema Registry being up.
 
 # Lean-stack deployment (VM-friendly):
+# Set USE_SCHEMA_REGISTRY=false so producers use local Avro serialization
+export USE_SCHEMA_REGISTRY=false
 docker compose -f compose/docker-compose.yml --profile infra up -d
 ./scripts/bootstrap_kafka.sh --skip-connect
 docker compose -f compose/docker-compose.yml --profile producer --profile alt-sink up -d
 
 # Full-stack deployment (dev workstation):
+# USE_SCHEMA_REGISTRY defaults to true, so no need to set it
 docker compose -f compose/docker-compose.yml --profile infra --profile schema up -d
 ./scripts/bootstrap_kafka.sh
 docker compose -f compose/docker-compose.yml --profile producer up -d

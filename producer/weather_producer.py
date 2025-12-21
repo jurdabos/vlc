@@ -1,18 +1,18 @@
 import hashlib
+import io
 import json
 import os
 import re
 import signal
+import struct
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
+import fastavro
 import requests
 from confluent_kafka import Producer
-from confluent_kafka.schema_registry import SchemaRegistryClient
-from confluent_kafka.schema_registry.avro import AvroSerializer
-from confluent_kafka.serialization import MessageField, SerializationContext
 from resilience import (
     InflightLimiter,
     ResilientProducer,
@@ -32,12 +32,17 @@ SCHEMA_REGISTRY_URL = os.getenv("SCHEMA_REGISTRY_URL", "http://schema-registry:8
 POLL_SECS = int(os.getenv("POLL_EVERY_SECONDS", "300"))
 LIMIT = int(os.getenv("PAGE_LIMIT", "100"))
 
-# Loading Avro schema for Schema Registry
+# Lean-stack mode: skip Schema Registry, use local Avro serialization
+# Set USE_SCHEMA_REGISTRY=false for lean-stack deployment
+USE_SCHEMA_REGISTRY = os.getenv("USE_SCHEMA_REGISTRY", "true").lower() == "true"
+
+# Loading Avro schema (used by both modes)
 SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "weather.avsc"
 with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
     WEATHER_SCHEMA_STR = f.read()
+WEATHER_SCHEMA = fastavro.schema.parse_schema(json.loads(WEATHER_SCHEMA_STR))
 
-STATE_DIR = os.getenv("STATE_DIR", "/state")
+STATE_DIR
 OFFSET_FILE = os.path.join(STATE_DIR, "offset.txt")
 START_OFFSET = os.getenv("START_OFFSET", "1970-01-01T00:00:00Z")  # or 'latest_db'
 
@@ -244,16 +249,32 @@ def map_record(r: Dict[str, Any], ts_field: str) -> Dict[str, Any]:
     return out
 
 
-def produce_all(p: ResilientProducer, events: Iterable[Dict[str, Any]], serializer: AvroSerializer) -> None:
-    """Produces events to Kafka with resilience (DLQ on failure)."""
-    ctx = SerializationContext(TOPIC, MessageField.VALUE)
+def local_avro_serializer(record: Dict[str, Any], schema: dict) -> bytes:
+    """
+    Serializes a record to Avro binary with Confluent wire format header.
+
+    The wire format is: magic byte (0x00) + 4-byte schema ID (0 for local) + Avro binary.
+    Using schema ID 0 indicates local serialization without Schema Registry.
+    """
+    buf = io.BytesIO()
+    buf.write(struct.pack(">bI", 0, 0))
+    fastavro.schemaless_writer(buf, schema, record)
+    return buf.getvalue()
+
+
+def produce_all(p: ResilientProducer, events: Iterable[Dict[str, Any]], serializer: Callable) -> None:
+    """
+    Produces events to Kafka with resilience (DLQ on failure).
+
+    The serializer can be either a Schema Registry AvroSerializer or local_avro_serializer.
+    """
     for ev in events:
         if not ev.get("ts"):  # skip malformed rows without timestamp
             continue
         # Removing internal fields before sending to Kafka
         kafka_ev = {k: v for k, v in ev.items() if k not in ("_fp", "_ts_iso")}
         key = f"{ev['fiwareid']}|{ev['_ts_iso']}"
-        value_bytes = serializer(kafka_ev, ctx)
+        value_bytes = serializer(kafka_ev)
         p.produce(key=key.encode("utf-8"), value=value_bytes)
     p.flush()
 
@@ -450,10 +471,21 @@ def main():
         f"backoff_base={RETRY_CONFIG.base_delay_ms}ms, "
         f"max_retries={RETRY_CONFIG.max_retries}"
     )
-    # Setting up Schema Registry client and Avro serializer
-    schema_registry_client = SchemaRegistryClient({"url": SCHEMA_REGISTRY_URL})
-    avro_serializer = AvroSerializer(schema_registry_client, WEATHER_SCHEMA_STR)
-    print(f"[weather] using Schema Registry at {SCHEMA_REGISTRY_URL} (Avro)")
+    # Setting up serializer based on mode
+    if USE_SCHEMA_REGISTRY:
+        # Full-stack mode: use Schema Registry for Avro serialization
+        from confluent_kafka.schema_registry import SchemaRegistryClient
+        from confluent_kafka.schema_registry.avro import AvroSerializer
+        from confluent_kafka.serialization import MessageField, SerializationContext
+        schema_registry_client = SchemaRegistryClient({"url": SCHEMA_REGISTRY_URL})
+        sr_serializer = AvroSerializer(schema_registry_client, WEATHER_SCHEMA_STR)
+        ctx = SerializationContext(TOPIC, MessageField.VALUE)
+        avro_serializer = lambda rec: sr_serializer(rec, ctx)
+        print(f"[weather] using Schema Registry at {SCHEMA_REGISTRY_URL} (Avro)")
+    else:
+        # Lean-stack mode: local Avro serialization without Schema Registry
+        avro_serializer = lambda rec: local_avro_serializer(rec, WEATHER_SCHEMA)
+        print("[weather] using local Avro serialization (no Schema Registry)")
     producer_config = {
         "bootstrap.servers": BOOTSTRAP,
         "linger.ms": 50,

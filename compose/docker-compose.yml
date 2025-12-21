@@ -191,6 +191,7 @@ services:
       VLC_DATASET_ID: estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas
       KAFKA_TOPIC: vlc.air
       STATE_DIR: /state
+      USE_SCHEMA_REGISTRY: ${USE_SCHEMA_REGISTRY:-true}
     depends_on:
       kafka:
         condition: service_healthy
@@ -217,6 +218,7 @@ services:
       VLC_DATASET_ID: estacions-atmosferiques-estaciones-atmosfericas
       KAFKA_TOPIC: vlc.weather
       STATE_DIR: /state
+      USE_SCHEMA_REGISTRY: ${USE_SCHEMA_REGISTRY:-true}
     depends_on:
       kafka:
         condition: service_healthy
