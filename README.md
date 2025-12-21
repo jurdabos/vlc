@@ -6,9 +6,9 @@ VLC air quality and weather data pipeline — a data engineering study project f
 Valencia ODS API (v2.1)
          ↓ poll every 5 min
 Producers (air_producer + weather_producer)
-         ↓ fingerprint dedup, JSON Schema
+         ↓ fingerprint dedup, Avro serialization
 Kafka (vlc.air/vlc.weather topics)
-         ↓ JDBC Sink Connector (upsert on fiwareid+ts)
+         ↓ JDBC Sink Connector (Avro, upsert on fiwareid+ts)
 TimescaleDB (air.hyper/weather.hyper hypertables)
          ↓ SQL queries
 Grafana Dashboards
@@ -163,8 +163,7 @@ vlc/
 ├── jmx-exporter/
 ├── monitoring/
 ├── producer/				# air + weather Python producers
-│   └── schemas/			# JSON schemas for validation
-├── schemas/				# (placeholder for future Avro schemas)
+├── schemas/				# Avro schemas (.avsc) for air + weather
 ├── scripts/				# bootstrap, secrets, analysis utilities
 └── tests/				# pytest test suite
 ```
@@ -179,9 +178,9 @@ vlc/
 - Alertmanager handles routing for critical alerts (offline partitions, failed tasks)
 - Grafana dashboards in `grafana/provisioning/dashboards/`
 
-## Schema Validation
-Validate JSON data against air/weather schemas:
-```bash
-uv run python scripts/validate_schema.py -t air data.json
-echo '{"fiwareid": "test", "ts": "2024-01-01T00:00:00Z"}' | uv run python scripts/validate_schema.py -t air
-```
+## Schema Serialization
+Producers use **Avro** serialization with Schema Registry. Schemas are defined in `schemas/*.avsc`:
+- `schemas/air.avsc` — Air quality measurements
+- `schemas/weather.avsc` — Weather station readings
+
+Timestamps use Avro `timestamp-millis` logical type (epoch milliseconds).

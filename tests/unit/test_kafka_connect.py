@@ -239,33 +239,23 @@ class TestJdbcSinkConnectorConfiguration:
 
         assert config["config"]["table.name.format"] == "weather.hyper"
 
-    def test_connectors_use_json_converter(self, air_connector_config_path: Path, weather_connector_config_path: Path):
-        """Verifies that both connectors use a JSON-compatible converter."""
-        valid_converters = [
-            "org.apache.kafka.connect.json.JsonConverter",
-            "io.confluent.connect.json.JsonSchemaConverter",
-        ]
+    def test_connectors_use_avro_converter(self, air_connector_config_path: Path, weather_connector_config_path: Path):
+        """Verifies that both connectors use Avro converter."""
         for config_path in [air_connector_config_path, weather_connector_config_path]:
             with open(config_path) as f:
                 config = json.load(f)
+            assert config["config"]["value.converter"] == "io.confluent.connect.avro.AvroConverter"
+            assert config["config"]["value.converter.schema.registry.url"] == "http://schema-registry:8081"
 
-            assert config["config"]["value.converter"] in valid_converters
-
-    def test_connectors_have_timestamp_transformation(
+    def test_connectors_do_not_have_timestamp_transformation(
         self, air_connector_config_path: Path, weather_connector_config_path: Path
     ):
-        """Verifies that both connectors have timestamp transformation configured."""
+        """Verifies that connectors do not have timestamp transformation (Avro uses epoch ms natively)."""
         for config_path in [air_connector_config_path, weather_connector_config_path]:
             with open(config_path) as f:
                 config = json.load(f)
-
-            assert "transforms" in config["config"]
-            assert config["config"]["transforms"] == "tsToTimestamp"
-            assert config["config"]["transforms.tsToTimestamp.type"] == (
-                "org.apache.kafka.connect.transforms.TimestampConverter$Value"
-            )
-            assert config["config"]["transforms.tsToTimestamp.field"] == "ts"
-            assert config["config"]["transforms.tsToTimestamp.target.type"] == "Timestamp"
+            # Avro timestamp-millis is handled natively by AvroConverter, no transform needed
+            assert "transforms" not in config["config"]
 
     def test_bootstrap_script_registers_air_connector(self, bootstrap_script_path: Path):
         """Verifies that the bootstrap script registers the air connector."""

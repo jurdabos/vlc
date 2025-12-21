@@ -40,14 +40,15 @@ Two independent producer services that poll Valencia OpenDataSoft API and produc
 ### Features
 - **Polling**: Every 5 minutes (configurable via `POLL_EVERY_SECONDS`)
 - **Pagination**: Using ODS v2.1 `limit`/`offset` parameters
-- **Incremental ingestion**: Using `where=fecha_carg>date'{offset}'`
-- **Offset persistence**: State stored in `/state/state.json` with station fingerprints
+- **Incremental ingestion**: Per-station offset tracking with fingerprint-based deduplication
+- **Offset persistence**: State stored in `/state/state.json` with per-station offsets and fingerprints
 - **Deduplication**: SHA1 fingerprint of measurement values to detect changes at same timestamp
+- **Avro serialization**: Uses Schema Registry with `AvroSerializer` for compact binary format
+- **Timestamp handling**: Converts ISO strings to epoch milliseconds for Avro `timestamp-millis`
 - **Optional DB bootstrap**: Can read initial offset from TimescaleDB `max(ts)`
 - **Dual API fallback**: Tries v2.1 first, falls back to v2
 - **Graceful shutdown**: SIGINT/SIGTERM handling
 - **Field flattening**: `geo_point_2d` → `lat`/`lon`
-- **Timestamp normalization**: All timestamps to `YYYY-MM-DDTHH:MM:SSZ` format
 
 ## Environment Variables
 
@@ -91,19 +92,26 @@ docker compose -f compose/docker-compose.yml --profile producer down
 Valencia ODS API (v2.1)
     ↓ (poll every 5min)
 Producer (air/weather)
-    ↓ (fingerprint dedup)
+    ↓ (fingerprint dedup, Avro serialization)
 Kafka (vlc.air / vlc.weather)
-    ↓ (JDBC Sink Connector)
+    ↓ (JDBC Sink Connector + AvroConverter)
 TimescaleDB (air/weather schemas)
     ↓ (queries)
 Grafana Dashboards
 ```
 
+## Schema Serialization
+
+Producers use **Avro** serialization with Schema Registry:
+- Schemas: `schemas/air.avsc`, `schemas/weather.avsc`
+- Timestamps: Epoch milliseconds (`timestamp-millis` logical type)
+- Converter: `AvroSerializer` from `confluent_kafka.schema_registry.avro`
+
 ## Quality Checks Passed
 ✅ Field renaming as specified
-✅ Proper Kafka key format: `{fiwareid}|{ts}`
-✅ Offset persistence with fingerprint-based deduplication
+✅ Proper Kafka key format: `{fiwareid}|{ts_iso}` (ISO string for human readability)
+✅ Per-station offset persistence with fingerprint-based deduplication
+✅ Avro serialization with Schema Registry
 ✅ Graceful shutdown handling
 ✅ Non-root Docker user for security
-✅ Requirements.txt matches pyproject.toml
 ✅ Separate state volumes prevent cross-contamination

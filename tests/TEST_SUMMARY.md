@@ -60,8 +60,8 @@ tests/
 - Air connector: jdbc-sink-timescale-air → air.hyper
 - Weather connector: jdbc-sink-timescale-weather → weather.hyper
 - Upsert mode with PK (fiwareid, ts)
-- JSON Schema converter configuration
-- Timestamp transformation
+- Avro converter configuration with Schema Registry
+- No timestamp transforms (Avro `timestamp-millis` handled natively)
 - File-based secrets (${file:secrets.properties:TS_*})
 
 ### ✅ Docker Image Build (15 tests)
@@ -77,11 +77,11 @@ tests/
 **File**: `test_producer_air.py`
 
 - Record mapping and field extraction
-- Timestamp normalization (ISO 8601)
+- Timestamp handling (ISO to epoch milliseconds for Avro)
 - Geo-point parsing (lat/lon from various formats)
 - Fingerprint-based deduplication
-- State persistence (offset tracking)
-- Schema Registry integration
+- Per-station offset persistence
+- Avro serialization with Schema Registry
 - Error handling
 
 ### ✅ Weather Producer (54 tests)
@@ -89,10 +89,10 @@ tests/
 
 - Record mapping for weather measurements
 - Wind direction/speed, temperature, humidity, pressure, precipitation
-- Timestamp and geo-point handling
+- Timestamp handling (epoch milliseconds for Avro)
 - Deduplication logic
-- State management
-- Schema validation
+- Per-station state management
+- Avro serialization with Schema Registry
 
 ### ✅ Common Producer Utilities (23 tests)
 **File**: `test_producer_common.py`

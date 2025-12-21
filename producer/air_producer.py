@@ -11,7 +11,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import requests
 from confluent_kafka import Producer
 from confluent_kafka.schema_registry import SchemaRegistryClient
-from confluent_kafka.schema_registry.json_schema import JSONSerializer
+from confluent_kafka.schema_registry.avro import AvroSerializer
 from confluent_kafka.serialization import MessageField, SerializationContext
 from resilience import (
     InflightLimiter,
@@ -32,8 +32,8 @@ SCHEMA_REGISTRY_URL = os.getenv("SCHEMA_REGISTRY_URL", "http://schema-registry:8
 POLL_SECS = int(os.getenv("POLL_EVERY_SECONDS", "300"))
 LIMIT = int(os.getenv("PAGE_LIMIT", "100"))
 
-# Loading JSON schema for Schema Registry
-SCHEMA_PATH = Path(__file__).parent / "schemas" / "air.json"
+# Loading Avro schema for Schema Registry
+SCHEMA_PATH = Path(__file__).parent.parent / "schemas" / "air.avsc"
 with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
     AIR_SCHEMA_STR = f.read()
 
@@ -206,12 +206,20 @@ def value_fingerprint(rec: dict) -> str:
     return hashlib.sha1(s.encode("utf-8")).hexdigest()
 
 
+def iso_to_epoch_ms(iso_str: str) -> int:
+    """Converts ISO timestamp string to epoch milliseconds for Avro timestamp-millis."""
+    dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+    return int(dt.timestamp() * 1000)
+
+
 def map_record(r: Dict[str, Any], ts_field: str) -> Dict[str, Any]:
     lat, lon = extract_lat_lon(r.get("geo_point_2d"))
     ts_raw = r.get(ts_field)
+    ts_iso = normalize_ts(ts_raw) if ts_raw else None
     out = {
         "fiwareid": r.get("fiwareid") or f"obj{r.get('objectid') or 'na'}",
-        "ts": normalize_ts(ts_raw) if ts_raw else None,
+        "ts": iso_to_epoch_ms(ts_iso) if ts_iso else None,
+        "_ts_iso": ts_iso,  # keeping ISO string for offset tracking
         "so2": r.get("so2"),
         "no2": r.get("no2"),
         "o3": r.get("o3"),
@@ -237,15 +245,15 @@ def map_record(r: Dict[str, Any], ts_field: str) -> Dict[str, Any]:
     return out
 
 
-def produce_all(p: ResilientProducer, events: Iterable[Dict[str, Any]], serializer: JSONSerializer) -> None:
+def produce_all(p: ResilientProducer, events: Iterable[Dict[str, Any]], serializer: AvroSerializer) -> None:
     """Produces events to Kafka with resilience (DLQ on failure)."""
     ctx = SerializationContext(TOPIC, MessageField.VALUE)
     for ev in events:
         if not ev.get("ts"):  # skip malformed rows without timestamp
             continue
-        # Removing internal fingerprint field before sending to Kafka
-        kafka_ev = {k: v for k, v in ev.items() if k != "_fp"}
-        key = f"{ev['fiwareid']}|{ev['ts']}"
+        # Removing internal fields before sending to Kafka
+        kafka_ev = {k: v for k, v in ev.items() if k not in ("_fp", "_ts_iso")}
+        key = f"{ev['fiwareid']}|{ev['_ts_iso']}"
         value_bytes = serializer(kafka_ev, ctx)
         p.produce(key=key.encode("utf-8"), value=value_bytes)
     p.flush()
@@ -375,25 +383,25 @@ def fetch_since(
                 break
             for r in rows:
                 ev = map_record(r, ts_field)
-                ts = ev.get("ts")
+                ts_iso = ev.get("_ts_iso")  # using ISO string for offset comparison
                 sid = ev.get("fiwareid")
                 fp = ev.get("_fp")
-                if not (ts and sid and fp):
+                if not (ts_iso and sid and fp):
                     continue
                 # Per-station logic: compare against this station's offset
                 station_offset = station_offsets.get(sid, START_OFFSET)
                 station_fp = station_fingerprints.get(sid)
                 should_emit = False
-                if ts > station_offset:
+                if ts_iso > station_offset:
                     # Strictly newer than this station's last seen ts
                     should_emit = True
-                elif ts == station_offset and fp != station_fp:
+                elif ts_iso == station_offset and fp != station_fp:
                     # Same timestamp but fingerprint changed (data correction)
                     should_emit = True
                 if should_emit:
                     out.append(ev)
                     # Updating this station's offset and fingerprint
-                    new_offsets[sid] = ts
+                    new_offsets[sid] = ts_iso
                     new_fingerprints[sid] = fp
             if len(rows) < LIMIT:
                 break
@@ -443,10 +451,10 @@ def main():
         f"backoff_base={RETRY_CONFIG.base_delay_ms}ms, "
         f"max_retries={RETRY_CONFIG.max_retries}"
     )
-    # Setting up Schema Registry client and serializer
+    # Setting up Schema Registry client and Avro serializer
     schema_registry_client = SchemaRegistryClient({"url": SCHEMA_REGISTRY_URL})
-    json_serializer = JSONSerializer(AIR_SCHEMA_STR, schema_registry_client)
-    print(f"[air] using Schema Registry at {SCHEMA_REGISTRY_URL}")
+    avro_serializer = AvroSerializer(schema_registry_client, AIR_SCHEMA_STR)
+    print(f"[air] using Schema Registry at {SCHEMA_REGISTRY_URL} (Avro)")
     producer_config = {
         "bootstrap.servers": BOOTSTRAP,
         "linger.ms": 50,
@@ -468,7 +476,7 @@ def main():
                     station_offsets, station_fingerprints, BASES, select, ts_field
                 )
             if items:
-                produce_all(producer, items, json_serializer)
+                produce_all(producer, items, avro_serializer)
                 save_state(new_offsets, new_fps)
                 station_offsets, station_fingerprints = new_offsets, new_fps
                 stats = producer.stats

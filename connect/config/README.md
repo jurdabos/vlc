@@ -82,9 +82,11 @@ The secrets file is mounted read-only at `/opt/kafka/connect/secrets/` in the co
 
 Both connectors use:
 - **Upsert mode** with composite PK `(fiwareid, ts)` for idempotent writes
-- **TimestampConverter** transform to parse ISO 8601 timestamps (`yyyy-MM-dd'T'HH:mm:ssX`)
-- **JsonConverter** without schemas (producer emits schema-less JSON)
+- **AvroConverter** with Schema Registry for efficient binary serialization
+- **Avro `timestamp-millis`** logical type for timestamps (epoch milliseconds)
 - **Batch size** of 3000 records for efficient bulk inserts
+
+No timestamp transformation is needed — Avro handles timestamps natively via Schema Registry.
 
 ## Validation
 

@@ -77,7 +77,9 @@ def test_map_record_includes_expected_fields():
     }
     out = ap.map_record(row, ts_field="fecha_carg")
     assert out["fiwareid"] == "A10_OLIVERETA_60m"
-    assert out["ts"] == "2025-10-18T17:00:00Z"
+    # ts is now epoch milliseconds for Avro timestamp-millis
+    assert out["ts"] == 1760806800000  # 2025-10-18T17:00:00Z in epoch ms
+    assert out["_ts_iso"] == "2025-10-18T17:00:00Z"  # ISO string kept for offset tracking
     assert out["air_quality_summary"] == "Buena"
     assert "_fp" in out and isinstance(out["_fp"], str) and len(out["_fp"]) == 40
 
@@ -103,7 +105,8 @@ def test_compute_select_includes_ts_when_missing():
 
 def test_produce_all_uses_topic_and_key(monkeypatch):
     dummy = DummyResilientProducer()
-    events = [{"fiwareid": "A01", "ts": "2025-10-18T18:00:00Z", "pm10": 10, "_fp": "abc"}]
+    # ts is now epoch ms, _ts_iso is ISO string for key construction
+    events = [{"fiwareid": "A01", "ts": 1760810400000, "_ts_iso": "2025-10-18T18:00:00Z", "pm10": 10, "_fp": "abc"}]
     ap.produce_all(dummy, events, mock_serializer)
     assert len(dummy.calls) == 1
     call = dummy.calls[0]
@@ -133,7 +136,9 @@ def test_fetch_since_emits_new_and_advances_offset(monkeypatch, tmp_path):
     monkeypatch.setattr(ap, "STATE_JSON", str(tmp_path / "state.json"), raising=False)
     monkeypatch.setattr(ap, "LIMIT", 2, raising=False)
 
-    offset = "2025-10-18T17:00:00Z"
+    # Per-station offsets dict
+    station_offsets = {"A01": "2025-10-18T17:00:00Z", "A02": "2025-10-18T17:00:00Z"}
+    station_fingerprints = {}
 
     page0 = {
         "total_count": 2,
@@ -170,12 +175,15 @@ def test_fetch_since_emits_new_and_advances_offset(monkeypatch, tmp_path):
     monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
     select = "fiwareid,geo_point_2d,fecha_carg,no2,pm10,pm25"
-    out, new_offset, seen_map = ap.fetch_since(offset, {}, ap.BASES, select, ts_field="fecha_carg")
+    out, new_offsets, new_fps = ap.fetch_since(station_offsets, station_fingerprints, ap.BASES, select, ts_field="fecha_carg")
 
     assert len(out) == 2
-    assert new_offset == "2025-10-18T18:00:00Z"
-    # Seen map should track fingerprints for the max timestamp
-    assert set(seen_map.keys()) == {"A01", "A02"}
+    # Per-station offsets should be updated
+    assert new_offsets["A01"] == "2025-10-18T18:00:00Z"
+    assert new_offsets["A02"] == "2025-10-18T18:00:00Z"
+    # Fingerprints should be tracked
+    assert "A01" in new_fps
+    assert "A02" in new_fps
 
     # And produce_all should emit two messages
     dummy = DummyResilientProducer()
@@ -187,8 +195,8 @@ def test_produce_all_skips_events_without_ts():
     """Verifies that produce_all skips records without timestamp."""
     dummy = DummyResilientProducer()
     events = [
-        {"fiwareid": "A01", "ts": None, "pm10": 10, "_fp": "abc"},  # No ts - should skip
-        {"fiwareid": "A02", "ts": "2025-10-18T18:00:00Z", "pm10": 20, "_fp": "def"},  # Valid
+        {"fiwareid": "A01", "ts": None, "_ts_iso": None, "pm10": 10, "_fp": "abc"},  # No ts - should skip
+        {"fiwareid": "A02", "ts": 1760810400000, "_ts_iso": "2025-10-18T18:00:00Z", "pm10": 20, "_fp": "def"},  # Valid
     ]
     ap.produce_all(dummy, events, mock_serializer)
     assert len(dummy.calls) == 1
@@ -381,12 +389,13 @@ def test_fetch_since_handles_api_exception(monkeypatch, tmp_path):
 
     monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
-    out, new_offset, seen_map = ap.fetch_since(
-        "2025-10-18T17:00:00Z", {}, ap.BASES, "fiwareid,fecha_carg", "fecha_carg"
+    station_offsets = {"A01": "2025-10-18T17:00:00Z"}
+    out, new_offsets, new_fps = ap.fetch_since(
+        station_offsets, {}, ap.BASES, "fiwareid,fecha_carg", "fecha_carg"
     )
     # Should return empty on exception
     assert out == []
-    assert new_offset == "2025-10-18T17:00:00Z"
+    assert new_offsets == station_offsets  # offsets unchanged
 
 
 def test_fetch_since_skips_records_without_ts(monkeypatch, tmp_path):
@@ -410,8 +419,9 @@ def test_fetch_since_skips_records_without_ts(monkeypatch, tmp_path):
 
     monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
-    out, new_offset, seen_map = ap.fetch_since(
-        "2025-10-18T17:00:00Z", {}, ap.BASES, "fiwareid,fecha_carg,so2,no2,o3,co,pm10,pm25,geo_point_2d", "fecha_carg"
+    station_offsets = {"A01": "2025-10-18T17:00:00Z"}
+    out, new_offsets, new_fps = ap.fetch_since(
+        station_offsets, {}, ap.BASES, "fiwareid,fecha_carg,so2,no2,o3,co,pm10,pm25,geo_point_2d", "fecha_carg"
     )
     # Should skip records without timestamp
     assert len(out) == 0
@@ -565,10 +575,10 @@ class TestLoadStateExceptionHandling:
         monkeypatch.setattr(ap, "OFFSET_FILE", str(tmp_path / "offset.txt"))
         monkeypatch.setattr(ap, "START_OFFSET", "1970-01-01T00:00:00Z")
 
-        offset, seen = ap.load_state()
-        # Should fall back to load_offset()
-        assert offset == "1970-01-01T00:00:00Z"
-        assert seen == {}
+        station_offsets, station_fps = ap.load_state()
+        # Should fall back to empty dicts
+        assert station_offsets == {}
+        assert station_fps == {}
 
 
 class TestNormalizeTsFallbackPaths:
@@ -640,8 +650,9 @@ class TestFetchSinceEarlyReturn:
 
         monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
-        out, new_offset, seen_map = ap.fetch_since(
-            "2025-10-18T17:00:00Z",
+        station_offsets = {"A01": "2025-10-18T17:00:00Z"}
+        out, new_offsets, new_fps = ap.fetch_since(
+            station_offsets,
             {},
             ap.BASES,
             "fiwareid,fecha_carg,no2,pm10,pm25,geo_point_2d",
@@ -649,7 +660,7 @@ class TestFetchSinceEarlyReturn:
         )
         # Should return the data collected before exception
         assert len(out) == 1
-        assert new_offset == "2025-10-18T18:00:00Z"
+        assert new_offsets["A01"] == "2025-10-18T18:00:00Z"
 
 
 class TestFetchSinceMaxTsEmission:
@@ -688,8 +699,9 @@ class TestFetchSinceMaxTsEmission:
 
         monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
-        out, new_offset, seen_map = ap.fetch_since(
-            "2025-10-18T17:00:00Z",  # Older offset
+        station_offsets = {"A01": "2025-10-18T17:00:00Z", "A02": "2025-10-18T17:00:00Z"}
+        out, new_offsets, new_fps = ap.fetch_since(
+            station_offsets,
             {},
             ap.BASES,
             "fiwareid,fecha_carg,no2,geo_point_2d",
@@ -697,10 +709,11 @@ class TestFetchSinceMaxTsEmission:
         )
         # Both records should be emitted
         assert len(out) == 2
-        assert new_offset == "2025-10-18T18:00:00Z"
-        # Both stations should be tracked in seen_map
-        assert "A01" in seen_map
-        assert "A02" in seen_map
+        assert new_offsets["A01"] == "2025-10-18T18:00:00Z"
+        assert new_offsets["A02"] == "2025-10-18T18:00:00Z"
+        # Both stations should be tracked in fingerprints
+        assert "A01" in new_fps
+        assert "A02" in new_fps
 
 
 class TestBootstrapSchemaFallback:

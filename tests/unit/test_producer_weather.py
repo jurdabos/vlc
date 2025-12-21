@@ -51,7 +51,9 @@ def test_weather_map_record_field_renames():
         "geo_point_2d": {"lat": 39.47, "lon": -0.38},
     }
     out = wp.map_record(row, ts_field="fecha_carg")
-    assert out["ts"] == "2025-10-18T17:00:00Z"
+    # ts is now epoch milliseconds for Avro timestamp-millis
+    assert out["ts"] == 1760806800000  # 2025-10-18T17:00:00Z in epoch ms
+    assert out["_ts_iso"] == "2025-10-18T17:00:00Z"  # ISO string kept for offset tracking
     assert out["wind_dir_deg"] == 180
     assert out["wind_speed_ms"] == 3.2
     assert out["temperature_c"] == 22.5
@@ -63,7 +65,8 @@ def test_weather_map_record_field_renames():
 
 def test_weather_produce_all(monkeypatch):
     dummy = DummyResilientProducer()
-    ev = {"fiwareid": "W01", "ts": "2025-10-18T17:00:00Z", "temperature_c": 22.5, "_fp": "f"}
+    # ts is now epoch ms, _ts_iso is ISO string for key construction
+    ev = {"fiwareid": "W01", "ts": 1760806800000, "_ts_iso": "2025-10-18T17:00:00Z", "temperature_c": 22.5, "_fp": "f"}
     wp.produce_all(dummy, [ev], mock_serializer)
     assert len(dummy.calls) == 1
     call = dummy.calls[0]
@@ -135,12 +138,13 @@ def test_weather_save_and_load_state(tmp_path, monkeypatch):
     monkeypatch.setattr(wp, "STATE_JSON", str(state_json))
     monkeypatch.setattr(wp, "OFFSET_FILE", str(tmp_path / "offset.txt"))
 
-    wp.save_state("2025-10-18T18:00:00Z", {"W01": "fp123"})
+    # save_state now takes per-station offsets and fingerprints dicts
+    wp.save_state({"W01": "2025-10-18T18:00:00Z"}, {"W01": "fp123"})
     assert state_json.exists()
 
-    offset, seen = wp.load_state()
-    assert offset == "2025-10-18T18:00:00Z"
-    assert seen == {"W01": "fp123"}
+    station_offsets, station_fps = wp.load_state()
+    assert station_offsets == {"W01": "2025-10-18T18:00:00Z"}
+    assert station_fps == {"W01": "fp123"}
 
 
 def test_weather_load_state_default(tmp_path, monkeypatch):
@@ -150,9 +154,10 @@ def test_weather_load_state_default(tmp_path, monkeypatch):
     monkeypatch.setattr(wp, "OFFSET_FILE", str(tmp_path / "offset.txt"))
     monkeypatch.setattr(wp, "START_OFFSET", "1970-01-01T00:00:00Z")
 
-    offset, seen = wp.load_state()
-    assert offset == "1970-01-01T00:00:00Z"
-    assert seen == {}
+    station_offsets, station_fps = wp.load_state()
+    # Returns empty dicts when no state file exists
+    assert station_offsets == {}
+    assert station_fps == {}
 
 
 def test_weather_save_offset(tmp_path, monkeypatch):
@@ -309,12 +314,13 @@ def test_weather_fetch_since(monkeypatch, tmp_path):
 
     monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
-    out, new_offset, seen_map = wp.fetch_since(
-        "2025-10-18T17:00:00Z", {}, wp.BASES, "fiwareid,fecha_carg,temperatur,humedad_re,geo_point_2d", "fecha_carg"
+    station_offsets = {"W01": "2025-10-18T17:00:00Z"}
+    out, new_offsets, new_fps = wp.fetch_since(
+        station_offsets, {}, wp.BASES, "fiwareid,fecha_carg,temperatur,humedad_re,geo_point_2d", "fecha_carg"
     )
     assert len(out) == 1
-    assert new_offset == "2025-10-18T18:00:00Z"
-    assert "W01" in seen_map
+    assert new_offsets["W01"] == "2025-10-18T18:00:00Z"
+    assert "W01" in new_fps
 
 
 def test_weather_fetch_since_exception(monkeypatch, tmp_path):
@@ -327,11 +333,12 @@ def test_weather_fetch_since_exception(monkeypatch, tmp_path):
 
     monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
-    out, new_offset, seen_map = wp.fetch_since(
-        "2025-10-18T17:00:00Z", {}, wp.BASES, "fiwareid,fecha_carg", "fecha_carg"
+    station_offsets = {"W01": "2025-10-18T17:00:00Z"}
+    out, new_offsets, new_fps = wp.fetch_since(
+        station_offsets, {}, wp.BASES, "fiwareid,fecha_carg", "fecha_carg"
     )
     assert out == []
-    assert new_offset == "2025-10-18T17:00:00Z"
+    assert new_offsets == station_offsets  # offsets unchanged
 
 
 def test_weather_bootstrap_schema(monkeypatch):
@@ -386,8 +393,8 @@ def test_weather_produce_all_skips_no_ts():
     """Verifies produce_all skips records without ts."""
     dummy = DummyResilientProducer()
     events = [
-        {"fiwareid": "W01", "ts": None, "temperature_c": 22.5, "_fp": "a"},
-        {"fiwareid": "W02", "ts": "2025-10-18T18:00:00Z", "temperature_c": 23.0, "_fp": "b"},
+        {"fiwareid": "W01", "ts": None, "_ts_iso": None, "temperature_c": 22.5, "_fp": "a"},
+        {"fiwareid": "W02", "ts": 1760810400000, "_ts_iso": "2025-10-18T18:00:00Z", "temperature_c": 23.0, "_fp": "b"},
     ]
     wp.produce_all(dummy, events, mock_serializer)
     assert len(dummy.calls) == 1
@@ -436,9 +443,10 @@ def test_weather_load_state_exception(tmp_path, monkeypatch):
     monkeypatch.setattr(wp, "OFFSET_FILE", str(tmp_path / "offset.txt"))
     monkeypatch.setattr(wp, "START_OFFSET", "1970-01-01T00:00:00Z")
 
-    offset, seen = wp.load_state()
-    assert offset == "1970-01-01T00:00:00Z"
-    assert seen == {}
+    station_offsets, station_fps = wp.load_state()
+    # Should fall back to empty dicts
+    assert station_offsets == {}
+    assert station_fps == {}
 
 
 def test_weather_normalize_ts_fallback():
@@ -506,12 +514,13 @@ def test_weather_fetch_since_deduplication(monkeypatch, tmp_path):
 
     monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
-    # Already seen this station with same fingerprint
-    seen_for_offset = {"W01": expected_fp}
+    # Per-station offsets and fingerprints
+    station_offsets = {"W01": "2025-10-18T17:00:00Z"}
+    station_fingerprints = {"W01": expected_fp}  # Already seen with same fingerprint
 
-    out, new_offset, seen_map = wp.fetch_since(
-        "2025-10-18T17:00:00Z",
-        seen_for_offset,
+    out, new_offsets, new_fps = wp.fetch_since(
+        station_offsets,
+        station_fingerprints,
         wp.BASES,
         "fiwareid,fecha_carg,viento_dir,viento_vel,temperatur,humedad_re,presion_ba,precipitac,geo_point_2d",
         "fecha_carg",
@@ -551,12 +560,13 @@ def test_weather_fetch_since_emits_changed_value(monkeypatch, tmp_path):
 
     monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
-    # Old fingerprint doesn't match
-    seen_for_offset = {"W01": "old_fingerprint_123"}
+    # Per-station offsets and old fingerprint that doesn't match
+    station_offsets = {"W01": "2025-10-18T17:00:00Z"}
+    station_fingerprints = {"W01": "old_fingerprint_123"}
 
-    out, new_offset, seen_map = wp.fetch_since(
-        "2025-10-18T17:00:00Z",
-        seen_for_offset,
+    out, new_offsets, new_fps = wp.fetch_since(
+        station_offsets,
+        station_fingerprints,
         wp.BASES,
         "fiwareid,fecha_carg,viento_dir,viento_vel,temperatur,humedad_re,presion_ba,precipitac,geo_point_2d",
         "fecha_carg",
@@ -622,8 +632,9 @@ def test_weather_fetch_since_skips_records_without_ts(monkeypatch, tmp_path):
 
     monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
-    out, new_offset, seen_map = wp.fetch_since(
-        "2025-10-18T17:00:00Z", {}, wp.BASES, "fiwareid,fecha_carg", "fecha_carg"
+    station_offsets = {"W01": "2025-10-18T17:00:00Z"}
+    out, new_offsets, new_fps = wp.fetch_since(
+        station_offsets, {}, wp.BASES, "fiwareid,fecha_carg", "fecha_carg"
     )
     assert len(out) == 0
 
@@ -817,15 +828,16 @@ class TestWeatherFetchSinceEarlyReturn:
 
         monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
-        out, new_offset, seen_map = wp.fetch_since(
-            "2025-10-18T17:00:00Z",
+        station_offsets = {"W01": "2025-10-18T17:00:00Z"}
+        out, new_offsets, new_fps = wp.fetch_since(
+            station_offsets,
             {},
             wp.BASES,
             "fiwareid,fecha_carg,temperatur,geo_point_2d",
             "fecha_carg",
         )
         assert len(out) == 1
-        assert new_offset == "2025-10-18T18:00:00Z"
+        assert new_offsets["W01"] == "2025-10-18T18:00:00Z"
 
 
 class TestWeatherFetchSinceMaxTsEmission:
@@ -863,17 +875,19 @@ class TestWeatherFetchSinceMaxTsEmission:
 
         monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
-        out, new_offset, seen_map = wp.fetch_since(
-            "2025-10-18T17:00:00Z",
+        station_offsets = {"W01": "2025-10-18T17:00:00Z", "W02": "2025-10-18T17:00:00Z"}
+        out, new_offsets, new_fps = wp.fetch_since(
+            station_offsets,
             {},
             wp.BASES,
             "fiwareid,fecha_carg,temperatur,geo_point_2d",
             "fecha_carg",
         )
         assert len(out) == 2
-        assert new_offset == "2025-10-18T18:00:00Z"
-        assert "W01" in seen_map
-        assert "W02" in seen_map
+        assert new_offsets["W01"] == "2025-10-18T18:00:00Z"
+        assert new_offsets["W02"] == "2025-10-18T18:00:00Z"
+        assert "W01" in new_fps
+        assert "W02" in new_fps
 
 
 class TestWeatherMainFunction:

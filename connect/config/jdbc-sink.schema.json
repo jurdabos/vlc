@@ -86,33 +86,18 @@
         "value.converter": {
           "type": "string",
           "enum": [
+            "io.confluent.connect.avro.AvroConverter",
             "org.apache.kafka.connect.json.JsonConverter",
             "io.confluent.connect.json.JsonSchemaConverter"
           ]
         },
+        "value.converter.schema.registry.url": {
+          "type": "string",
+          "description": "Schema Registry URL for Avro converter"
+        },
         "value.converter.schemas.enable": {
           "type": "string",
           "enum": ["true", "false"]
-        },
-        "transforms": {
-          "type": "string",
-          "description": "Comma-separated list of transforms"
-        },
-        "transforms.tsToTimestamp.type": {
-          "type": "string",
-          "const": "org.apache.kafka.connect.transforms.TimestampConverter$Value"
-        },
-        "transforms.tsToTimestamp.field": {
-          "type": "string",
-          "const": "ts"
-        },
-        "transforms.tsToTimestamp.target.type": {
-          "type": "string",
-          "const": "Timestamp"
-        },
-        "transforms.tsToTimestamp.format": {
-          "type": "string",
-          "description": "Timestamp format pattern"
         },
         "batch.size": {
           "type": "string",

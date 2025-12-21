@@ -20,29 +20,31 @@ class TestStatePersistence:
         monkeypatch.setattr(ap, "STATE_JSON", str(state_json))
         monkeypatch.setattr(ap, "OFFSET_FILE", str(tmp_path / "offset.txt"))
 
-        offset_in = "2025-10-18T18:00:00Z"
-        seen_in = {"A01": "fp123", "A02": "fp456"}
+        # save_state now takes per-station offsets and fingerprints dicts
+        station_offsets_in = {"A01": "2025-10-18T18:00:00Z", "A02": "2025-10-18T17:30:00Z"}
+        station_fps_in = {"A01": "fp123", "A02": "fp456"}
 
-        ap.save_state(offset_in, seen_in)
+        ap.save_state(station_offsets_in, station_fps_in)
         assert state_json.exists()
 
-        offset_out, seen_out = ap.load_state()
-        assert offset_out == offset_in
-        assert seen_out == seen_in
+        station_offsets_out, station_fps_out = ap.load_state()
+        assert station_offsets_out == station_offsets_in
+        assert station_fps_out == station_fps_in
 
     def test_load_state_returns_default_when_missing(self, tmp_path, monkeypatch):
-        """Verifies that load_state returns default offset when no state file exists."""
+        """Verifies that load_state returns empty dicts when no state file exists."""
         monkeypatch.setattr(ap, "STATE_DIR", str(tmp_path))
         monkeypatch.setattr(ap, "STATE_JSON", str(tmp_path / "state.json"))
         monkeypatch.setattr(ap, "OFFSET_FILE", str(tmp_path / "offset.txt"))
         monkeypatch.setattr(ap, "START_OFFSET", "1970-01-01T00:00:00Z")
 
-        offset, seen = ap.load_state()
-        assert offset == "1970-01-01T00:00:00Z"
-        assert seen == {}
+        station_offsets, station_fps = ap.load_state()
+        # Returns empty dicts for fresh start
+        assert station_offsets == {}
+        assert station_fps == {}
 
     def test_load_state_migrates_from_offset_txt(self, tmp_path, monkeypatch):
-        """Verifies that load_state can migrate from legacy offset.txt file."""
+        """Verifies that load_state returns empty dicts when only legacy offset.txt exists."""
         offset_file = tmp_path / "offset.txt"
         offset_file.write_text("2025-10-18T17:00:00Z", encoding="utf-8")
 
@@ -50,9 +52,10 @@ class TestStatePersistence:
         monkeypatch.setattr(ap, "STATE_JSON", str(tmp_path / "state.json"))
         monkeypatch.setattr(ap, "OFFSET_FILE", str(offset_file))
 
-        offset, seen = ap.load_state()
-        assert offset == "2025-10-18T17:00:00Z"
-        assert seen == {}  # no fingerprints from legacy format
+        station_offsets, station_fps = ap.load_state()
+        # Without state.json, returns empty dicts (fresh start with per-station tracking)
+        assert station_offsets == {}
+        assert station_fps == {}
 
 
 class TestValueFingerprint:
@@ -89,8 +92,9 @@ class TestDeduplication:
         sample_rec = {"so2": None, "no2": 24.0, "o3": None, "co": None, "pm10": 16.0, "pm25": 7.0}
         expected_fp = ap.value_fingerprint(sample_rec)
 
-        offset = "2025-10-18T17:00:00Z"
-        seen_for_offset = {"A01": expected_fp}  # Station already seen with this fingerprint
+        # Per-station offsets and fingerprints
+        station_offsets = {"A01": "2025-10-18T17:00:00Z"}
+        station_fingerprints = {"A01": expected_fp}  # Station already seen with this fingerprint
 
         row_data = {
             "fiwareid": "A01",
@@ -129,13 +133,13 @@ class TestDeduplication:
 
         monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
-        out, new_offset, new_seen = ap.fetch_since(
-            offset, seen_for_offset, ap.BASES, "fiwareid,fecha_carg,no2,pm10,pm25,geo_point_2d", "fecha_carg"
+        out, new_offsets, new_fps = ap.fetch_since(
+            station_offsets, station_fingerprints, ap.BASES, "fiwareid,fecha_carg,no2,pm10,pm25,geo_point_2d", "fecha_carg"
         )
 
         # Should skip because fingerprint matches
         assert len(out) == 0
-        assert new_offset == offset  # offset should not advance
+        assert new_offsets == station_offsets  # offsets unchanged
 
     def test_deduplication_emits_changed_fingerprint(self, tmp_path, monkeypatch):
         """Verifies that records with changed fingerprint are emitted."""
@@ -144,8 +148,9 @@ class TestDeduplication:
         monkeypatch.setattr(ap, "OFFSET_FILE", str(tmp_path / "offset.txt"))
         monkeypatch.setattr(ap, "LIMIT", 10)
 
-        offset = "2025-10-18T17:00:00Z"
-        seen_for_offset = {"A01": "old_fingerprint_123"}  # Old fingerprint
+        # Per-station offsets with old fingerprint
+        station_offsets = {"A01": "2025-10-18T17:00:00Z"}
+        station_fingerprints = {"A01": "old_fingerprint_123"}  # Old fingerprint
 
         row_data = {
             "fiwareid": "A01",
@@ -183,8 +188,8 @@ class TestDeduplication:
 
         monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
-        out, new_offset, new_seen = ap.fetch_since(
-            offset, seen_for_offset, ap.BASES, "fiwareid,fecha_carg,so2,no2,o3,co,pm10,pm25,geo_point_2d", "fecha_carg"
+        out, new_offsets, new_fps = ap.fetch_since(
+            station_offsets, station_fingerprints, ap.BASES, "fiwareid,fecha_carg,so2,no2,o3,co,pm10,pm25,geo_point_2d", "fecha_carg"
         )
 
         # Should emit because fingerprint changed

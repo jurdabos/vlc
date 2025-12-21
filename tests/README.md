@@ -45,8 +45,8 @@ tests/
 - Validates database connection settings (env vars)
 - Confirms upsert mode with correct primary keys
 - Verifies table targeting (air.hyper, weather.hyper)
-- Validates JSON converter configuration
-- Checks timestamp transformation settings
+- Validates Avro converter configuration with Schema Registry
+- Confirms no timestamp transforms needed (Avro handles natively)
 - Confirms bootstrap script registers both connectors
 
 ### 5. Docker Image Build (`test_docker_image.py`)
