@@ -42,7 +42,7 @@ with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
     WEATHER_SCHEMA_STR = f.read()
 WEATHER_SCHEMA = fastavro.schema.parse_schema(json.loads(WEATHER_SCHEMA_STR))
 
-STATE_DIR
+STATE_DIR = os.getenv("STATE_DIR", "/state")
 OFFSET_FILE = os.path.join(STATE_DIR, "offset.txt")
 START_OFFSET = os.getenv("START_OFFSET", "1970-01-01T00:00:00Z")  # or 'latest_db'
 
