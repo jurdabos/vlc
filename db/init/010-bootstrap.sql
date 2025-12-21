@@ -36,8 +36,8 @@ ALTER TABLE air.hyper SET (
   timescaledb.compress_segmentby = 'fiwareid',
   timescaledb.compress_orderby = 'ts DESC'
 );
-SELECT add_compression_policy('air.hyper', INTERVAL '7 days');
-SELECT add_retention_policy('air.hyper',  INTERVAL '6000 days');
+SELECT add_compression_policy('air.hyper', INTERVAL '7 days', if_not_exists => true);
+SELECT add_retention_policy('air.hyper',  INTERVAL '6000 days', if_not_exists => true);
 
 -- Continuous aggregates
 CREATE MATERIALIZED VIEW IF NOT EXISTS air.daily
@@ -57,7 +57,8 @@ GROUP BY fiwareid, bucket_day;
 SELECT add_continuous_aggregate_policy('air.daily',
   start_offset => INTERVAL '30 days',
   end_offset   => INTERVAL '1 day',
-  schedule_interval => INTERVAL '1 hour');
+  schedule_interval => INTERVAL '1 hour',
+  if_not_exists => true);
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS air.weekly
 WITH (timescaledb.continuous) AS
@@ -76,7 +77,8 @@ GROUP BY fiwareid, bucket_week;
 SELECT add_continuous_aggregate_policy('air.weekly',
   start_offset => INTERVAL '180 days',
   end_offset   => INTERVAL '1 day',
-  schedule_interval => INTERVAL '4 hours');
+  schedule_interval => INTERVAL '4 hours',
+  if_not_exists => true);
 
 -- =========================
 -- Weather: hypertable
@@ -111,8 +113,8 @@ ALTER TABLE weather.hyper SET (
   timescaledb.compress_segmentby = 'fiwareid',
   timescaledb.compress_orderby = 'ts DESC'
 );
-SELECT add_compression_policy('weather.hyper', INTERVAL '7 days');
-SELECT add_retention_policy('weather.hyper',  INTERVAL '6000 days');
+SELECT add_compression_policy('weather.hyper', INTERVAL '7 days', if_not_exists => true);
+SELECT add_retention_policy('weather.hyper',  INTERVAL '6000 days', if_not_exists => true);
 
 -- Continuous aggregates
 -- Circular mean for wind direction: atan2(avg(sin), avg(cos)) converted to degrees
@@ -138,7 +140,8 @@ GROUP BY fiwareid, bucket_day;
 SELECT add_continuous_aggregate_policy('weather.daily',
   start_offset => INTERVAL '60 days',
   end_offset   => INTERVAL '1 day',
-  schedule_interval => INTERVAL '1 hour');
+  schedule_interval => INTERVAL '1 hour',
+  if_not_exists => true);
 
 -- Circular mean for wind direction in weekly aggregate
 CREATE MATERIALIZED VIEW IF NOT EXISTS weather.weekly
@@ -162,7 +165,8 @@ GROUP BY fiwareid, bucket_week;
 SELECT add_continuous_aggregate_policy('weather.weekly',
   start_offset => INTERVAL '180 days',
   end_offset   => INTERVAL '1 day',
-  schedule_interval => INTERVAL '4 hours');
+  schedule_interval => INTERVAL '4 hours',
+  if_not_exists => true);
   
 -- =========================
 -- Connector role & privileges
