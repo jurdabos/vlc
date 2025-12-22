@@ -146,7 +146,7 @@ def load_state() -> Tuple[Dict[str, str], Dict[str, str]]:
         except Exception:
             pass
     # Fallback to old offset.txt if present
-    off = load_offset()
+    load_offset()  # side effect: may bootstrap from DB
     return {}, {}  # empty dicts for fresh start
 
 
@@ -480,11 +480,18 @@ def main():
         schema_registry_client = SchemaRegistryClient({"url": SCHEMA_REGISTRY_URL})
         sr_serializer = AvroSerializer(schema_registry_client, WEATHER_SCHEMA_STR)
         ctx = SerializationContext(TOPIC, MessageField.VALUE)
-        avro_serializer = lambda rec: sr_serializer(rec, ctx)
+
+        def avro_serializer(rec):
+            """Serializes a record using Schema Registry."""
+            return sr_serializer(rec, ctx)
+
         print(f"[weather] using Schema Registry at {SCHEMA_REGISTRY_URL} (Avro)")
     else:
         # Lean-stack mode: local Avro serialization without Schema Registry
-        avro_serializer = lambda rec: local_avro_serializer(rec, WEATHER_SCHEMA)
+        def avro_serializer(rec):
+            """Serializes a record using local Avro."""
+            return local_avro_serializer(rec, WEATHER_SCHEMA)
+
         print("[weather] using local Avro serialization (no Schema Registry)")
     producer_config = {
         "bootstrap.servers": BOOTSTRAP,

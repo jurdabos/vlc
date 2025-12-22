@@ -133,8 +133,9 @@ class TestDeduplication:
 
         monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
+        select = "fiwareid,fecha_carg,no2,pm10,pm25,geo_point_2d"
         out, new_offsets, new_fps = ap.fetch_since(
-            station_offsets, station_fingerprints, ap.BASES, "fiwareid,fecha_carg,no2,pm10,pm25,geo_point_2d", "fecha_carg"
+            station_offsets, station_fingerprints, ap.BASES, select, "fecha_carg"
         )
 
         # Should skip because fingerprint matches
@@ -188,8 +189,9 @@ class TestDeduplication:
 
         monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
+        select = "fiwareid,fecha_carg,so2,no2,o3,co,pm10,pm25,geo_point_2d"
         out, new_offsets, new_fps = ap.fetch_since(
-            station_offsets, station_fingerprints, ap.BASES, "fiwareid,fecha_carg,so2,no2,o3,co,pm10,pm25,geo_point_2d", "fecha_carg"
+            station_offsets, station_fingerprints, ap.BASES, select, "fecha_carg"
         )
 
         # Should emit because fingerprint changed

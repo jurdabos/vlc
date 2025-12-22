@@ -175,7 +175,9 @@ def test_fetch_since_emits_new_and_advances_offset(monkeypatch, tmp_path):
     monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
     select = "fiwareid,geo_point_2d,fecha_carg,no2,pm10,pm25"
-    out, new_offsets, new_fps = ap.fetch_since(station_offsets, station_fingerprints, ap.BASES, select, ts_field="fecha_carg")
+    out, new_offsets, new_fps = ap.fetch_since(
+        station_offsets, station_fingerprints, ap.BASES, select, ts_field="fecha_carg"
+    )
 
     assert len(out) == 2
     # Per-station offsets should be updated
