@@ -334,9 +334,7 @@ def test_weather_fetch_since_exception(monkeypatch, tmp_path):
     monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
     station_offsets = {"W01": "2025-10-18T17:00:00Z"}
-    out, new_offsets, new_fps = wp.fetch_since(
-        station_offsets, {}, wp.BASES, "fiwareid,fecha_carg", "fecha_carg"
-    )
+    out, new_offsets, new_fps = wp.fetch_since(station_offsets, {}, wp.BASES, "fiwareid,fecha_carg", "fecha_carg")
     assert out == []
     assert new_offsets == station_offsets  # offsets unchanged
 
@@ -633,9 +631,7 @@ def test_weather_fetch_since_skips_records_without_ts(monkeypatch, tmp_path):
     monkeypatch.setattr(wp, "http_request_with_retry", fake_http_request)
 
     station_offsets = {"W01": "2025-10-18T17:00:00Z"}
-    out, new_offsets, new_fps = wp.fetch_since(
-        station_offsets, {}, wp.BASES, "fiwareid,fecha_carg", "fecha_carg"
-    )
+    out, new_offsets, new_fps = wp.fetch_since(station_offsets, {}, wp.BASES, "fiwareid,fecha_carg", "fecha_carg")
     assert len(out) == 0
 
 

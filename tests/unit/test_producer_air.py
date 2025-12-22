@@ -392,9 +392,7 @@ def test_fetch_since_handles_api_exception(monkeypatch, tmp_path):
     monkeypatch.setattr(ap, "http_request_with_retry", fake_http_request)
 
     station_offsets = {"A01": "2025-10-18T17:00:00Z"}
-    out, new_offsets, new_fps = ap.fetch_since(
-        station_offsets, {}, ap.BASES, "fiwareid,fecha_carg", "fecha_carg"
-    )
+    out, new_offsets, new_fps = ap.fetch_since(station_offsets, {}, ap.BASES, "fiwareid,fecha_carg", "fecha_carg")
     # Should return empty on exception
     assert out == []
     assert new_offsets == station_offsets  # offsets unchanged

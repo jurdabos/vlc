@@ -480,6 +480,7 @@ def main():
         from confluent_kafka.schema_registry import SchemaRegistryClient
         from confluent_kafka.schema_registry.avro import AvroSerializer
         from confluent_kafka.serialization import MessageField, SerializationContext
+
         schema_registry_client = SchemaRegistryClient({"url": SCHEMA_REGISTRY_URL})
         sr_serializer = AvroSerializer(schema_registry_client, AIR_SCHEMA_STR)
         ctx = SerializationContext(TOPIC, MessageField.VALUE)
