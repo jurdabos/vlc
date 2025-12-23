@@ -1,0 +1,8 @@
+Key points to keep in mind about docker:
+* -d = --detach option
+     * `docker compose up` (without `-d`) → attached to the session; closing SSH will kill the stack.
+     * `docker compose up -d` → containers keep running after we log out.
+* `--build` option
+     * Compiles any services defined with a build: section to ensure local changes are picked up.
+     * Starts any services that are currently missing or stopped.
+     * Restarts containers only if necessary. If nothing changed, running containers are left alone.

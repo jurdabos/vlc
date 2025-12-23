@@ -1,4 +1,3 @@
-
 ## Avro Schemas for VLC
 
 ### Current State
@@ -15,7 +14,7 @@ We are using **Avro** with Schema Registry. Schemas are located in `schemas/*.av
 ### Migration Completed on 2025-12-21
 
 **Changes made:**
-1. Schema files: `schemas/air.avsc`, `schemas/weather.avsc`
+1. Schema files composed: `schemas/air.avsc`, `schemas/weather.avsc`
 2. Producers use `AvroSerializer` with epoch milliseconds for timestamps
 3. Connector configs use `io.confluent.connect.avro.AvroConverter`
 4. Added `fastavro` dependency

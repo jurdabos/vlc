@@ -1,0 +1,26 @@
+
+Avro Migration Summary
+
+Producer Changes:
+•  air_producer.py and weather_producer.py now use AvroSerializer instead of JSONSerializer
+•  Schemas are loaded from schemas/air.avsc and schemas/weather.avsc
+•  Timestamps are converted to epoch milliseconds (timestamp-millis logical type) for Avro
+•  Added _ts_iso internal field to preserve ISO strings for offset tracking
+
+Connector Config Changes:
+•  jdbc-sink.timescale.air.json and jdbc-sink.timescale.weather.json now use io.confluent.connect.avro.AvroConverter
+•  Removed TimestampConverter transforms (Avro handles timestamps natively)
+
+Schema Validation:
+•  Updated jdbc-sink.schema.json to allow AvroConverter
+
+Dependencies:
+•  Added fastavro package
+
+Removed:
+•  producer/schemas/air.json
+•  producer/schemas/weather.json
+
+Test Updates:
+•  Updated all producer tests to expect epoch milliseconds for ts field
+•  Updated tests to use per-station offset/fingerprint dicts instead of single global offset

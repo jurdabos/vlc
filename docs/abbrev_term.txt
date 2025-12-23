@@ -1,3 +1,47 @@
++x
+adding the eXecutable permission
+
+-d (in docker)
+--detach
+
+-d (in timescaledb)
+database name
+
+-e
+exists
+
+-f
+--file
+
+-i
+ignore case
+
+-L
+Local Port Forwarding
+ssh -L [local_address:]local_port:destination_host:destination_port user@ssh_server
+
+-R
+Recursive
+
+-T
+--no-TTY
+disable pseudo-TTY allocation
+
+-U
+username
+
+-v
+invert match
+
+.htpasswd
+HyperText password
+
+.md
+Markdown
+
+.sh
+shell script
+
 al.
 aliī
 others
@@ -17,14 +61,29 @@ calidad_am
 calidad ambiental
 air quality
 
+cd
+change directory
+
 cf.
 cōnfer = compare
+
+chmod
+change mode
+
+chown
+change owner
 
 CI/CD
 continuous integration/continuous delivery/deployment
 
 CO
 carbon monoxide
+
+cp
+copy
+
+CSV
+comma-separated values
 
 DB
 database
@@ -34,6 +93,12 @@ degree
 
 DLBDSEDE02
 Distance Learning Bachelor Data Science Elective Data Engineering – course #2
+
+DLQ
+Dead Letter Queue
+
+docs
+documents
 
 DR/Dr(.)
 doctor
@@ -46,8 +111,14 @@ e. g.
 exemplī grātiā
 for example
 
+env
+environment
+
 etc.
 et cetera
+
+exec
+execute
 
 ext4 
 fourth extended filesystem
@@ -72,9 +143,24 @@ github
 GIS
 geographic information system
 
+grep
+global regular expression print
+
 hpa
 hPa 
 hectopascal
+
+HTTP
+Hypertext Transfer Protocol
+
+id
+identifier
+
+infra 
+infrastructure
+
+init
+initialization
 
 IU
 International University of Applied Sciences
@@ -86,11 +172,20 @@ a standard Java API that allows Java applications to connect to RDBs, and execut
 JMX
 Java Management Extensions
 
+jq
+JSON query
+
+JSON/json
+JavaScript Object Notation
+
 JSONB
 binary-format JSON
 
 JVM
 Java virtual machine
+
+ln -s
+symlink, symbolic link
 
 m
 meter
@@ -106,6 +201,9 @@ mean time between failures
 
 MTTR
 mean time to repair
+
+N
+some number
 
 NDIR
 nondispersive infrared sensor
@@ -128,6 +226,9 @@ out of memory
 opt
 optional
 
+P
+phase
+
 p./pp.
 page/pages
 
@@ -140,8 +241,17 @@ PostgreSQL
 pgJDBC
 PostgreSQL Java Database Connectivity Driver
 
+PK
+primary key
+
 pm
 particulate matter
+
+ps
+process status
+
+psql
+PostgreSQL (client program)
 
 RAM
 random-access memory
@@ -156,6 +266,9 @@ rvvcca/RVVCA
 Red Valenciana de Vigilancia y Control de la Contaminación Atmosférica
 Valencian Network for Monitoring and Control of Air Pollution
 
+scp
+secure copy
+
 serde
 serializer/deserializer
 
@@ -163,13 +276,22 @@ SO2
 sulphur dioxide
 
 SQL
-standard query language
+Structured Query Language
 
 SSH
 Secure Shell
 
 sshd 
 Secure Shell daemon
+
+sudo
+superuser do
+
+tmp
+temporary
+
+ts
+timestamp
 
 UPV
 Universitat Politècnica de València

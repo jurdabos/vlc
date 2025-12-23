@@ -113,5 +113,5 @@ Producers use **Avro** serialization with Schema Registry:
 ✅ Per-station offset persistence with fingerprint-based deduplication
 ✅ Avro serialization with Schema Registry
 ✅ Graceful shutdown handling
-✅ Non-root Docker user for security
+✅ Nonroot Docker user for security
 ✅ Separate state volumes prevent cross-contamination
