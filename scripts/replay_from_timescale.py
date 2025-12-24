@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """
 Replay historical data from TimescaleDB to Kafka.
+
 Reads air and/or weather data from TimescaleDB and produces to Kafka topics
-using JSON Schema serialization. Useful for:
+using Avro serialization with Schema Registry. Useful for:
 - Testing the pipeline with historical data
 - Backfilling after schema changes
 - Development and debugging
 - Replaying data to new Kafka cluster
+
 Usage:
     uv run scripts/replay_from_timescale.py --help
     uv run scripts/replay_from_timescale.py --dataset air --since 2025-11-01
     uv run scripts/replay_from_timescale.py --dataset weather --since 2025-11-01 --until 2025-11-15
     uv run scripts/replay_from_timescale.py --dataset both --dry-run
+
 Environment variables:
     KAFKA_BOOTSTRAP_SERVERS - Kafka broker (default: kafka:9092)
     SCHEMA_REGISTRY_URL     - Schema Registry URL (default: http://schema-registry:8081)
@@ -29,7 +32,7 @@ from typing import Any, Generator, Optional
 import psycopg2
 from confluent_kafka import Producer
 from confluent_kafka.schema_registry import SchemaRegistryClient
-from confluent_kafka.schema_registry.json_schema import JSONSerializer
+from confluent_kafka.schema_registry.avro import AvroSerializer
 from confluent_kafka.serialization import MessageField, SerializationContext
 
 # --- Configuration ---
@@ -62,22 +65,28 @@ def get_db_connection():
 
 
 def load_schema(schema_name: str) -> str:
-    """Loads JSON schema from producer/schemas/ directory."""
-    # Finding schema file relative to this script or in producer/schemas
+    """Loads Avro schema from schemas/ directory."""
     script_dir = Path(__file__).parent
     schema_paths = [
-        script_dir.parent / "producer" / "schemas" / f"{schema_name}.json",
-        script_dir / ".." / "producer" / "schemas" / f"{schema_name}.json",
-        Path(f"producer/schemas/{schema_name}.json"),
+        script_dir.parent / "schemas" / f"{schema_name}.avsc",
+        script_dir / ".." / "schemas" / f"{schema_name}.avsc",
+        Path(f"schemas/{schema_name}.avsc"),
     ]
     for path in schema_paths:
         if path.exists():
             return path.read_text(encoding="utf-8")
-    raise FileNotFoundError(f"Schema not found: {schema_name}.json")
+    raise FileNotFoundError(f"Schema not found: {schema_name}.avsc")
 
 
-def format_ts(dt: datetime) -> str:
-    """Formats datetime as ISO 8601 string with Z suffix."""
+def format_ts_epoch_ms(dt: datetime) -> int:
+    """Converts datetime to epoch milliseconds for Avro timestamp-millis."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return int(dt.timestamp() * 1000)
+
+
+def format_ts_iso(dt: datetime) -> str:
+    """Formats datetime as ISO 8601 string with Z suffix (for keys)."""
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -108,7 +117,8 @@ def fetch_air_data(
         for row in cur:
             yield {
                 "fiwareid": row[0],
-                "ts": format_ts(row[1]),
+                "ts": format_ts_epoch_ms(row[1]),
+                "_ts_iso": format_ts_iso(row[1]),  # for key generation
                 "no2": row[2],
                 "o3": row[3],
                 "so2": row[4],
@@ -146,7 +156,8 @@ def fetch_weather_data(
         for row in cur:
             yield {
                 "fiwareid": row[0],
-                "ts": format_ts(row[1]),
+                "ts": format_ts_epoch_ms(row[1]),
+                "_ts_iso": format_ts_iso(row[1]),  # for key generation
                 "wind_dir_deg": row[2],
                 "wind_speed_ms": row[3],
                 "temperature_c": row[4],
@@ -174,7 +185,7 @@ def count_records(conn, table: str, since: Optional[datetime], until: Optional[d
 
 
 class ReplayProducer:
-    """Produces messages to Kafka with JSON Schema serialization."""
+    """Produces messages to Kafka with Avro serialization."""
 
     def __init__(self, topic: str, schema_name: str, dry_run: bool = False):
         self.topic = topic
@@ -183,10 +194,10 @@ class ReplayProducer:
         self.failed = 0
 
         if not dry_run:
-            # Setting up Schema Registry and serializer
+            # Setting up Schema Registry and Avro serializer
             schema_str = load_schema(schema_name)
             sr_client = SchemaRegistryClient({"url": SCHEMA_REGISTRY_URL})
-            self.serializer = JSONSerializer(schema_str, sr_client)
+            self.serializer = AvroSerializer(sr_client, schema_str)
             self.producer = Producer(
                 {
                     "bootstrap.servers": KAFKA_BOOTSTRAP,
@@ -212,9 +223,12 @@ class ReplayProducer:
             self.produced += 1
             return
 
-        key = f"{record['fiwareid']}|{record['ts']}"
+        # Using ISO timestamp for key (human-readable), epoch ms for value (Avro)
+        key = f"{record['fiwareid']}|{record['_ts_iso']}"
+        # Removing internal _ts_iso field before serialization
+        kafka_record = {k: v for k, v in record.items() if not k.startswith("_")}
         ctx = SerializationContext(self.topic, MessageField.VALUE)
-        value = self.serializer(record, ctx)
+        value = self.serializer(kafka_record, ctx)
 
         self.producer.produce(
             self.topic,

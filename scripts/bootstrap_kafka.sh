@@ -6,7 +6,7 @@
 #   1. Waits for Kafka broker to be ready
 #   2. Creates data topics (vlc.air, vlc.weather)
 #   3. Creates Kafka Connect internal topics
-#   4. Waits for Schema Registry (required for JSON Schema)
+#   4. Waits for Schema Registry (required for Avro serialization)
 #   5. Waits for Connect and deploys JDBC sink connectors
 #
 # Usage:
@@ -109,7 +109,7 @@ wait_for_schema_registry() {
     fi
     sleep 2
   done
-  echo "[bootstrap] WARN: Schema Registry not reachable; connectors may fail if using JSON Schema."
+  echo "[bootstrap] WARN: Schema Registry not reachable; connectors may fail if using Avro serialization."
   return 1
 }
 
@@ -172,7 +172,7 @@ else
 fi
 
 if [ "${SKIP_CONNECT}" = false ]; then
-  # Schema Registry (required for JSON Schema serialization)
+  # Schema Registry (required for Avro serialization in full-stack mode)
   wait_for_schema_registry || true
 
   # Connectors (after broker + topics + schema registry)

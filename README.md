@@ -155,7 +155,7 @@ vlc/
 ├── backfill/				# Historical data loading scripts
 ├── compose/				# Docker Compose + nginx config
 ├── connect/				# Kafka Connect Dockerfile + sink configs
-├── consumer/				# (placeholder for future consumers)
+├── consumer/				# Python sink consumers (alt-sink profile)
 ├── db/init/				# TimescaleDB init scripts (extensions, schemas, views)
 ├── docs/
 ├── grafana/				# Grafana provisioning
