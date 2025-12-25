@@ -11,3 +11,6 @@ schema-registry		→ profiles: ["schema"]
 timescaledb		→ profiles: ["infra"]
 weather-producer	→ profiles: ["producer"]
 weather-sink		→ profiles: ["alt-sink"]
+
+Lean development: 	→ infra + producer + alt-sink
+Full-stack development:	→ infra + schema + producer + ui
