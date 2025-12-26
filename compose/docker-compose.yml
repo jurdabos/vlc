@@ -38,8 +38,8 @@ services:
     restart: unless-stopped
     volumes:
       - kafka_data:/var/lib/kafka/data
-      - ../jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
-      - ../jmx-exporter/kafka.yml:/jmx/kafka.yml:ro
+      - ../monitoring/jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
+      - ../monitoring/jmx-exporter/kafka.yml:/jmx/kafka.yml:ro
     healthcheck:
       # Healthy if kafka.Kafka is running
       test: ["CMD-SHELL", "ps aux | grep -q '[k]afka.Kafka'"]
@@ -65,8 +65,8 @@ services:
     restart: unless-stopped
     profiles: ["schema"]
     volumes:
-      - ../jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
-      - ../jmx-exporter/schema-registry.yml:/jmx/schema-registry.yml:ro
+      - ../monitoring/jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
+      - ../monitoring/jmx-exporter/schema-registry.yml:/jmx/schema-registry.yml:ro
 
   connect:
     image: vlc/connect:7.6.1-jdbc-pg
@@ -111,8 +111,8 @@ services:
     volumes:
       - ../connect/config:/config
       - ../connect/secrets:/opt/kafka/connect/secrets:ro
-      - ../jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
-      - ../jmx-exporter/connect.yml:/jmx/connect.yml:ro
+      - ../monitoring/jmx-exporter/jmx_prometheus_javaagent.jar:/jmx/jmx_prometheus_javaagent.jar:ro
+      - ../monitoring/jmx-exporter/connect.yml:/jmx/connect.yml:ro
     restart: unless-stopped
     profiles: ["schema"]
 

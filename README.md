@@ -152,20 +152,19 @@ The script:
 
 ```
 vlc/
-├── backfill/				# Historical data loading scripts
-├── compose/				# Docker Compose + nginx config
-├── connect/				# Kafka Connect Dockerfile + sink configs
-├── consumer/				# Python sink consumers (alt-sink profile)
-├── db/init/				# TimescaleDB init scripts (extensions, schemas, views)
-├── docs/
-├── grafana/				# Grafana provisioning
-├── infra/				# infrastructure setup for Azure deployment
-├── jmx-exporter/
-├── monitoring/
-├── producer/				# air + weather Python producers
-├── schemas/				# Avro schemas (.avsc) for air + weather
-├── scripts/				# bootstrap, secrets, analysis utilities
-└── tests/				# pytest test suite
+├── backfill/           # Historical data loading scripts
+├── compose/            # Docker Compose + nginx config
+├── connect/            # Kafka Connect Dockerfile + sink configs
+├── consumer/           # Python sink consumers (alt-sink profile)
+├── db/init/            # TimescaleDB init scripts (extensions, schemas, views)
+├── docs/               # Project documentation, SQL queries, design references
+├── grafana/            # Grafana provisioning and dashboards
+├── infra/              # Infrastructure setup for Azure deployment
+├── monitoring/         # Prometheus, Alertmanager, JMX exporter configs
+├── producer/           # air + weather Python producers
+├── schemas/            # Avro schemas (.avsc) for air + weather
+├── scripts/            # bootstrap, secrets, analysis utilities
+└── tests/              # pytest test suite
 ```
 
 ## Azure Deployment
