@@ -1,0 +1,5 @@
+The last non-zero CO reading was December 31, 2022 — nearly 3 years ago.
+The live API from Valencia stopped reporting CO data after 2022.
+All recent CO values are either NULL (no sensor) or 0 (sensor exists but API returns 0).
+
+This is a source data issue, not a pipeline issue.

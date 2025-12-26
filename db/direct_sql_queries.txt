@@ -1,3 +1,6 @@
+-- ==============================================
+-- VLC Dashboarding Ideation
+-- ==============================================
 -- Most recent air quality reading per station
 docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT DISTINCT ON (fiwareid)  fiwareid,  ts,  no2, o3, so2, co, pm10, pm25,  air_quality_summary,  lat, lon FROM air.hyper ORDER BY fiwareid, ts DESC;"
 
@@ -112,3 +115,262 @@ GRANT SELECT ON weather.daily_trends TO vlc_dev;
 GRANT SELECT ON public.station_snapshot TO vlc_dev;
 GRANT SELECT ON public.stations TO vlc_dev;
 GRANT SELECT ON public.data_freshness TO vlc_dev;"
+
+
+-- ==============================================
+-- VLC Data Quality Checks
+-- ==============================================
+-- 1. NULLS - Critical fields that should never be NULL
+-- Primary key fields must have values
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT *
+FROM air.hyper
+WHERE fiwareid IS NULL
+   OR ts IS NULL;"
+
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT *
+FROM weather.hyper
+WHERE fiwareid IS NULL
+   OR ts IS NULL;"
+
+-- 2. UNIQUENESS - Duplicate primary key combinations (fiwareid + ts)
+-- Should return 0 rows if PK constraint is enforced
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT fiwareid, ts, COUNT(*)
+FROM air.hyper
+GROUP BY fiwareid, ts
+HAVING COUNT(*) > 1;"
+
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT fiwareid, ts, COUNT(*)
+FROM weather.hyper
+GROUP BY fiwareid, ts
+HAVING COUNT(*) > 1;"
+
+-- 3. INTEGRITY - Unknown fiwareid values (orphan station IDs)
+-- Cross-check with expected station list
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT DISTINCT fiwareid
+FROM air.hyper
+WHERE fiwareid NOT IN (
+    SELECT DISTINCT fiwareid FROM weather.hyper
+);"
+
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT DISTINCT fiwareid
+FROM weather.hyper
+WHERE fiwareid NOT IN (
+    SELECT DISTINCT fiwareid FROM air.hyper
+);"
+
+-- 4. ACCEPTED VALUES - Air quality summary validation
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT *
+FROM air.hyper
+WHERE air_quality_summary IS NOT NULL
+  AND air_quality_summary NOT IN ('Buena', 'Admisible', 'Mejorable', 'Mala', 'Muy mala', 'Razonablemente Buena', 'Hazardous', 'Desfavorable', 'Regular');"
+
+-- 5. RANGE - Physical measurement bounds
+-- Air quality out-of-range values
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT *
+FROM air.hyper
+WHERE no2 < 0 OR no2 > 1000
+   OR o3 < 0 OR o3 > 500
+   OR so2 < 0 OR so2 > 2000
+   OR co < 0 OR co > 100
+   OR pm10 < 0 OR pm10 > 1000
+   OR pm25 < 0 OR pm25 > 500;"
+
+-- Weather out-of-range values
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT *
+FROM weather.hyper
+WHERE temperature_c < -40 OR temperature_c > 60
+   OR humidity_pct < 0 OR humidity_pct > 105
+   OR pressure_hpa < 800 OR pressure_hpa > 1100
+   OR wind_speed_ms < 0 OR wind_speed_ms > 100
+   OR wind_dir_deg < 0 OR wind_dir_deg > 360
+   OR precip_mm < 0 OR precip_mm > 500;"
+
+-- 6. GEO RANGE - Latitude/Longitude must be in Valencia area
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT *
+FROM air.hyper
+WHERE lat IS NOT NULL AND lon IS NOT NULL
+  AND (lat < 39.0 OR lat > 40.0 OR lon < -1.0 OR lon > 0.5);"
+
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT *
+FROM weather.hyper
+WHERE lat IS NOT NULL AND lon IS NOT NULL
+  AND (lat < 39.0 OR lat > 40.0 OR lon < -1.0 OR lon > 0.5);"
+
+-- 7. FRESHNESS - Stale data detection
+-- Alert if no data received in last hour
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT 'air.hyper' AS table_name, MAX(ts) AS last_ts,
+       NOW() - MAX(ts) AS lag
+FROM air.hyper
+HAVING MAX(ts) < NOW() - INTERVAL '1 hour';"
+
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT 'weather.hyper' AS table_name, MAX(ts) AS last_ts,
+       NOW() - MAX(ts) AS lag
+FROM weather.hyper
+HAVING MAX(ts) < NOW() - INTERVAL '1 hour';"
+
+-- 8. TEMPORAL CONSISTENCY - Future timestamps
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT *
+FROM air.hyper
+WHERE ts > NOW();"
+
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT *
+FROM weather.hyper
+WHERE ts > NOW();"
+
+-- 9. NULL SPIKE - More than 30% NULLs in measurement columns
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT
+    'air.hyper' AS table_name,
+    COUNT(*) AS total_rows,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE no2 IS NULL) / NULLIF(COUNT(*), 0), 2) AS no2_null_pct,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE o3 IS NULL) / NULLIF(COUNT(*), 0), 2) AS o3_null_pct,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE pm10 IS NULL) / NULLIF(COUNT(*), 0), 2) AS pm10_null_pct,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE pm25 IS NULL) / NULLIF(COUNT(*), 0), 2) AS pm25_null_pct
+FROM air.hyper;"
+
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT
+    'weather.hyper' AS table_name,
+    COUNT(*) AS total_rows,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE temperature_c IS NULL) / NULLIF(COUNT(*), 0), 2) AS temp_null_pct,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE humidity_pct IS NULL) / NULLIF(COUNT(*), 0), 2) AS humidity_null_pct,
+    ROUND(100.0 * COUNT(*) FILTER (WHERE pressure_hpa IS NULL) / NULLIF(COUNT(*), 0), 2) AS pressure_null_pct
+FROM weather.hyper;"
+
+-- 10. STATION ACTIVITY - Stations with no recent data (per-station freshness)
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT fiwareid, MAX(ts) AS last_reading,
+       NOW() - MAX(ts) AS inactive_for
+FROM air.hyper
+GROUP BY fiwareid
+HAVING MAX(ts) < NOW() - INTERVAL '24 hours'
+ORDER BY last_reading;"
+
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT fiwareid, MAX(ts) AS last_reading,
+       NOW() - MAX(ts) AS inactive_for
+FROM weather.hyper
+GROUP BY fiwareid
+HAVING MAX(ts) < NOW() - INTERVAL '24 hours'
+ORDER BY last_reading;"
+
+
+-- ==============================================
+-- VLC Hourly averages
+-- ==============================================
+-- (i) Hourly averages across all stations since everything started
+-- AIR
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT
+  time_bucket('1 hour', ts) AS bucket_hour,
+  AVG(no2) AS no2_avg,
+  AVG(o3) AS o3_avg,
+  AVG(so2) AS so2_avg,
+  AVG(co) AS co_avg,
+  AVG(pm10) AS pm10_avg,
+  AVG(pm25) AS pm25_avg
+FROM air.hyper
+GROUP BY bucket_hour
+ORDER BY bucket_hour;"
+
+-- WEATHER
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT
+  time_bucket('1 hour', ts) AS bucket_hour,
+  AVG(temperature_c) AS temp_avg_c,
+  AVG(humidity_pct) AS humidity_avg,
+  AVG(pressure_hpa) AS pressure_avg,
+  AVG(wind_speed_ms) AS wind_avg_ms,
+  degrees(atan2(avg(sin(radians(wind_dir_deg))), avg(cos(radians(wind_dir_deg))))) AS wind_avg_deg,
+  MAX(precip_mm) AS precip_max_mm
+FROM weather.hyper
+GROUP BY bucket_hour
+ORDER BY bucket_hour;"
+
+
+-- (ii) Hourly averages since current Monday 00:00
+-- AIR
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT
+  time_bucket('1 hour', ts) AS bucket_hour,
+  AVG(no2) AS no2_avg,
+  AVG(o3) AS o3_avg,
+  AVG(so2) AS so2_avg,
+  AVG(pm10) AS pm10_avg,
+  AVG(pm25) AS pm25_avg
+FROM air.hyper
+WHERE ts >= date_trunc('week', NOW())
+GROUP BY bucket_hour
+ORDER BY bucket_hour;"
+
+-- WEATHER
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT
+  time_bucket('1 hour', ts) AS bucket_hour,
+  AVG(temperature_c) AS temp_avg_c,
+  AVG(humidity_pct) AS humidity_avg,
+  AVG(pressure_hpa) AS pressure_avg,
+  AVG(wind_speed_ms) AS wind_avg_ms,
+  degrees(atan2(avg(sin(radians(wind_dir_deg))), avg(cos(radians(wind_dir_deg))))) AS wind_avg_deg,
+  MAX(precip_mm) AS precip_max_mm
+FROM weather.hyper
+WHERE ts >= date_trunc('week', NOW())
+GROUP BY bucket_hour
+ORDER BY bucket_hour;"
+
+
+-- (iii) Hourly averages since today 00:00
+-- AIR
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT
+  time_bucket('1 hour', ts) AS bucket_hour,
+  AVG(no2) AS no2_avg,
+  AVG(o3) AS o3_avg,
+  AVG(so2) AS so2_avg,
+  AVG(pm10) AS pm10_avg,
+  AVG(pm25) AS pm25_avg
+FROM air.hyper
+WHERE ts >= date_trunc('day', NOW())
+GROUP BY bucket_hour
+ORDER BY bucket_hour;"
+
+-- WEATHER
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT
+  time_bucket('1 hour', ts) AS bucket_hour,
+  AVG(temperature_c) AS temp_avg_c,
+  AVG(humidity_pct) AS humidity_avg,
+  AVG(pressure_hpa) AS pressure_avg,
+  AVG(wind_speed_ms) AS wind_avg_ms,
+  degrees(atan2(avg(sin(radians(wind_dir_deg))), avg(cos(radians(wind_dir_deg))))) AS wind_avg_deg,
+  MAX(precip_mm) AS precip_max_mm
+FROM weather.hyper
+WHERE ts >= date_trunc('day', NOW())
+GROUP BY bucket_hour
+ORDER BY bucket_hour;"
+
+
+-- (iv) Hour-of-day averages across all stations, all days, all years
+-- Aggregates by hour (0-23) to show typical patterns throughout the day
+-- AIR
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT TO_CHAR(EXTRACT(HOUR FROM ts)::int, 'FM00') || ':00-' || TO_CHAR((EXTRACT(HOUR FROM ts)::int + 1) % 24, 'FM00') || ':00' AS hour_range, AVG(no2) AS no2_avg, AVG(o3) AS o3_avg, AVG(so2) AS so2_avg, AVG(co) AS co_avg, AVG(pm10) AS pm10_avg, AVG(pm25) AS pm25_avg, COUNT(*) AS sample_count FROM air.hyper GROUP BY EXTRACT(HOUR FROM ts) ORDER BY EXTRACT(HOUR FROM ts);"
+
+-- WEATHER
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT TO_CHAR(EXTRACT(HOUR FROM ts)::int, 'FM00') || ':00-' || TO_CHAR((EXTRACT(HOUR FROM ts)::int + 1) % 24, 'FM00') || ':00' AS hour_range, AVG(temperature_c) AS temp_avg_c, AVG(humidity_pct) AS humidity_avg, AVG(pressure_hpa) AS pressure_avg, AVG(wind_speed_ms) AS wind_avg_ms, degrees(atan2(avg(sin(radians(wind_dir_deg))), avg(cos(radians(wind_dir_deg))))) AS wind_avg_deg, MAX(precip_mm) AS precip_max_mm, COUNT(*) AS sample_count FROM weather.hyper GROUP BY EXTRACT(HOUR FROM ts) ORDER BY EXTRACT(HOUR FROM ts);"
