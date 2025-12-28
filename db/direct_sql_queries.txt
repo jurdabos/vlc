@@ -39,27 +39,7 @@ docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev
 FROM air.latest;"
 
 -- Station inventory/metadata
-docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT
-  fiwareid,
-  'air' AS data_type,
-  MIN(ts) AS first_seen,
-  MAX(ts) AS last_seen,
-  COUNT(*) AS record_count,
-  AVG(lat) AS lat,
-  AVG(lon) AS lon
-FROM air.hyper
-GROUP BY fiwareid
-UNION ALL
-SELECT
-  fiwareid,
-  'weather' AS data_type,
-  MIN(ts) AS first_seen,
-  MAX(ts) AS last_seen,
-  COUNT(*) AS record_count,
-  AVG(lat) AS lat,
-  AVG(lon) AS lon
-FROM weather.hyper
-GROUP BY fiwareid;"
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT * FROM (SELECT fiwareid, 'air' AS data_type, MIN(ts) AS first_seen, MAX(ts) AS last_seen, COUNT(*) AS record_count, AVG(lat) AS lat, AVG(lon) AS lon FROM air.hyper GROUP BY fiwareid UNION ALL SELECT fiwareid, 'weather' AS data_type, MIN(ts) AS first_seen, MAX(ts) AS last_seen, COUNT(*) AS record_count, AVG(lat) AS lat, AVG(lon) AS lon FROM weather.hyper GROUP BY fiwareid) t ORDER BY fiwareid;"
 
 -- Daily trends (for charting)
 docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT

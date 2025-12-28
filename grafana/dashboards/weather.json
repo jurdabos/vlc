@@ -444,7 +444,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT DISTINCT fiwareid, lat, lon\nFROM weather.hyper\nWHERE ST_DWithin(\n  geo,\n  ST_SetSRID(ST_MakePoint(-0.403, 39.494), 4326)::geography,\n  5000\n);",
+          "rawSql": "SELECT DISTINCT ON (fiwareid)\n  fiwareid,\n  ROUND(lat::numeric, 3) as lat,\n  ROUND(lon::numeric, 3) as lon\nFROM weather.hyper\nWHERE ST_DWithin(\n  geo,\n  ST_SetSRID(ST_MakePoint(${ref_lon}, ${ref_lat}), 4326)::geography,\n  ${radius_m}\n)\nORDER BY fiwareid, ts DESC;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -465,7 +465,7 @@
           }
         }
       ],
-      "title": "Stations within 5km of Ikon",
+      "title": "Stations within ${radius_m}m of ${ref_name}",
       "type": "table"
     },
     {
@@ -878,7 +878,115 @@
   "style": "dark",
   "tags": ["weather", "valencia"],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "Ikon",
+          "value": "Ikon"
+        },
+        "description": "Name of reference location",
+        "hide": 0,
+        "label": "Location Name",
+        "name": "ref_name",
+        "options": [
+          {
+            "selected": true,
+            "text": "Ikon",
+            "value": "Ikon"
+          }
+        ],
+        "query": "Ikon",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "39.494",
+          "value": "39.494"
+        },
+        "description": "Latitude of reference point",
+        "hide": 0,
+        "label": "Latitude",
+        "name": "ref_lat",
+        "options": [
+          {
+            "selected": true,
+            "text": "39.494",
+            "value": "39.494"
+          }
+        ],
+        "query": "39.494",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "-0.403",
+          "value": "-0.403"
+        },
+        "description": "Longitude of reference point",
+        "hide": 0,
+        "label": "Longitude",
+        "name": "ref_lon",
+        "options": [
+          {
+            "selected": true,
+            "text": "-0.403",
+            "value": "-0.403"
+          }
+        ],
+        "query": "-0.403",
+        "skipUrlSync": false,
+        "type": "textbox"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "5000",
+          "value": "5000"
+        },
+        "description": "Search radius in meters",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Radius (m)",
+        "multi": false,
+        "name": "radius_m",
+        "options": [
+          {
+            "selected": false,
+            "text": "1000",
+            "value": "1000"
+          },
+          {
+            "selected": false,
+            "text": "2000",
+            "value": "2000"
+          },
+          {
+            "selected": true,
+            "text": "5000",
+            "value": "5000"
+          },
+          {
+            "selected": false,
+            "text": "10000",
+            "value": "10000"
+          },
+          {
+            "selected": false,
+            "text": "20000",
+            "value": "20000"
+          }
+        ],
+        "query": "1000,2000,5000,10000,20000",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
   },
   "time": {
     "from": "now-7d",
