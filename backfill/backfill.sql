@@ -1,5 +1,12 @@
--- Backfill script for historical air quality data
--- Creates a staging table, loads CSV, transforms and inserts into air.hyper
+-- Backfill script for historical air quality data (2016-2022)
+-- Creates a staging table, loads CSVs, transforms and inserts into air.hyper and weather.hyper
+--
+-- Usage:
+--   1. Copy CSVs to container:
+--      docker cp backfill/hourly_2016_2020.csv $(docker compose -f compose/docker-compose.yml ps -q timescaledb):/tmp/
+--      docker cp backfill/hourly_2021_2022.csv $(docker compose -f compose/docker-compose.yml ps -q timescaledb):/tmp/
+--   2. Run this script:
+--      docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -f /tmp/backfill.sql
 
 -- Creating staging table
 DROP TABLE IF EXISTS staging.hourly_raw;
@@ -37,7 +44,8 @@ CREATE TABLE staging.hourly_raw (
     fecha_baja text
 );
 
--- Loading CSV data
+-- Loading CSV data (2016-2020 and 2021-2022)
+\copy staging.hourly_raw FROM '/tmp/hourly_2016_2020.csv' WITH (FORMAT csv, HEADER true);
 \copy staging.hourly_raw FROM '/tmp/hourly_2021_2022.csv' WITH (FORMAT csv, HEADER true);
 
 -- Inserting air quality data with station mapping
