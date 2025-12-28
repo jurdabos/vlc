@@ -1405,6 +1405,388 @@
       ],
       "title": "HTTP Request Rate",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 44
+      },
+      "id": 104,
+      "panels": [],
+      "title": "Data Inventory",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#16697a",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 45
+      },
+      "id": 105,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "fiwareid"
+          }
+        ]
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  fiwareid,\n  'air' AS data_type,\n  MIN(ts) AS first_seen,\n  MAX(ts) AS last_seen,\n  COUNT(*) AS record_count,\n  AVG(lat) AS lat,\n  AVG(lon) AS lon\nFROM air.hyper\nGROUP BY fiwareid\nUNION ALL\nSELECT\n  fiwareid,\n  'weather' AS data_type,\n  MIN(ts) AS first_seen,\n  MAX(ts) AS last_seen,\n  COUNT(*) AS record_count,\n  AVG(lat) AS lat,\n  AVG(lon) AS lon\nFROM weather.hyper\nGROUP BY fiwareid;",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Station Inventory",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#16697a",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "schema_name" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "fiwareid" },
+            "properties": [{ "id": "custom.width", "value": 200 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "last_update" },
+            "properties": [{ "id": "custom.width", "value": 200 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "staleness" },
+            "properties": [{ "id": "custom.width", "value": 150 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "status" },
+            "properties": [
+              { "id": "custom.width", "value": 100 },
+              {
+                "id": "mappings",
+                "value": [
+                  { "options": { "Fresh": { "color": "#16697a", "index": 0 } }, "type": "value" },
+                  { "options": { "Stale": { "color": "#bf9f6f", "index": 1 } }, "type": "value" },
+                  { "options": { "Offline": { "color": "#a24936", "index": 2 } }, "type": "value" }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 55
+      },
+      "id": 106,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "fiwareid"
+          }
+        ]
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  'air' AS schema_name,\n  fiwareid,\n  MAX(ts) AS last_update,\n  NOW() - MAX(ts) AS staleness,\n  CASE\n    WHEN NOW() - MAX(ts) < INTERVAL '1 hour' THEN 'Fresh'\n    WHEN NOW() - MAX(ts) < INTERVAL '6 hours' THEN 'Stale'\n    ELSE 'Offline'\n  END AS status\nFROM air.hyper\nGROUP BY fiwareid\nUNION ALL\nSELECT\n  'weather' AS schema_name,\n  fiwareid,\n  MAX(ts) AS last_update,\n  NOW() - MAX(ts) AS staleness,\n  CASE\n    WHEN NOW() - MAX(ts) < INTERVAL '1 hour' THEN 'Fresh'\n    WHEN NOW() - MAX(ts) < INTERVAL '6 hours' THEN 'Stale'\n    ELSE 'Offline'\n  END AS status\nFROM weather.hyper\nGROUP BY fiwareid;",
+          "refId": "A",
+          "sql": {
+            "columns": [{ "parameters": [], "type": "function" }],
+            "groupBy": [{ "property": { "type": "string" }, "type": "groupBy" }],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Data Freshness",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#16697a",
+                "value": null
+              },
+              {
+                "color": "#bf9f6f",
+                "value": 20
+              },
+              {
+                "color": "#a24936",
+                "value": 50
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "table_name" },
+            "properties": [{ "id": "custom.width", "value": 120 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "total_rows" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 0,
+        "y": 65
+      },
+      "id": 107,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  'air.hyper' AS table_name,\n  COUNT(*) AS total_rows,\n  ROUND(100.0 * COUNT(*) FILTER (WHERE no2 IS NULL) / NULLIF(COUNT(*), 0), 2) AS no2_null_pct,\n  ROUND(100.0 * COUNT(*) FILTER (WHERE o3 IS NULL) / NULLIF(COUNT(*), 0), 2) AS o3_null_pct,\n  ROUND(100.0 * COUNT(*) FILTER (WHERE pm10 IS NULL) / NULLIF(COUNT(*), 0), 2) AS pm10_null_pct,\n  ROUND(100.0 * COUNT(*) FILTER (WHERE pm25 IS NULL) / NULLIF(COUNT(*), 0), 2) AS pm25_null_pct\nFROM air.hyper;",
+          "refId": "A",
+          "sql": {
+            "columns": [{ "parameters": [], "type": "function" }],
+            "groupBy": [{ "property": { "type": "string" }, "type": "groupBy" }],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Air Data Quality - NULL Percentages",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "timescaledb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#16697a",
+                "value": null
+              },
+              {
+                "color": "#bf9f6f",
+                "value": 20
+              },
+              {
+                "color": "#a24936",
+                "value": 50
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "table_name" },
+            "properties": [{ "id": "custom.width", "value": 120 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "total_rows" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 65
+      },
+      "id": 108,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "timescaledb"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  'weather.hyper' AS table_name,\n  COUNT(*) AS total_rows,\n  ROUND(100.0 * COUNT(*) FILTER (WHERE temperature_c IS NULL) / NULLIF(COUNT(*), 0), 2) AS temp_null_pct,\n  ROUND(100.0 * COUNT(*) FILTER (WHERE humidity_pct IS NULL) / NULLIF(COUNT(*), 0), 2) AS humidity_null_pct,\n  ROUND(100.0 * COUNT(*) FILTER (WHERE pressure_hpa IS NULL) / NULLIF(COUNT(*), 0), 2) AS pressure_null_pct\nFROM weather.hyper;",
+          "refId": "A",
+          "sql": {
+            "columns": [{ "parameters": [], "type": "function" }],
+            "groupBy": [{ "property": { "type": "string" }, "type": "groupBy" }],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Weather Data Quality - NULL Percentages",
+      "type": "table"
     }
   ],
   "refresh": "30s",

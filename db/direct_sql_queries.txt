@@ -27,11 +27,12 @@ docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev
   ts,
   pm25, pm10, no2, o3, so2, co,
   CASE
-    WHEN pm25 <= 12 AND pm10 <= 54 THEN 'Good'
-    WHEN pm25 <= 35.4 OR pm10 <= 154 THEN 'Moderate'
-    WHEN pm25 <= 55.4 OR pm10 <= 254 THEN 'Unhealthy for Sensitive Groups'
-    WHEN pm25 <= 150.4 OR pm10 <= 354 THEN 'Unhealthy'
-    WHEN pm25 <= 250.4 OR pm10 <= 424 THEN 'Very Unhealthy'
+    WHEN pm25 IS NULL AND pm10 IS NULL THEN 'No PM Data'
+    WHEN COALESCE(pm25, 0) <= 12 AND COALESCE(pm10, 0) <= 54 THEN 'Good'
+    WHEN COALESCE(pm25, 0) <= 35.4 OR COALESCE(pm10, 0) <= 154 THEN 'Moderate'
+    WHEN COALESCE(pm25, 0) <= 55.4 OR COALESCE(pm10, 0) <= 254 THEN 'Unhealthy for Sensitive Groups'
+    WHEN COALESCE(pm25, 0) <= 150.4 OR COALESCE(pm10, 0) <= 354 THEN 'Unhealthy'
+    WHEN COALESCE(pm25, 0) <= 250.4 OR COALESCE(pm10, 0) <= 424 THEN 'Very Unhealthy'
     ELSE 'Hazardous'
   END AS aqi_category,
   lat, lon
