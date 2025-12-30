@@ -3,6 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPTS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 INSTALL_PATH="${VLC_INSTALL_PATH:-/opt/vlc}"
 
 print_usage() {
@@ -53,7 +54,7 @@ install_systemd() {
     
     # Updating paths in service file
     local service_content
-    service_content=$(sed "s|/opt/vlc|${INSTALL_PATH}|g" "${SCRIPT_DIR}/autostart/vlc.service")
+    service_content=$(sed "s|/opt/vlc|${INSTALL_PATH}|g" "${SCRIPT_DIR}/vlc.service")
     
     if [[ "${DRY_RUN}" == "true" ]]; then
         echo "[dry-run] Would write to /etc/systemd/system/vlc.service:"
@@ -75,7 +76,7 @@ install_wsl() {
     echo ""
     echo "Add the following to /etc/wsl.conf:"
     echo ""
-    cat "${SCRIPT_DIR}/autostart/wsl-boot.conf" | sed "s|/opt/vlc|${INSTALL_PATH}|g"
+    cat "${SCRIPT_DIR}/wsl-boot.conf" | sed "s|/opt/vlc|${INSTALL_PATH}|g"
     echo ""
     echo "Then restart WSL with: wsl --shutdown"
     echo ""
@@ -109,8 +110,8 @@ echo "[detect] Install path: ${INSTALL_PATH}"
 echo ""
 
 # Ensuring scripts are executable
-run_cmd chmod +x "${SCRIPT_DIR}/vlc-start.sh"
-run_cmd chmod +x "${SCRIPT_DIR}/vlc-stop.sh"
+run_cmd chmod +x "${SCRIPTS_DIR}/vlc-start.sh"
+run_cmd chmod +x "${SCRIPTS_DIR}/vlc-stop.sh"
 
 case "${ENV}" in
     systemd)

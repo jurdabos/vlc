@@ -252,10 +252,20 @@ services:
       - 8.8.8.8
       - 1.1.1.1
     networks: [vlc_internal]
+    environment:
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
     volumes:
-      - ../monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ../monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.template.yml:ro
+    entrypoint: ["/bin/sh", "-c"]
     command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - |
+        apk add --no-cache gettext > /dev/null 2>&1
+        envsubst < /etc/alertmanager/alertmanager.template.yml > /etc/alertmanager/alertmanager.yml
+        exec /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml
     restart: unless-stopped
     profiles: ["ui"]
 

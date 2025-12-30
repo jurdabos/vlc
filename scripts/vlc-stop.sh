@@ -7,7 +7,8 @@ COMPOSE_DIR="${SCRIPT_DIR}/../compose"
 
 cd "${COMPOSE_DIR}"
 
-PROFILES="${VLC_PROFILES:-infra,ui,producer}"
+# Matching default from vlc-start.sh
+PROFILES="${VLC_PROFILES:-infra,schema,producer,ui}"
 
 PROFILE_FLAGS=""
 IFS=',' read -ra PROFILE_ARRAY <<< "${PROFILES}"

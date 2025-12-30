@@ -1,0 +1,12 @@
+The data validation query in vlc\db\direct_sql_queries.txt allows humidity up to 105%:
+Humidity values above 100% are actually physically valid in meteorology. This is called supersaturation, and it can occur because of the following phenomena.
+1. Sensor reporting relative humidity
+Most modern sensors can report values slightly above 100% (typically up to ~103-105%) due to:
+◦  Measurement uncertainty/calibration tolerances
+◦  Transient supersaturation conditions during fog, dew, or precipitation events
+◦  Sensor drift or condensation on the sensor itself
+2. Real atmospheric supersaturation
+Air can briefly hold more water vapor than its equilibrium saturation level, especially in:
+◦  Fog formation conditions
+◦  Cloud formation (though ground-level stations rarely see this)
+◦  Rapid cooling events

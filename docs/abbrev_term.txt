@@ -1,3 +1,9 @@
+(.)y(a)ml
+Yet Another Markup Language
+
+(pg)JDBC
+(postgreSQL) Java Database Connectivity (driver)
+
 +x
 adding the eXecutable permission
 
@@ -39,8 +45,14 @@ HyperText password
 .md
 Markdown
 
+.py
+Python script
+
 .sh
 shell script
+
+.txt
+text( )file
 
 al.
 aliī
@@ -52,6 +64,9 @@ application programming interface
 AV
 avenida
 avenue
+
+BSc
+Bachelor of Science
 
 c
 C
@@ -88,6 +103,9 @@ comma-separated values
 DB
 database
 
+Dec
+December
+
 deg
 degree
 
@@ -111,8 +129,8 @@ e. g.
 exemplī grātiā
 for example
 
-env
-environment
+env(var)
+environment( variable)
 
 etc.
 et cetera
@@ -130,6 +148,9 @@ upload date
 FIWARE
 Future Internet WARE
 una plataforma, impulsada por la Unión Europea, para el desarrollo y despliegue global de aplicaciones de Internet del Futuro
+
+fiwareid
+Future Internet WARE identifier
 
 Gi 
 Gibibyte
@@ -204,6 +225,9 @@ mean time to repair
 
 N
 some number
+
+n.d.
+no date
 
 NDIR
 nondispersive infrared sensor
@@ -287,11 +311,17 @@ Secure Shell daemon
 sudo
 superuser do
 
+timestamptz
+Timestamp with Time Zone
+
 tmp
 temporary
 
 ts
 timestamp
+
+ui
+user interface
 
 UPV
 Universitat Politècnica de València
@@ -306,6 +336,3 @@ virtual machine
 
 W
 weather
-
-(.)y(a)ml
-Yet Another Markup Language

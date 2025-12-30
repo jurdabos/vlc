@@ -9,7 +9,9 @@ COMPOSE_DIR="${SCRIPT_DIR}/../compose"
 cd "${COMPOSE_DIR}"
 
 # Default profiles - override with VLC_PROFILES env var if needed
-PROFILES="${VLC_PROFILES:-infra,ui,producer}"
+# Lean-stack (small VMs): infra,producer,alt-sink
+# Full-stack: infra,schema,producer,ui
+PROFILES="${VLC_PROFILES:-infra,schema,producer,ui}"
 
 # Building profile flags
 PROFILE_FLAGS=""
