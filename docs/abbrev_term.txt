@@ -320,6 +320,9 @@ temporary
 ts
 timestamp
 
+TTY/tty
+teletypewriter
+
 ui
 user interface
 

@@ -142,4 +142,4 @@ test_output.*
 *.pot
 # WebDriver files
 webdrivers/
-.wdm/
+.wdm/monitoring/alertmanager/alertmanager.generated.yml

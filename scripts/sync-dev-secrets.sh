@@ -38,7 +38,7 @@ log "Generating secrets from VLC_DEV_PASSWORD ..."
 log "Creating compose/.htpasswd (nginx basic auth) ..."
 mkdir -p compose
 printf "admin:%s\n" "$(openssl passwd -apr1 "$VLC_DEV_PASSWORD")" > compose/.htpasswd
-chmod 600 compose/.htpasswd
+chmod 644 compose/.htpasswd  # readable by nginx in container
 
 # --- 2) Kafka Connect secrets ---
 log "Creating connect/secrets/secrets.properties (JDBC credentials) ..."
@@ -59,7 +59,15 @@ ALTER ROLE vlc_dev WITH PASSWORD '${VLC_DEV_PASSWORD}';
 EOF
 chmod 600 db/init/020-vlc-password.override.sql
 
-# --- 4) Producer .env (if needed for local testing) ---
+# --- 4) Alertmanager config ---
+log "Creating monitoring/alertmanager/alertmanager.generated.yml (SMTP credentials) ..."
+mkdir -p monitoring/alertmanager
+envsubst '${SMTP_HOST} ${SMTP_PORT} ${SMTP_FROM} ${SMTP_USER} ${SMTP_PASSWORD}' \
+  < monitoring/alertmanager/alertmanager.yml \
+  > monitoring/alertmanager/alertmanager.generated.yml
+chmod 600 monitoring/alertmanager/alertmanager.generated.yml
+
+# --- 5) Producer .env (if needed for local testing) ---
 if [ -d producer ]; then
   log "Ensuring producer can access Schema Registry ..."
   # Producer reads SCHEMA_REGISTRY_URL from env or defaults to http://schema-registry:8081
@@ -69,6 +77,7 @@ log "Done. Generated files:"
 log "  - compose/.htpasswd"
 log "  - connect/secrets/secrets.properties"
 log "  - db/init/020-vlc-password.override.sql"
+log "  - monitoring/alertmanager/alertmanager.generated.yml"
 log ""
 log "Next steps:"
 log "  1. Start infra: docker compose --profile infra up -d"
