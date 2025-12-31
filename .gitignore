@@ -113,6 +113,7 @@ db/init/020-vlc-password.override.sql
 compose/.htpasswd
 connect/secrets
 connect/secrets/
+monitoring/alertmanager/alertmanager.generated.yml
 secrets.properties
 # Sphinx documentation
 docs/_build/
@@ -142,4 +143,4 @@ test_output.*
 *.pot
 # WebDriver files
 webdrivers/
-.wdm/monitoring/alertmanager/alertmanager.generated.yml
+.wdm

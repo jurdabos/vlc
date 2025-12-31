@@ -7,6 +7,19 @@ docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev
 -- Most recent weather reading per station
 docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT DISTINCT ON (fiwareid) fiwareid, ts, temperature_c, humidity_pct, pressure_hpa, wind_dir_deg, wind_speed_ms, precip_mm, lat, lon FROM weather.hyper ORDER BY fiwareid, ts DESC;"
 
+-- Avg. temperature across stations for past week of current year compared with the same period of historic averages
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
+SELECT
+    EXTRACT(DAY FROM ts)::int AS day_of_dec,
+    ROUND(AVG(temperature_c)::numeric, 2) AS historic_avg_all_years,
+    ROUND(AVG(CASE WHEN EXTRACT(YEAR FROM ts) = 2025 THEN temperature_c END)::numeric, 2) AS avg_2025
+FROM weather.hyper
+WHERE EXTRACT(MONTH FROM ts) = 12
+  AND EXTRACT(DAY FROM ts) BETWEEN 23 AND 31
+GROUP BY EXTRACT(DAY FROM ts)
+ORDER BY day_of_dec;
+"
+
 -- Combined air + weather snapshot
 docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT
   COALESCE(a.fiwareid, w.fiwareid) AS fiwareid,
