@@ -418,7 +418,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "kafka_offline_partitions_count or vector(0)",
+          "expr": "sum(kafka_offline_partitions_count) or vector(0)",
           "legendFormat": "Offline Partitions",
           "instant": true,
           "refId": "A"
@@ -481,7 +481,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "kafka_under_replicated_partitions or vector(0)",
+          "expr": "sum(kafka_under_replicated_partitions) or vector(0)",
           "legendFormat": "Under-replicated",
           "instant": true,
           "refId": "A"
