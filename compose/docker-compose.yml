@@ -315,3 +315,19 @@ services:
     restart: unless-stopped
     profiles: ["alt-sink"]
 
+  dbt:
+    build:
+      context: ../dbt
+      dockerfile: Dockerfile
+    image: vlc/dbt:latest
+    environment:
+      DBT_PGHOST: timescaledb
+      DBT_PGPORT: "5432"
+      DBT_PGUSER: vlc_dev
+      DBT_PGPASSWORD: ${VLC_DEV_PASSWORD}
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    networks: [vlc_internal]
+    profiles: ["dbt"]
+

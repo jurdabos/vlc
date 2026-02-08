@@ -1,0 +1,14 @@
+# Template — copy to ~/.dbt/profiles.yml and fill in credentials.
+# For Docker-based runs, the dbt service mounts this automatically.
+vlc:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DBT_PGHOST', 'timescaledb') }}"
+      port: "{{ env_var('DBT_PGPORT', '5432') | int }}"
+      user: "{{ env_var('DBT_PGUSER', 'vlc_dev') }}"
+      password: "{{ env_var('DBT_PGPASSWORD') }}"
+      dbname: vlc
+      schema: public
+      threads: 2

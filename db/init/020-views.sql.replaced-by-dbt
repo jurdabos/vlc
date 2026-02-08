@@ -1,0 +1,155 @@
+-- ==================================================================
+-- Presentation views for dashboards and API consumption
+-- ==================================================================
+
+-- =====================
+-- Latest readings per station
+-- =====================
+
+-- Most recent air quality reading per station
+CREATE OR REPLACE VIEW air.latest AS
+SELECT DISTINCT ON (fiwareid)
+  fiwareid,
+  ts,
+  no2, o3, so2, co, pm10, pm25,
+  air_quality_summary,
+  lat, lon
+FROM air.hyper
+ORDER BY fiwareid, ts DESC;
+
+-- Most recent weather reading per station
+CREATE OR REPLACE VIEW weather.latest AS
+SELECT DISTINCT ON (fiwareid)
+  fiwareid,
+  ts,
+  temperature_c, humidity_pct, pressure_hpa,
+  wind_dir_deg, wind_speed_ms, precip_mm,
+  lat, lon
+FROM weather.hyper
+ORDER BY fiwareid, ts DESC;
+
+-- =====================
+-- Combined air + weather snapshot
+-- =====================
+CREATE OR REPLACE VIEW public.station_snapshot AS
+SELECT
+  COALESCE(a.fiwareid, w.fiwareid) AS fiwareid,
+  a.ts AS air_ts,
+  w.ts AS weather_ts,
+  a.no2, a.o3, a.so2, a.co, a.pm10, a.pm25,
+  a.air_quality_summary,
+  w.temperature_c, w.humidity_pct, w.pressure_hpa,
+  w.wind_dir_deg, w.wind_speed_ms, w.precip_mm,
+  COALESCE(a.lat, w.lat) AS lat,
+  COALESCE(a.lon, w.lon) AS lon
+FROM air.latest a
+FULL OUTER JOIN weather.latest w USING (fiwareid);
+
+-- =====================
+-- Air Quality Index (AQI) categorization
+-- =====================
+CREATE OR REPLACE VIEW air.aqi_status AS
+SELECT
+  fiwareid,
+  ts,
+  pm25, pm10, no2, o3, so2, co,
+  CASE
+    WHEN pm25 <= 12 AND pm10 <= 54 THEN 'Good'
+    WHEN pm25 <= 35.4 OR pm10 <= 154 THEN 'Moderate'
+    WHEN pm25 <= 55.4 OR pm10 <= 254 THEN 'Unhealthy for Sensitive Groups'
+    WHEN pm25 <= 150.4 OR pm10 <= 354 THEN 'Unhealthy'
+    WHEN pm25 <= 250.4 OR pm10 <= 424 THEN 'Very Unhealthy'
+    ELSE 'Hazardous'
+  END AS aqi_category,
+  lat, lon
+FROM air.latest;
+
+-- =====================
+-- Station inventory/metadata
+-- =====================
+CREATE OR REPLACE VIEW public.stations AS
+SELECT
+  fiwareid,
+  'air' AS data_type,
+  MIN(ts) AS first_seen,
+  MAX(ts) AS last_seen,
+  COUNT(*) AS record_count,
+  AVG(lat) AS lat,
+  AVG(lon) AS lon
+FROM air.hyper
+GROUP BY fiwareid
+UNION ALL
+SELECT
+  fiwareid,
+  'weather' AS data_type,
+  MIN(ts) AS first_seen,
+  MAX(ts) AS last_seen,
+  COUNT(*) AS record_count,
+  AVG(lat) AS lat,
+  AVG(lon) AS lon
+FROM weather.hyper
+GROUP BY fiwareid;
+
+-- =====================
+-- Daily trends (for charting)
+-- =====================
+CREATE OR REPLACE VIEW air.daily_trends AS
+SELECT
+  fiwareid,
+  bucket_day::date AS day,
+  co_avg, no2_avg, o3_avg, pm10_avg, pm25_avg, so2_avg,
+  LAG(pm25_avg) OVER (PARTITION BY fiwareid ORDER BY bucket_day) AS pm25_prev,
+  pm25_avg - LAG(pm25_avg) OVER (PARTITION BY fiwareid ORDER BY bucket_day) AS pm25_delta
+FROM air.daily;
+
+CREATE OR REPLACE VIEW weather.daily_trends AS
+SELECT
+  fiwareid,
+  bucket_day::date AS day,
+  temp_avg_c, humidity_avg, pressure_avg, precip_max_mm,
+  wind_avg_deg, wind_avg_ms,
+  LAG(temp_avg_c) OVER (PARTITION BY fiwareid ORDER BY bucket_day) AS temp_prev,
+  temp_avg_c - LAG(temp_avg_c) OVER (PARTITION BY fiwareid ORDER BY bucket_day) AS temp_delta
+FROM weather.daily;
+
+-- =====================
+-- Data freshness monitoring
+-- =====================
+CREATE OR REPLACE VIEW public.data_freshness AS
+SELECT
+  'air' AS schema_name,
+  fiwareid,
+  MAX(ts) AS last_update,
+  NOW() - MAX(ts) AS staleness,
+  CASE
+    WHEN NOW() - MAX(ts) < INTERVAL '1 hour' THEN 'Fresh'
+    WHEN NOW() - MAX(ts) < INTERVAL '6 hours' THEN 'Stale'
+    ELSE 'Offline'
+  END AS status
+FROM air.hyper
+GROUP BY fiwareid
+UNION ALL
+SELECT
+  'weather' AS schema_name,
+  fiwareid,
+  MAX(ts) AS last_update,
+  NOW() - MAX(ts) AS staleness,
+  CASE
+    WHEN NOW() - MAX(ts) < INTERVAL '1 hour' THEN 'Fresh'
+    WHEN NOW() - MAX(ts) < INTERVAL '6 hours' THEN 'Stale'
+    ELSE 'Offline'
+  END AS status
+FROM weather.hyper
+GROUP BY fiwareid;
+
+-- =====================
+-- Grant SELECT on views to vlc_dev
+-- =====================
+GRANT SELECT ON air.latest TO vlc_dev;
+GRANT SELECT ON air.aqi_status TO vlc_dev;
+GRANT SELECT ON air.daily_trends TO vlc_dev;
+GRANT SELECT ON weather.latest TO vlc_dev;
+GRANT SELECT ON weather.daily_trends TO vlc_dev;
+GRANT SELECT ON public.station_snapshot TO vlc_dev;
+GRANT SELECT ON public.stations TO vlc_dev;
+GRANT SELECT ON public.data_freshness TO vlc_dev;

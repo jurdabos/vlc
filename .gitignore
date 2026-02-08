@@ -141,6 +141,10 @@ test_output.*
 # Translations
 *.mo
 *.pot
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
 # WebDriver files
 webdrivers/
 .wdm
