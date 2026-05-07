@@ -127,7 +127,10 @@ SELECT
   avg(temperature_c) AS temp_avg_c,
   avg(humidity_pct)  AS humidity_avg,
   avg(pressure_hpa)  AS pressure_avg,
+  -- precip_mm is per-reading rainfall accumulated within each station's reporting interval,
+  -- so daily totals use sum(...) while max(...) gives the peak single-interval intensity.
   max(precip_mm)     AS precip_max_mm,
+  sum(precip_mm)     AS precip_total_mm,
   -- Circular mean for wind direction
   degrees(atan2(
     avg(sin(radians(wind_dir_deg))),
@@ -152,7 +155,10 @@ SELECT
   avg(temperature_c) AS temp_avg_c,
   avg(humidity_pct)  AS humidity_avg,
   avg(pressure_hpa)  AS pressure_avg,
+  -- precip_mm is per-reading rainfall accumulated within each station's reporting interval,
+  -- so weekly totals use sum(...) while max(...) gives the peak single-interval intensity.
   max(precip_mm)     AS precip_max_mm,
+  sum(precip_mm)     AS precip_total_mm,
   -- Circular mean for wind direction
   degrees(atan2(
     avg(sin(radians(wind_dir_deg))),

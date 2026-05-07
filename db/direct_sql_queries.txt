@@ -123,7 +123,8 @@ FROM air.daily;"
 docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT
   fiwareid,
   bucket_day::date AS day,
-  temp_avg_c, humidity_avg, pressure_avg, precip_max_mm,
+  temp_avg_c, humidity_avg, pressure_avg,
+  precip_max_mm, precip_total_mm,
   wind_avg_deg, wind_avg_ms,
   LAG(temp_avg_c) OVER (PARTITION BY fiwareid ORDER BY bucket_day) AS temp_prev,
   temp_avg_c - LAG(temp_avg_c) OVER (PARTITION BY fiwareid ORDER BY bucket_day) AS temp_delta
@@ -349,7 +350,8 @@ SELECT
   AVG(pressure_hpa) AS pressure_avg,
   AVG(wind_speed_ms) AS wind_avg_ms,
   degrees(atan2(avg(sin(radians(wind_dir_deg))), avg(cos(radians(wind_dir_deg))))) AS wind_avg_deg,
-  MAX(precip_mm) AS precip_max_mm
+  MAX(precip_mm) AS precip_max_mm,
+  SUM(precip_mm) AS precip_total_mm
 FROM weather.hyper
 GROUP BY bucket_hour
 ORDER BY bucket_hour;"
@@ -379,7 +381,8 @@ SELECT
   AVG(pressure_hpa) AS pressure_avg,
   AVG(wind_speed_ms) AS wind_avg_ms,
   degrees(atan2(avg(sin(radians(wind_dir_deg))), avg(cos(radians(wind_dir_deg))))) AS wind_avg_deg,
-  MAX(precip_mm) AS precip_max_mm
+  MAX(precip_mm) AS precip_max_mm,
+  SUM(precip_mm) AS precip_total_mm
 FROM weather.hyper
 WHERE ts >= date_trunc('week', NOW())
 GROUP BY bucket_hour
@@ -410,7 +413,8 @@ SELECT
   AVG(pressure_hpa) AS pressure_avg,
   AVG(wind_speed_ms) AS wind_avg_ms,
   degrees(atan2(avg(sin(radians(wind_dir_deg))), avg(cos(radians(wind_dir_deg))))) AS wind_avg_deg,
-  MAX(precip_mm) AS precip_max_mm
+  MAX(precip_mm) AS precip_max_mm,
+  SUM(precip_mm) AS precip_total_mm
 FROM weather.hyper
 WHERE ts >= date_trunc('day', NOW())
 GROUP BY bucket_hour
@@ -425,4 +429,4 @@ SELECT TO_CHAR(EXTRACT(HOUR FROM ts)::int, 'FM00') || ':00-' || TO_CHAR((EXTRACT
 
 -- WEATHER
 docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "
-SELECT TO_CHAR(EXTRACT(HOUR FROM ts)::int, 'FM00') || ':00-' || TO_CHAR((EXTRACT(HOUR FROM ts)::int + 1) % 24, 'FM00') || ':00' AS hour_range, AVG(temperature_c) AS temp_avg_c, AVG(humidity_pct) AS humidity_avg, AVG(pressure_hpa) AS pressure_avg, AVG(wind_speed_ms) AS wind_avg_ms, degrees(atan2(avg(sin(radians(wind_dir_deg))), avg(cos(radians(wind_dir_deg))))) AS wind_avg_deg, MAX(precip_mm) AS precip_max_mm, COUNT(*) AS sample_count FROM weather.hyper GROUP BY EXTRACT(HOUR FROM ts) ORDER BY EXTRACT(HOUR FROM ts);"
+SELECT TO_CHAR(EXTRACT(HOUR FROM ts)::int, 'FM00') || ':00-' || TO_CHAR((EXTRACT(HOUR FROM ts)::int + 1) % 24, 'FM00') || ':00' AS hour_range, AVG(temperature_c) AS temp_avg_c, AVG(humidity_pct) AS humidity_avg, AVG(pressure_hpa) AS pressure_avg, AVG(wind_speed_ms) AS wind_avg_ms, degrees(atan2(avg(sin(radians(wind_dir_deg))), avg(cos(radians(wind_dir_deg))))) AS wind_avg_deg, MAX(precip_mm) AS precip_max_mm, SUM(precip_mm) AS precip_total_mm, COUNT(*) AS sample_count FROM weather.hyper GROUP BY EXTRACT(HOUR FROM ts) ORDER BY EXTRACT(HOUR FROM ts);"
