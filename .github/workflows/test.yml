@@ -19,7 +19,11 @@ jobs:
         python-version: '3.12'
 
     - name: Install ruff
-      run: pip install ruff
+      # Pin ruff so CI uses the same version as the lockfile/dev group;
+      # otherwise unpinned `pip install ruff` pulls newer versions whose
+      # formatter may apply additional rewrites (e.g. lambda paren stripping
+      # introduced in 0.15.x) and breaks CI even when local checks pass.
+      run: pip install "ruff==0.14.6"
 
     - name: Lint Python code
       run: ruff check producer/ scripts/ tests/

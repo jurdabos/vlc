@@ -7,6 +7,10 @@ and this project loosely follows [Semantic Versioning](https://semver.org/spec/v
 
 ## [Unreleased]
 
+### Fixed
+- CI lint job (`.github/workflows/test.yml`): pinned `ruff` to `0.14.6` (was unpinned `pip install ruff`). Unpinned installs were pulling `ruff 0.15.x`, whose formatter strips redundant outer parentheses in `lambda` bodies and produced `Would reformat: scripts/weather_snapshot_watcher.py` despite local checks passing on the lockfile-pinned 0.14.6.
+- `scripts/weather_snapshot_watcher.py`: removed redundant outer parens in the `sorted(rows, key=lambda x: x.get("objectid", 0) or 0)` key so the file is also clean under `ruff 0.15.x` formatter (verified with both 0.14.6 and 0.15.12).
+
 ### Added
 - `db/init/010-bootstrap.sql`: `weather.daily` and `weather.weekly` continuous aggregates now expose `sum(precip_mm) AS precip_total_mm` alongside the existing `max(precip_mm) AS precip_max_mm`. The `max` is the peak per-interval rainfall intensity in the bucket; `sum` is the bucket's total rainfall (since each `precip_mm` row is the rainfall accumulated within that station's reporting interval).
 - `grafana/dashboards/weather.json`: new "Daily Precipitation Total - All Stations (Last 30 days)" panel sourcing `weather.daily.precip_total_mm` (full-width bar chart, `lengthmm` unit, legend `sum` reducer). The existing 7-day per-reading precipitation panel is kept for intensity views.

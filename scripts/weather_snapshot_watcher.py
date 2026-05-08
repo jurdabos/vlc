@@ -143,7 +143,7 @@ def print_block(
     print(title)
     print(header)
     print("-" * len(header))
-    for r in sorted(rows, key=lambda x: (x.get("objectid", 0) or 0)):
+    for r in sorted(rows, key=lambda x: x.get("objectid", 0) or 0):
         fid = station_key(r)
         tick = iso_to_utc(r["fecha_carg"])
         prev = last_seen.get(fid)
