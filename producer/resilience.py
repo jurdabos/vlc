@@ -30,6 +30,12 @@ class RetryConfig:
     max_delay_ms: int = 60000
     max_retries: int = 5
     jitter_factor: float = 0.3  # ±30% jitter
+    # HTTP-level timeout applied to every request issued via
+    # ``http_request_with_retry`` when the caller does not pass ``timeout=``.
+    # Tuple is (connect, read) seconds. ``requests.Session`` does NOT honour
+    # a session-level timeout attribute, so we have to defend at this layer.
+    connect_timeout_secs: float = 10.0
+    read_timeout_secs: float = 60.0
 
     @classmethod
     def from_env(cls) -> "RetryConfig":
@@ -39,6 +45,8 @@ class RetryConfig:
             max_delay_ms=int(os.getenv("VLC_BACKOFF_MAX_MS", "60000")),
             max_retries=int(os.getenv("VLC_BACKOFF_MAX_RETRIES", "5")),
             jitter_factor=float(os.getenv("VLC_BACKOFF_JITTER", "0.3")),
+            connect_timeout_secs=float(os.getenv("VLC_HTTP_CONNECT_TIMEOUT_SECS", "10")),
+            read_timeout_secs=float(os.getenv("VLC_HTTP_READ_TIMEOUT_SECS", "60")),
         )
 
 
@@ -116,6 +124,11 @@ def http_request_with_retry(
     """
     if config is None:
         config = RetryConfig.from_env()
+    # Default timeout if the caller didn't pass one. requests.Session has no
+    # session-level timeout, so without this a half-open TCP connection can
+    # block the producer thread indefinitely (observed in production: 23h
+    # hang on a single ESTABLISHED HTTPS socket).
+    kwargs.setdefault("timeout", (config.connect_timeout_secs, config.read_timeout_secs))
     backoff = ExponentialBackoff(config)
     last_exc: Optional[Exception] = None
     for attempt in range(config.max_retries + 1):

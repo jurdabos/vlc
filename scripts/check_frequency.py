@@ -1,111 +1,104 @@
-# check_frequency.py
-import json
-import math
+"""Polls the Valencia geoportal ArcGIS REST air-pollution layer (id 156) once
+and reports whether the snapshot tick (`fecha_carg`) advanced relative to the
+last observed value persisted to ``./state/last_tick.txt``.
+
+Note: this script previously used the Opendatasoft Explore v2.1 API; the
+geoportal ArcGIS endpoint replaces it 1:1 since 2026-05.
+"""
+
 import os
 from datetime import datetime, timezone
 
 import requests
 
-DATASET = "estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas"
-BASE = "https://valencia.opendatasoft.com/api/explore/v2.1"
-URL = f"{BASE}/catalog/datasets/{DATASET}/records"
-
-MAX_LIMIT = 100  # Opendatasoft hard cap for Explore v2.1
+BASE = os.environ.get(
+    "VLC_ARCGIS_BASE",
+    "https://geoportal.valencia.es/server/rest/services/OPENDATA/MedioAmbiente/MapServer",
+)
+LAYER_ID = int(os.environ.get("VLC_LAYER_ID", "156"))
+URL = f"{BASE.rstrip('/')}/{LAYER_ID}/query"
 STATE = os.environ.get("STATE_FILE", os.path.join(".", "state", "last_tick.txt"))
 
-
-def iso(ts: str):
-    ts = ts.replace("Z", "+00:00")
-    if "." in ts:  # strip subseconds but keep tz
-        left, right = ts.split(".", 1)
-        if "+" in right or "-" in right:
-            sign = "+" if "+" in right else "-"
-            tz = sign + right.split(sign, 1)[1]
-        else:
-            tz = ""
-        ts = left + tz
-    return datetime.fromisoformat(ts).astimezone(timezone.utc)
+# ArcGIS layers cap at maxRecordCount=2000; the air layer holds ~11 features
+MAX_LIMIT = 2000
 
 
-def _get(params, *, tolerate_400_fixups=True):
-    """
-    Do a GET with common fixups:
-      - clamp limit to MAX_LIMIT
-      - remove order_by on 400
-    """
-    params = dict(params)
-    if "limit" in params:
-        try:
-            params["limit"] = str(min(int(params["limit"]), MAX_LIMIT))
-        except Exception:
-            params["limit"] = str(MAX_LIMIT)
-    else:
-        params["limit"] = str(MAX_LIMIT)
+def epoch_ms_to_utc(ts_ms: int) -> datetime:
+    """Converts ArcGIS epoch-ms `fecha_carg` to a tz-aware UTC datetime."""
+    return datetime.fromtimestamp(int(ts_ms) / 1000, tz=timezone.utc)
+
+
+def _query(extra_params: dict) -> dict:
+    """Fetches the query endpoint with sane defaults; raises on protocol errors."""
+    params = {"where": "1=1", "f": "json", "outFields": "*", "returnGeometry": "false"}
+    params.update(extra_params)
     r = requests.get(URL, params=params, headers={"Accept": "application/json"}, timeout=(10, 60))
-    if r.status_code == 400 and tolerate_400_fixups:
-        # Try removing order_by and clamping limit again
-        params.pop("order_by", None)
-        params["limit"] = str(MAX_LIMIT)
-        r = requests.get(URL, params=params, headers={"Accept": "application/json"}, timeout=(10, 60))
-    # If still bad, show diagnostic snippet
     try:
         r.raise_for_status()
     except requests.HTTPError as e:
         snippet = r.text[:600].replace("\n", " ")
         raise SystemExit(f"HTTP {r.status_code} {r.reason}. Params={params}. Payload head: {snippet}") from e
-    try:
-        return r.json()
-    except json.JSONDecodeError:
-        raise SystemExit(f"Non-JSON response. Params={params}. Payload head: {r.text[:600]}")
+    payload = r.json()
+    if isinstance(payload, dict) and "error" in payload:
+        raise SystemExit(f"ArcGIS error: {payload['error']}")
+    return payload
 
 
-def fetch_total_count():
-    data = _get({"select": "count(*) as n"})
-    n = 0
-    if isinstance(data, dict) and "results" in data and data["results"]:
-        n = int(data["results"][0].get("n", 0))
-    return n
+def fetch_total_count() -> int:
+    data = _query({"returnCountOnly": "true"})
+    return int(data.get("count", 0))
 
 
-def fetch_all_rows():
-    total = fetch_total_count()
-    if total == 0:
-        return []
-    pages = max(1, math.ceil(total / MAX_LIMIT))
-    rows = []
-    for i in range(pages):
-        offset = i * MAX_LIMIT
-        data = _get(
+def fetch_all_rows() -> list[dict]:
+    """Returns every feature's attributes (lean projection of fecha_carg + fiwareid)."""
+    rows: list[dict] = []
+    offset = 0
+    while True:
+        data = _query(
             {
-                "select": "fecha_carg,fiwareid",  # lean payload
-                "limit": str(MAX_LIMIT),
-                "offset": str(offset),
+                "outFields": "fecha_carg,fiwareid",
+                "resultRecordCount": str(MAX_LIMIT),
+                "resultOffset": str(offset),
             }
         )
-        rows.extend(data.get("results", []))
+        feats = data.get("features", []) or []
+        if not feats:
+            break
+        rows.extend(f.get("attributes") or {} for f in feats)
+        if len(feats) < MAX_LIMIT:
+            break
+        offset += MAX_LIMIT
     return rows
 
 
-if __name__ == "__main__":
+def main() -> None:
     os.makedirs(os.path.dirname(STATE), exist_ok=True)
     rows = fetch_all_rows()
     if not rows:
         raise SystemExit("No rows returned.")
-    # snapshot semantics: all rows share the same fecha_carg
-    tick = rows[0]["fecha_carg"]
-    now_dt = iso(tick)
+    # Snapshot semantics: typically all rows share the same fecha_carg.
+    # Picking max keeps us robust if some stations lag.
+    ticks = [r.get("fecha_carg") for r in rows if r.get("fecha_carg") is not None]
+    if not ticks:
+        raise SystemExit("Rows lacked 'fecha_carg' (epoch ms).")
+    tick_ms = max(ticks)
+    now_dt = epoch_ms_to_utc(tick_ms)
     stations = {r.get("fiwareid") for r in rows if r.get("fiwareid")}
     print(f"Snapshot tick: {now_dt.strftime('%Y-%m-%d %H:%M:%S')} UTC  (rows={len(rows)}, stations={len(stations)})")
-    prev = None
+    prev_iso = None
     if os.path.exists(STATE):
-        prev = (open(STATE, "r", encoding="utf-8").read().strip()) or None
-    if prev:
-        prev_dt = iso(prev)
+        prev_iso = open(STATE, "r", encoding="utf-8").read().strip() or None
+    if prev_iso:
+        prev_dt = datetime.fromisoformat(prev_iso.replace("Z", "+00:00")).astimezone(timezone.utc)
         if now_dt > prev_dt:
             gap_h = (now_dt - prev_dt).total_seconds() / 3600.0
-            print(f"Tick advanced by {gap_h:.2f} h → emit all stations.")
+            print(f"Tick advanced by {gap_h:.2f} h \u2192 emit all stations.")
         else:
-            print("Same tick as last run → emit nothing.")
+            print("Same tick as last run \u2192 emit nothing.")
     else:
-        print("No prior state → initialize without emitting.")
-    open(STATE, "w", encoding="utf-8").write(tick)
+        print("No prior state \u2192 initialize without emitting.")
+    open(STATE, "w", encoding="utf-8").write(now_dt.strftime("%Y-%m-%dT%H:%M:%SZ"))
+
+
+if __name__ == "__main__":
+    main()

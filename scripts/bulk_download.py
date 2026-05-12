@@ -1,7 +1,20 @@
-"""Downloads any dataset from Valencia Open Data by dataset ID."""
+"""LEGACY: downloads any dataset from the Valencia Opendatasoft catalog
+(``valencia.opendatasoft.com``).
+
+This host was decommissioned in 2026-05; the script is retained for offline
+reproducibility of the historical RVVCCA + auxiliary datasets that drove the
+backfill in ``backfill/``. The current air/weather streaming pipeline reads
+from the geoportal ArcGIS REST endpoint instead
+(``https://geoportal.valencia.es/server/rest/services/OPENDATA/MedioAmbiente/MapServer``)
+— see ``producer/README.md`` for the replacement.
+
+Run with ``--allow-legacy`` to actually invoke the Opendatasoft endpoints (it
+will fail with a TLS handshake error against the dead host).
+"""
 
 import argparse
 import json
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -205,7 +218,20 @@ Examples:
         help="Base output directory (default: D:\\tanul\\iu\\subjects\\project_data_engineering\\vlc\\dataset)",
     )
 
+    parser.add_argument(
+        "--allow-legacy",
+        action="store_true",
+        help="Required to actually invoke the decommissioned valencia.opendatasoft.com endpoints.",
+    )
     args = parser.parse_args()
+
+    if not args.allow_legacy:
+        print(
+            "This script targets the decommissioned valencia.opendatasoft.com host. "
+            "Pass --allow-legacy to attempt the request anyway.",
+            file=sys.stderr,
+        )
+        sys.exit(0)
 
     if args.all:
         dataset_ids = fetch_all_dataset_ids()

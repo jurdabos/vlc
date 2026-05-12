@@ -2,16 +2,16 @@
 flowchart LR
 
 %% ─────────────────── Source layer ───────────────────
-subgraph SRC["Source APIs (València Opendatasoft Explore v2.1)"]
+subgraph SRC["Source APIs (geoportal.valencia.es ArcGIS REST)"]
   direction LR
-  airAPI["Air quality\nestacions-contaminacio-...\n• fecha_carg • geo_point_2d • NO₂/PM/O₃/…"]
-  weatherAPI["Weather\nestacions-atmosferiques-...\n• fecha_carg • geo_point_2d • T/RH/wind/…"]
+  airAPI["Air quality (layer 156)\nMedioAmbiente/MapServer/156\n• fecha_carg (epoch ms) • geometry {x,y} • NO₂/PM/O₃/…"]
+  weatherAPI["Weather (layer 157)\nMedioAmbiente/MapServer/157\n• fecha_carg (epoch ms) • geometry {x,y} • T/RH/wind/…"]
 end
 
 %% ─────────────────── Ingestion layer ───────────────────
 subgraph INJ["Ingestion  ➜  Python-producer"]
   direction LR
-  producer["Poll → Transform → Produce\n• where: fecha_carg > ${offset}\n• paginate limit/offset\n• flatten geo → lat/lon\n• fecha_carg→ts\n• persist offset → /state/offset.txt\n• ~5-min cadence"]:::docker
+  producer["Poll → Transform → Produce\n• ArcGIS /query, where=1=1, orderByFields=fecha_carg DESC\n• paginate resultRecordCount/resultOffset\n• outSR=4326 → geometry {x:lon, y:lat}\n• fecha_carg (epoch ms) → ts (timestamp-millis)\n• per-station offset + fingerprint → /state/state.json\n• ~5-min cadence, fetch errors logged loudly"]:::docker
 end
 
 %% ─────────────────── Streaming platform ───────────────────
@@ -48,9 +48,9 @@ subgraph OUT["Analytics / Viz"]
 end
 
 %% ─────────────────── Backfill path ───────────────────
-subgraph BF["Historical backfill (one-off)"]
+subgraph BF["Historical backfill (one-off, captured pre-2026-05)"]
   direction LR
-  exportAPI["Opendatasoft exports endpoint\n(CSV/JSON, no page cap)"]
+  csvSrc["Frozen RVVCCA CSVs in backfill/\nhourly_2021_2022.csv • daily_2004_2022.csv"]
   loader["One-off loader\npsql \\copy"]:::tool
 end
 
@@ -96,7 +96,7 @@ cagg --> graf
 tdb --> psql
 
 %% Backfill routing
-exportAPI --> loader
+csvSrc --> loader
 loader --> topics
 %% (or) loader -. direct one-off .-> airTables
 %% (or) loader -. direct one-off .->weatherTables

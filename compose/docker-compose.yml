@@ -188,7 +188,8 @@ services:
     env_file:
       - ../.env
     environment:
-      VLC_DATASET_ID: estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas
+      # Layer 156 = Estacions contaminació atmosfèriques (air pollution stations)
+      VLC_LAYER_ID: "156"
       KAFKA_TOPIC: vlc.air
       STATE_DIR: /state
       USE_SCHEMA_REGISTRY: ${USE_SCHEMA_REGISTRY:-true}
@@ -215,7 +216,8 @@ services:
     env_file:
       - ../.env
     environment:
-      VLC_DATASET_ID: estacions-atmosferiques-estaciones-atmosfericas
+      # Layer 157 = Estacions Atmosfèriques (weather stations)
+      VLC_LAYER_ID: "157"
       KAFKA_TOPIC: vlc.weather
       STATE_DIR: /state
       USE_SCHEMA_REGISTRY: ${USE_SCHEMA_REGISTRY:-true}

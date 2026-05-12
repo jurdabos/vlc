@@ -41,8 +41,8 @@ These stations appear in RVVCCA historical data but don't have current FIWARE eq
 - **Puerto llit antic Turia** - Port area station
 
 ## Data Sources
-- **Current stations**: Valencia Open Data API (`estacions-contaminacio-atmosferiques`, `estacions-atmosferiques`)
-- **Historical data**: RVVCCA datasets (`rvvcca`, `rvvcca_d_horarios_2016-2020`, `rvvcca_d_horarios_2021-2022`)
+- **Current stations**: Valencia geoportal ArcGIS REST (layers 156 = air pollution, 157 = weather, on `https://geoportal.valencia.es/server/rest/services/OPENDATA/MedioAmbiente/MapServer`). Until 2026-05 the same data was available via the now-decommissioned Opendatasoft datasets `estacions-contaminacio-atmosferiques-...` and `estacions-atmosferiques-...`; field names and `fiwareid` station identifiers are unchanged.
+- **Historical data**: RVVCCA datasets (`rvvcca`, `rvvcca_d_horarios_2016-2020`, `rvvcca_d_horarios_2021-2022`) — captured as CSVs in `backfill/` before the Opendatasoft host was retired.
 - **Alternative for W03 (Airport)**: AEMET station 8414A (requires API key)
 
 ## Database Files

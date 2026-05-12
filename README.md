@@ -3,16 +3,21 @@ VLC air quality and weather data pipeline — a data engineering study project f
 
 ## Data Flow
 ```
-Valencia ODS API (v2.1)
+Valencia geoportal ArcGIS REST  (MedioAmbiente/MapServer/156, /157)
          ↓ poll every 5 min
 Producers (air_producer + weather_producer)
-         ↓ fingerprint dedup, Avro serialization
-Kafka (vlc.air/vlc.weather topics)
-         ↓ JDBC Sink Connector (Avro, upsert on fiwareid+ts)
-TimescaleDB (air.hyper/weather.hyper hypertables)
+         ↓ per-station offset + fingerprint dedup, Avro serialization
+Kafka (vlc.air / vlc.weather topics)
+         ↓ JDBC Sink Connector (Avro, upsert on (fiwareid, ts))
+TimescaleDB (air.hyper / weather.hyper hypertables)
          ↓ SQL queries
 Grafana Dashboards
 ```
+The upstream source migrated from `valencia.opendatasoft.com` (Opendatasoft
+Explore v2.1, decommissioned 2026-05) to the ArcGIS REST layers `156` (air
+pollution) and `157` (weather) on `geoportal.valencia.es`. Field names and
+station identifiers are unchanged — see `producer/README.md` for the full
+details.
 
 ## Prerequisites
 - Docker & Docker Compose v2

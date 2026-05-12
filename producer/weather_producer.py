@@ -1,8 +1,31 @@
+"""Polls the Valencia geoportal ArcGIS REST endpoint for weather station
+readings and produces them to Kafka topic `vlc.weather`.
+
+Source layer:
+    https://geoportal.valencia.es/server/rest/services/OPENDATA/MedioAmbiente/MapServer/157
+
+Field semantics:
+    - `fecha_carg`        : esriFieldTypeDate (epoch milliseconds, UTC)
+    - `fiwareid`          : station identifier (stable, e.g. ``W01_AVFRANCIA_10m``)
+    - `viento_dir/_vel`   : wind direction (deg) / speed (m/s)
+    - `temperatur`        : air temperature in Celsius
+    - `humedad_re`        : relative humidity (%)
+    - `presion_ba`        : barometric pressure (hPa)
+    - `precipitac`        : precipitation (mm) accumulated over the station's
+      reporting interval (≈10 min for ``*_10m`` stations)
+    - feature.geometry    : ``{x: lon, y: lat}`` after we ask for ``outSR=4326``
+
+Output (Avro on Kafka topic ``vlc.weather``):
+    See ``schemas/weather.avsc``. Field renames vs. the source:
+    ``viento_dir`` -> ``wind_dir_deg``, ``viento_vel`` -> ``wind_speed_ms``,
+    ``temperatur`` -> ``temperature_c``, ``humedad_re`` -> ``humidity_pct``,
+    ``presion_ba`` -> ``pressure_hpa``, ``precipitac`` -> ``precip_mm``.
+"""
+
 import hashlib
 import io
 import json
 import os
-import re
 import signal
 import struct
 import time
@@ -12,25 +35,29 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 import fastavro
 import requests
+from arcgis_client import (
+    DEFAULT_BASE,
+    fetch_one_feature,
+    fetch_page,
+    get_field_names,
+    get_layer_metadata,
+    query_url,
+)
 from confluent_kafka import Producer
 from resilience import (
     InflightLimiter,
     ResilientProducer,
     RetryConfig,
-    http_request_with_retry,
 )
 
 # --------- env ---------
-BASE1 = os.getenv("VLC_EXPLORE_BASE", "https://valencia.opendatasoft.com/api/explore/v2.1")
-BASE2 = os.getenv("VLC_EXPLORE_BASE2", "https://valencia.opendatasoft.com/api/v2")
-BASES = [BASE1, BASE2]
-
-DATASET_ID = os.getenv("VLC_DATASET_ID", "estacions-atmosferiques-estaciones-atmosfericas")
+BASE = os.getenv("VLC_ARCGIS_BASE", DEFAULT_BASE)
+LAYER_ID = int(os.getenv("VLC_LAYER_ID", "157"))
 TOPIC = os.getenv("KAFKA_TOPIC", "vlc.weather")
 BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
 SCHEMA_REGISTRY_URL = os.getenv("SCHEMA_REGISTRY_URL", "http://schema-registry:8081")
 POLL_SECS = int(os.getenv("POLL_EVERY_SECONDS", "300"))
-LIMIT = int(os.getenv("PAGE_LIMIT", "100"))
+LIMIT = int(os.getenv("PAGE_LIMIT", "2000"))
 
 # Lean-stack mode: skip Schema Registry, use local Avro serialization
 # Set USE_SCHEMA_REGISTRY=false for lean-stack deployment
@@ -50,6 +77,9 @@ START_OFFSET = os.getenv("START_OFFSET", "1970-01-01T00:00:00Z")  # or 'latest_d
 TIMESTAMP_FIELD = os.getenv("TIMESTAMP_FIELD", "fecha_carg")
 AUTO_TS_FIELD = os.getenv("AUTO_TS_FIELD", "true").lower() == "true"
 
+# Stale-upstream surfacing: log a louder warning every N consecutive empty cycles
+STALE_WARN_EVERY = int(os.getenv("VLC_STALE_WARN_EVERY", "12"))  # default ~1h at 5min cadence
+
 # Optional DB bootstrap for initial offset
 PG_BOOTSTRAP = os.getenv("PG_BOOTSTRAP", "false").lower() == "true"
 PG_HOST = os.getenv("PGHOST", "timescaledb")
@@ -58,7 +88,7 @@ PG_DB = os.getenv("PGDATABASE", "vlc")
 PG_USER = os.getenv("PGUSER", "postgres")
 PG_PW = os.getenv("PGPASSWORD", "postgres")
 
-# Desired fields (we'll intersect with what's available)
+# Desired attribute fields (we'll intersect with what the layer actually exposes)
 DESIRED_FIELDS = [
     "objectid",
     "nombre",
@@ -70,15 +100,16 @@ DESIRED_FIELDS = [
     "presion_ba",
     "precipitac",
     "fiwareid",
-    "geo_point_2d",  # ts field added at runtime
 ]
 
 # Which fields define a change if ts is the same?
 CHANGE_FIELDS = ["viento_dir", "viento_vel", "temperatur", "humedad_re", "presion_ba", "precipitac"]
 
 session = requests.Session()
-session.headers.update({"User-Agent": "vlc-python-producer/1.4"})
-session.timeout = (10, 60)  # connect, read
+session.headers.update({"User-Agent": "vlc-python-producer/2.0"})
+# Note: requests.Session has no session-level timeout. The actual timeout
+# is enforced inside resilience.http_request_with_retry via RetryConfig
+# (VLC_HTTP_CONNECT_TIMEOUT_SECS / VLC_HTTP_READ_TIMEOUT_SECS).
 
 # Resilience configuration
 RETRY_CONFIG = RetryConfig.from_env()
@@ -134,20 +165,16 @@ def load_state() -> Tuple[Dict[str, str], Dict[str, str]]:
     if os.path.exists(STATE_JSON):
         try:
             d = json.load(open(STATE_JSON, "r", encoding="utf-8"))
-            # New format: per-station offsets
             if "station_offsets" in d:
                 return dict(d.get("station_offsets", {})), dict(d.get("station_fingerprints", {}))
-            # Migrating from old format: single global offset
             old_offset = d.get("offset", START_OFFSET)
             old_seen = d.get("seen_for_offset", {})
-            # Converting old format: all known stations get the old global offset
             station_offsets = {sid: old_offset for sid in old_seen.keys()}
             return station_offsets, dict(old_seen)
         except Exception:
             pass
-    # Fallback to old offset.txt if present
     load_offset()  # side effect: may bootstrap from DB
-    return {}, {}  # empty dicts for fresh start
+    return {}, {}
 
 
 def save_state(station_offsets: Dict[str, str], station_fingerprints: Dict[str, str]) -> None:
@@ -163,44 +190,30 @@ def save_offset(iso: str) -> None:
         f.write(iso)
 
 
-POINT_RX = re.compile(r"POINT\s*\(\s*([-\d\.]+)\s+([-\d\.]+)\s*\)")
-
-
 def extract_lat_lon(geo: Any) -> Tuple[Optional[float], Optional[float]]:
     """
-    Extracts lat/lon from geo_point_2d, rounding to 6 decimals (~11cm) to
-    normalize inconsistent API precision for the same station.
+    Extracts lat/lon from either:
+        - ArcGIS geometry shape: ``{"x": lon, "y": lat}``
+        - Legacy `geo_point_2d` dict: ``{"lat": ..., "lon": ...}``
     """
-    lat, lon = None, None
     if isinstance(geo, dict):
-        # ODS v2.1 often returns {"lat":..., "lon":...}
         try:
-            lat, lon = float(geo.get("lat")), float(geo.get("lon"))
+            if "lat" in geo and "lon" in geo:
+                lat, lon = float(geo.get("lat")), float(geo.get("lon"))
+            elif "x" in geo and "y" in geo:
+                lat, lon = float(geo.get("y")), float(geo.get("x"))
+            else:
+                return (None, None)
+            return round(lat, 6), round(lon, 6)
         except Exception:
             return (None, None)
-    elif isinstance(geo, str):
-        m = POINT_RX.match(geo)
-        if m:
-            lon, lat = float(m.group(1)), float(m.group(2))
-    if lat is not None and lon is not None:
-        return round(lat, 6), round(lon, 6)
     return (None, None)
 
 
-def normalize_ts(s: str) -> str:
-    # Ensure "YYYY-MM-DDTHH:MM:SSZ" (no millis)
-    try:
-        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
-    except Exception:
-        try:
-            dt = datetime.strptime(s, "%Y-%m-%dT%H:%M:%S")
-            dt = dt.replace(tzinfo=timezone.utc)
-        except Exception:
-            # Last resort: let requests/ODS give RFC3339 with subsec: strip subsec
-            # Example: 2025-10-17T10:11:12.345Z
-            s2 = s.split(".")[0].replace("Z", "")
-            dt = datetime.fromisoformat(s2).replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+def epoch_ms_to_iso(ts_ms: int) -> str:
+    """Converts epoch milliseconds (UTC) to ``YYYY-MM-DDTHH:MM:SSZ``."""
+    dt = datetime.fromtimestamp(int(ts_ms) / 1000, tz=timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def value_fingerprint(rec: dict) -> str:
@@ -210,21 +223,31 @@ def value_fingerprint(rec: dict) -> str:
     return hashlib.sha1(s.encode("utf-8")).hexdigest()
 
 
-def iso_to_epoch_ms(iso_str: str) -> int:
-    """Converts ISO timestamp string to epoch milliseconds for Avro timestamp-millis."""
-    dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
-    return int(dt.timestamp() * 1000)
-
-
 def map_record(r: Dict[str, Any], ts_field: str) -> Dict[str, Any]:
-    lat, lon = extract_lat_lon(r.get("geo_point_2d"))
+    """Maps a single ArcGIS row (attributes + lat/lon) to the Avro shape."""
+    lat: Optional[float]
+    lon: Optional[float]
+    if r.get("lat") is not None and r.get("lon") is not None:
+        try:
+            lat = round(float(r["lat"]), 6)
+            lon = round(float(r["lon"]), 6)
+        except (TypeError, ValueError):
+            lat, lon = extract_lat_lon(r.get("geo_point_2d"))
+    else:
+        lat, lon = extract_lat_lon(r.get("geo_point_2d"))
     ts_raw = r.get(ts_field)
-    ts_iso = normalize_ts(ts_raw) if ts_raw else None
+    ts_ms: Optional[int] = None
+    ts_iso: Optional[str] = None
+    if ts_raw is not None:
+        try:
+            ts_ms = int(ts_raw)
+            ts_iso = epoch_ms_to_iso(ts_ms)
+        except (TypeError, ValueError):
+            ts_ms = None
     out = {
         "fiwareid": r.get("fiwareid") or f"obj{r.get('objectid') or 'na'}",
-        "ts": iso_to_epoch_ms(ts_iso) if ts_iso else None,
-        "_ts_iso": ts_iso,  # keeping ISO string for offset tracking
-        # meteo
+        "ts": ts_ms,
+        "_ts_iso": ts_iso,
         "wind_dir_deg": r.get("viento_dir"),
         "wind_speed_ms": r.get("viento_vel"),
         "temperature_c": r.get("temperatur"),
@@ -235,7 +258,6 @@ def map_record(r: Dict[str, Any], ts_field: str) -> Dict[str, Any]:
         "lat": lat,
         "lon": lon,
     }
-    # Add fingerprint based on mapped values
     out["_fp"] = value_fingerprint(
         {
             "viento_dir": out["wind_dir_deg"],
@@ -250,12 +272,7 @@ def map_record(r: Dict[str, Any], ts_field: str) -> Dict[str, Any]:
 
 
 def local_avro_serializer(record: Dict[str, Any], schema: dict) -> bytes:
-    """
-    Serializes a record to Avro binary with Confluent wire format header.
-
-    The wire format is: magic byte (0x00) + 4-byte schema ID (0 for local) + Avro binary.
-    Using schema ID 0 indicates local serialization without Schema Registry.
-    """
+    """Serializes a record to Avro binary with Confluent wire format header."""
     buf = io.BytesIO()
     buf.write(struct.pack(">bI", 0, 0))
     fastavro.schemaless_writer(buf, schema, record)
@@ -263,15 +280,10 @@ def local_avro_serializer(record: Dict[str, Any], schema: dict) -> bytes:
 
 
 def produce_all(p: ResilientProducer, events: Iterable[Dict[str, Any]], serializer: Callable) -> None:
-    """
-    Produces events to Kafka with resilience (DLQ on failure).
-
-    The serializer can be either a Schema Registry AvroSerializer or local_avro_serializer.
-    """
+    """Produces events to Kafka with resilience (DLQ on failure)."""
     for ev in events:
-        if not ev.get("ts"):  # skip malformed rows without timestamp
+        if not ev.get("ts"):
             continue
-        # Removing internal fields before sending to Kafka
         kafka_ev = {k: v for k, v in ev.items() if k not in ("_fp", "_ts_iso")}
         key = f"{ev['fiwareid']}|{ev['_ts_iso']}"
         value_bytes = serializer(kafka_ev)
@@ -280,46 +292,11 @@ def produce_all(p: ResilientProducer, events: Iterable[Dict[str, Any]], serializ
 
 
 # ------------- metadata helpers -------------
-def get_meta(base: str) -> Optional[Dict[str, Any]]:
-    """Fetches dataset metadata with retry on transient failures."""
-    url = f"{base}/catalog/datasets/{DATASET_ID}"
-    try:
-        r = http_request_with_retry(session, "GET", url, config=RETRY_CONFIG)
-        if r.ok:
-            return r.json()
-    except Exception:
-        pass
-    return None
-
-
-def get_fields_from_meta(meta: Dict[str, Any]) -> List[str]:
-    try:
-        fields = meta.get("dataset", {}).get("fields", [])
-        return [f.get("name") for f in fields if "name" in f]
-    except Exception:
-        return []
-
-
-def fetch_one_record(base: str) -> Optional[Dict[str, Any]]:
-    """Fetches a single record with retry on transient failures."""
-    url = f"{base}/catalog/datasets/{DATASET_ID}/records"
-    try:
-        r = http_request_with_retry(session, "GET", url, config=RETRY_CONFIG, params={"limit": "1"})
-        r.raise_for_status()
-        arr = r.json().get("results", [])
-        return arr[0] if arr else None
-    except Exception:
-        return None
-
-
 def choose_ts_field(avail_fields: List[str], sample: Optional[Dict[str, Any]]) -> Optional[str]:
-    # 1) honor env if present in dataset
     if TIMESTAMP_FIELD in avail_fields:
         return TIMESTAMP_FIELD
     if not AUTO_TS_FIELD:
-        return TIMESTAMP_FIELD  # let it fail fast later if missing
-
-    # 2) try meta-typed date-like names
+        return TIMESTAMP_FIELD
     candidates = [
         "fecha_carg",
         "update_jcd",
@@ -334,10 +311,10 @@ def choose_ts_field(avail_fields: List[str], sample: Optional[Dict[str, Any]]) -
     for c in candidates:
         if c in avail_fields:
             return c
-
-    # 3) infer from sample: pick first key containing plausible date text
     if sample:
         for k, v in sample.items():
+            if isinstance(v, (int, float)) and v > 10**10:
+                return k
             if isinstance(v, str) and ("T" in v and ":" in v):
                 return k
     return None
@@ -350,117 +327,89 @@ def compute_select(avail_fields: List[str], ts_field: str) -> str:
     return ",".join(fields)
 
 
+def bootstrap_schema() -> Tuple[str, str]:
+    """Returns ``(out_fields, ts_field)`` for the configured ArcGIS layer."""
+    avail_fields: List[str] = []
+    sample: Optional[Dict[str, Any]] = None
+    meta = get_layer_metadata(session, BASE, LAYER_ID, RETRY_CONFIG)
+    if meta:
+        avail_fields = get_field_names(meta)
+    if not avail_fields:
+        sample = fetch_one_feature(session, BASE, LAYER_ID, RETRY_CONFIG)
+        if sample:
+            avail_fields = list(sample.keys())
+    ts_field = choose_ts_field(avail_fields, sample)
+    if not ts_field:
+        ts_field = TIMESTAMP_FIELD
+    out_fields = compute_select(avail_fields, ts_field)
+    return out_fields, ts_field
+
+
 # ------------- fetching loop -------------
 def fetch_since(
     station_offsets: Dict[str, str],
     station_fingerprints: Dict[str, str],
-    bases: List[str],
-    select: str,
+    out_fields: str,
     ts_field: str,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, str], Dict[str, str]]:
-    """
-    Fetches records using per-station offset tracking.
+    """Fetches new/changed records using per-station offset tracking.
 
-    Each station has its own offset, so stations that update less frequently
-    don't get skipped when faster stations advance.
-
-    Queries all records ordered by timestamp descending (newest first), then
-    applies per-station filtering. This ensures we always see all stations
-    regardless of their individual update cadence.
-
-    Returns:
-        - List of new/changed records to emit
-        - Updated station_offsets dict
-        - Updated station_fingerprints dict
+    Pages through ArcGIS layer ``LAYER_ID`` ordered by ``ts_field DESC``,
+    applies per-station offset + fingerprint logic, and emits whatever
+    is strictly newer (or has a changed fingerprint at the same timestamp).
     """
     out: List[Dict[str, Any]] = []
     new_offsets = dict(station_offsets)
     new_fingerprints = dict(station_fingerprints)
-    for base in bases:
-        page = 0
-        while True:
-            # Querying all records ordered by timestamp desc (newest first)
-            # No WHERE filter — per-station logic handles deduplication
-            params = {
-                "order_by": f"{ts_field} desc",
-                "limit": str(LIMIT),
-                "offset": str(page * LIMIT),
-                "select": select,
-            }
-            try:
-                resp = http_request_with_retry(
-                    session, "GET", f"{base}/catalog/datasets/{DATASET_ID}/records", config=RETRY_CONFIG, params=params
-                )
-                resp.raise_for_status()
-                rows = resp.json().get("results", [])
-            except Exception:
-                # Trying next base if nothing collected yet
-                if not out:
-                    break
-                else:
-                    return out, new_offsets, new_fingerprints
-            if not rows:
-                break
-            for r in rows:
-                ev = map_record(r, ts_field)
-                ts_iso = ev.get("_ts_iso")  # using ISO string for offset comparison
-                sid = ev.get("fiwareid")
-                fp = ev.get("_fp")
-                if not (ts_iso and sid and fp):
-                    continue
-                # Per-station logic: compare against this station's offset
-                station_offset = station_offsets.get(sid, START_OFFSET)
-                station_fp = station_fingerprints.get(sid)
-                should_emit = False
-                if ts_iso > station_offset:
-                    # Strictly newer than this station's last seen ts
-                    should_emit = True
-                elif ts_iso == station_offset and fp != station_fp:
-                    # Same timestamp but fingerprint changed (data correction)
-                    should_emit = True
-                if should_emit:
-                    out.append(ev)
-                    # Updating this station's offset and fingerprint
-                    new_offsets[sid] = ts_iso
-                    new_fingerprints[sid] = fp
-            if len(rows) < LIMIT:
-                break
-            page += 1
-        if out:
-            break  # Got data from this base, don't try others
+    page = 0
+    target_url = query_url(BASE, LAYER_ID)
+    while True:
+        try:
+            rows = fetch_page(
+                session,
+                BASE,
+                LAYER_ID,
+                out_fields=out_fields,
+                ts_field=ts_field,
+                limit=LIMIT,
+                offset=page * LIMIT,
+                config=RETRY_CONFIG,
+            )
+        except Exception as e:
+            print(f"[weather] fetch failed against {target_url} (offset={page * LIMIT}): {type(e).__name__}: {e}")
+            return out, new_offsets, new_fingerprints
+        if not rows:
+            break
+        for r in rows:
+            ev = map_record(r, ts_field)
+            ts_iso = ev.get("_ts_iso")
+            sid = ev.get("fiwareid")
+            fp = ev.get("_fp")
+            if not (ts_iso and sid and fp):
+                continue
+            station_offset = station_offsets.get(sid, START_OFFSET)
+            station_fp = station_fingerprints.get(sid)
+            should_emit = False
+            if ts_iso > station_offset:
+                should_emit = True
+            elif ts_iso == station_offset and fp != station_fp:
+                should_emit = True
+            if should_emit:
+                out.append(ev)
+                new_offsets[sid] = ts_iso
+                new_fingerprints[sid] = fp
+        if len(rows) < LIMIT:
+            break
+        page += 1
     return out, new_offsets, new_fingerprints
-
-
-def bootstrap_schema() -> Tuple[str, str]:
-    """Return (SELECT, ts_field) choosing bases, fields, and timestamp column robustly."""
-    avail_fields: List[str] = []
-    sample: Optional[Dict[str, Any]] = None
-
-    # Try meta v2.1 then v2
-    meta = get_meta(BASES[0]) or get_meta(BASES[1])
-    if meta:
-        avail_fields = get_fields_from_meta(meta)
-
-    # If no meta fields, try to get one sample row (either base)
-    if not avail_fields:
-        sample = fetch_one_record(BASES[0]) or fetch_one_record(BASES[1])
-        if sample:
-            avail_fields = list(sample.keys())
-
-    ts_field = choose_ts_field(avail_fields, sample)
-    if not ts_field:
-        # fall back to env even if not present — fetch will fail loudly, which is OK
-        ts_field = TIMESTAMP_FIELD
-
-    select = compute_select(avail_fields, ts_field)
-    return select, ts_field
 
 
 def main():
     """Main loop with resilience: backoff, inflight limiting, DLQ retry."""
     station_offsets, station_fingerprints = load_state()
-    select, ts_field = bootstrap_schema()
-    print(f"[weather] using ts_field='{ts_field}', SELECT='{select}'")
+    out_fields, ts_field = bootstrap_schema()
+    print(f"[weather] using ts_field='{ts_field}', outFields='{out_fields}'")
+    print(f"[weather] source: {query_url(BASE, LAYER_ID)}")
     print(f"[weather] per-station offsets: {len(station_offsets)} stations tracked")
     if station_offsets:
         min_off = min(station_offsets.values())
@@ -471,9 +420,7 @@ def main():
         f"backoff_base={RETRY_CONFIG.base_delay_ms}ms, "
         f"max_retries={RETRY_CONFIG.max_retries}"
     )
-    # Setting up serializer based on mode
     if USE_SCHEMA_REGISTRY:
-        # Full-stack mode: use Schema Registry for Avro serialization
         from confluent_kafka.schema_registry import SchemaRegistryClient
         from confluent_kafka.schema_registry.avro import AvroSerializer
         from confluent_kafka.serialization import MessageField, SerializationContext
@@ -488,7 +435,7 @@ def main():
 
         print(f"[weather] using Schema Registry at {SCHEMA_REGISTRY_URL} (Avro)")
     else:
-        # Lean-stack mode: local Avro serialization without Schema Registry
+
         def avro_serializer(rec):
             """Serializes a record using local Avro."""
             return local_avro_serializer(rec, WEATHER_SCHEMA)
@@ -501,19 +448,16 @@ def main():
     }
     raw_producer = Producer(producer_config)
     producer = ResilientProducer(raw_producer, TOPIC, dlq_dir=DLQ_DIR, producer_config=producer_config)
+    empty_cycles = 0
+    last_emit_at = time.monotonic()
     while running:
         try:
-            # Proactively checking Kafka health (triggers reconnect if needed)
             producer.check_health()
-            # Retrying any messages from DLQ first
             dlq_retried = producer.retry_dlq()
             if dlq_retried:
                 producer.flush()
-            # Fetching new data with inflight limiting
             with INFLIGHT_LIMITER:
-                items, new_offsets, new_fps = fetch_since(
-                    station_offsets, station_fingerprints, BASES, select, ts_field
-                )
+                items, new_offsets, new_fps = fetch_since(station_offsets, station_fingerprints, out_fields, ts_field)
             if items:
                 produce_all(producer, items, avro_serializer)
                 save_state(new_offsets, new_fps)
@@ -522,20 +466,25 @@ def main():
                 stats_str = ""
                 if stats:
                     stats_str = f" (ok={stats.success_count}, fail={stats.failure_count})"
-                # Logging which stations were updated
                 updated_stations = {ev["fiwareid"] for ev in items}
                 print(
                     f"[weather] produced {len(items)} from {len(updated_stations)} stations; "
                     f"tracking {len(station_offsets)} stations{stats_str}"
                 )
+                empty_cycles = 0
+                last_emit_at = time.monotonic()
             else:
-                print("[weather] no new records")
-            # Logging DLQ size if non-empty
+                empty_cycles += 1
+                msg = "[weather] no new records"
+                if empty_cycles % STALE_WARN_EVERY == 0:
+                    minutes = int((time.monotonic() - last_emit_at) // 60)
+                    msg += f" (warn: {empty_cycles} consecutive empty cycles, {minutes} min since last emit)"
+                print(msg)
             dlq_size = producer.dlq_size
             if dlq_size > 0:
                 print(f"[weather] DLQ has {dlq_size} pending messages")
         except Exception as e:
-            print(f"[weather] ERROR: {e}")
+            print(f"[weather] ERROR: {type(e).__name__}: {e}")
         for _ in range(POLL_SECS):
             if not running:
                 break

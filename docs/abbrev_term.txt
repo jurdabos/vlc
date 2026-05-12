@@ -243,6 +243,13 @@ ozone
 
 ODS
 Opendatasoft
+(formerly the upstream host for Valencia open data; replaced by
+the geoportal ArcGIS REST endpoint in 2026-05)
+
+ArcGIS
+Esri’s geographic information system platform; the city geoportal
+exposes Valencia datasets via the ArcGIS REST `MapServer/{layer}/query`
+endpoint, which is the current upstream source for this pipeline
 
 OOM
 out of memory

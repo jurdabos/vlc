@@ -1,78 +1,72 @@
 #!/usr/bin/env python3
-"""Station Weather Metrics Report for Valencia Opendatasoft datasets."""
+"""Station Weather Metrics Report for the Valencia geoportal ArcGIS REST
+weather layer (default id 157)."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
-# Default to the WEATHER dataset (you can still override with -u).
-DEFAULT_URL = (
-    "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets/"
-    "estacions-atmosferiques-estaciones-atmosfericas/records"
+DEFAULT_BASE = os.environ.get(
+    "VLC_ARCGIS_BASE",
+    "https://geoportal.valencia.es/server/rest/services/OPENDATA/MedioAmbiente/MapServer",
 )
-ODS_DATASETS_BASE = "https://valencia.opendatasoft.com/api/explore/v2.1/catalog/datasets"
+DEFAULT_LAYER_ID = int(os.environ.get("VLC_LAYER_ID", "157"))
 
-# Default weather fields (observed in this dataset)
 DEFAULT_METRICS = [
-    ("viento_dir", "Wind Dir", "°", 0),
+    ("viento_dir", "Wind Dir", "\u00b0", 0),
     ("viento_vel", "Wind Spd", "m/s", 1),
-    ("temperatur", "Temp", "°C", 1),
+    ("temperatur", "Temp", "\u00b0C", 1),
     ("humedad_re", "Humidity", "%", 0),
     ("presion_ba", "Pressure", "hPa", 1),
     ("precipitac", "Rain", "mm", 1),
 ]
 
 
-def expand_url(value: str) -> str:
-    """Accept a full URL or a dataset id and return a records URL."""
-    if value.startswith(("http://", "https://")):
-        return value
-    return f"{ODS_DATASETS_BASE}/{value}/records"
-
-
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Print weather metrics per station from a Valencia ODS dataset.")
-    p.add_argument(
-        "-u",
-        "--url",
-        default=DEFAULT_URL,
-        help=(
-            "Full '.../records' URL OR just a dataset id to expand. "
-            "Default: estacions-atmosferiques-estaciones-atmosfericas"
-        ),
-    )
-    p.add_argument(
-        "-l",
-        "--limit",
-        type=int,
-        default=100,
-        help="Records to request (per page). Default: 100.",
-    )
+    p = argparse.ArgumentParser(description="Print weather metrics per station from a Valencia ArcGIS layer.")
+    p.add_argument("-b", "--base", default=DEFAULT_BASE)
+    p.add_argument("-l", "--layer-id", type=int, default=DEFAULT_LAYER_ID)
+    p.add_argument("-n", "--limit", type=int, default=2000)
     p.add_argument(
         "-m",
         "--metrics",
         default=",".join(k for k, *_ in DEFAULT_METRICS),
         help=(
-            "Comma-separated field keys to print (labels/units will fall back to key/blank). "
+            "Comma-separated field keys to print (labels/units fall back to key/blank). "
             f"Default: {','.join(k for k, *_ in DEFAULT_METRICS)}"
         ),
     )
     return p.parse_args()
 
 
-def fetch_records(url: str, limit: int) -> Dict[str, Any]:
+def fetch_records(base: str, layer_id: int, limit: int, metrics: List[str]) -> Dict[str, Any]:
+    url = f"{base.rstrip('/')}/{layer_id}/query"
+    out_fields = ["objectid", "nombre", "fiwareid", "fecha_carg", "direccion"] + metrics
+    params = {
+        "where": "1=1",
+        "outFields": ",".join(dict.fromkeys(out_fields)),
+        "returnGeometry": "true",
+        "outSR": "4326",
+        "resultRecordCount": str(limit),
+        "f": "json",
+    }
     try:
-        r = requests.get(url, params={"limit": str(limit)}, timeout=(10, 60))
+        r = requests.get(url, params=params, timeout=(10, 60))
         r.raise_for_status()
-        return r.json()
+        payload = r.json()
+        if isinstance(payload, dict) and "error" in payload:
+            print(f"[ArcGIS] {payload['error']}", file=sys.stderr)
+            sys.exit(1)
+        return payload
     except requests.HTTPError as e:
-        where = getattr(r, "url", url)
-        print(f"[HTTP] {e} — request was: {where}", file=sys.stderr)
+        print(f"[HTTP] {e} \u2014 request was: {getattr(r, 'url', url)}", file=sys.stderr)
         sys.exit(1)
     except requests.RequestException as e:
         print(f"[Network] {e}", file=sys.stderr)
@@ -82,25 +76,17 @@ def fetch_records(url: str, limit: int) -> Dict[str, Any]:
         sys.exit(3)
 
 
-def extract_latlon(rec: Dict[str, Any]) -> Tuple[Optional[float], Optional[float]]:
-    gp = rec.get("geo_point_2d")
-    if isinstance(gp, dict) and "lat" in gp and "lon" in gp:
-        return float(gp["lat"]), float(gp["lon"])
-    gs = rec.get("geo_shape", {})
-    geom = gs.get("geometry", {})
-    if geom.get("type") == "Point":
-        coords = geom.get("coordinates")
-        if isinstance(coords, (list, tuple)) and len(coords) == 2:
-            lon, lat = coords
-            try:
-                return float(lat), float(lon)
-            except (TypeError, ValueError):
-                return None, None
-    return None, None
+def extract_latlon(feat: Dict[str, Any]) -> Tuple[Optional[float], Optional[float]]:
+    """Extracts lat/lon from a feature's geometry (outSR=4326)."""
+    geom = feat.get("geometry") or {}
+    try:
+        return float(geom["y"]), float(geom["x"])
+    except (KeyError, TypeError, ValueError):
+        return None, None
 
 
 def metric_catalog() -> Dict[str, Tuple[str, str, int]]:
-    """Map field key -> (label, unit, decimals)."""
+    """Maps field key -> (label, unit, decimals)."""
     return {k: (label, unit, dec) for k, label, unit, dec in DEFAULT_METRICS}
 
 
@@ -108,37 +94,44 @@ def fmt_value(v: Any, decimals: int, unit: str) -> str:
     if v is None:
         return "null"
     try:
-        f = float(v)
-        return f"{f:.{decimals}f} {unit}".strip()
+        return f"{float(v):.{decimals}f} {unit}".strip()
     except (TypeError, ValueError):
         return str(v)
 
 
+def fmt_ts(ts_ms: Any) -> str:
+    if ts_ms is None:
+        return "N/A"
+    try:
+        dt = datetime.fromtimestamp(int(ts_ms) / 1000, tz=timezone.utc)
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    except (TypeError, ValueError):
+        return str(ts_ms)
+
+
 def main() -> None:
     args = parse_args()
-    url = expand_url(args.url)
     requested = [s.strip() for s in args.metrics.split(",") if s.strip()]
     catalog = metric_catalog()
-    data = fetch_records(url, args.limit)
-    results: List[Dict[str, Any]] = data.get("results", [])
-    total_count = data.get("total_count", len(results))
+    data = fetch_records(args.base, args.layer_id, args.limit, requested)
+    feats = data.get("features", []) or []
     print("Station Weather Metrics Report")
     print("=" * 80)
-    print(f"Total count from API: {total_count}")
-    print(f"Records returned: {len(results)}")
+    print(f"Layer {args.layer_id} on {args.base}")
+    print(f"Records returned: {len(feats)}")
 
-    # Sort safely even if objectid is absent
-    def sort_key(x: Dict[str, Any]):
-        oid = x.get("objectid")
+    def sort_key(f: Dict[str, Any]):
+        oid = (f.get("attributes") or {}).get("objectid")
         return (oid is None, oid)
 
-    for record in sorted(results, key=sort_key):
-        oid = record.get("objectid", "NA")
-        name = record.get("nombre", "N/A")
-        fid = record.get("fiwareid", "N/A")
-        ts = record.get("fecha_carg", "N/A")
-        lat, lon = extract_latlon(record)
-        addr = record.get("direccion")
+    for feat in sorted(feats, key=sort_key):
+        attrs = feat.get("attributes") or {}
+        oid = attrs.get("objectid", "NA")
+        name = attrs.get("nombre", "N/A")
+        fid = attrs.get("fiwareid", "N/A")
+        ts = fmt_ts(attrs.get("fecha_carg"))
+        lat, lon = extract_latlon(feat)
+        addr = attrs.get("direccion")
         print(f"\nObjectID {oid}: {name:<30} ({fid})")
         print(f"  Timestamp : {ts}")
         if lat is not None and lon is not None:
@@ -148,8 +141,7 @@ def main() -> None:
         print("  Measurements:")
         for key in requested:
             label, unit, dec = catalog.get(key, (key, "", 1))
-            val = record.get(key)
-            print(f"    {label:<10}: {fmt_value(val, dec, unit)}")
+            print(f"    {label:<10}: {fmt_value(attrs.get(key), dec, unit)}")
 
 
 if __name__ == "__main__":

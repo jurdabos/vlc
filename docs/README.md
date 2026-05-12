@@ -26,21 +26,16 @@ VLC in the 2020s is collecting a rich set of environmental metrics, which cover 
 
 DETAILS
 
-Valencia’s Smart City Office has implemented an integrated network of IoT sensors and a central data platform (VLCi) to collect data from multiple sources. We can consume atmospheric contamination information.
+Valencia’s Smart City Office has implemented an integrated network of IoT sensors and a central data platform (VLCi) to collect data from multiple sources. The streaming side of this project consumes the live atmospheric contamination + weather feeds via the city geoportal’s ArcGIS REST endpoint:
 
-https://valencia.opendatasoft.com/explore/dataset/estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas/api/
+https://geoportal.valencia.es/server/rest/services/OPENDATA/MedioAmbiente/MapServer/156 (air pollution)
+https://geoportal.valencia.es/server/rest/services/OPENDATA/MedioAmbiente/MapServer/157 (weather)
 
-We can have a look at contamination data on a map to get a bearing on where the measurement locations are.
+We can have a look at contamination data on a map to get a bearing on where the measurement locations are:
 
 https://geoportal.valencia.es/apps/GeoportalHome/es/inicio/contaminacion-atmosferica-y-ruido
 
-We can familiarize ourselves with data formats used by the municipality.
-
-https://valencia.opendatasoft.com/pages/que\_son/
-
-It is possible to look around in ~270 databases maintained by the municipality.
-
-https://valencia.opendatasoft.com/explore/?disjunctive.features\&disjunctive.modified\&disjunctive.publisher\&disjunctive.keyword\&disjunctive.theme\&disjunctive.language\&sort=modified
+Note (2026-05): the legacy Opendatasoft host (`valencia.opendatasoft.com`, formerly served at `https://valencia.opendatasoft.com/explore/dataset/...`) was decommissioned. The historical RVVCCA-style backfill in `backfill/` was captured before the migration; new ingestion goes through the ArcGIS layers above. Field names (`fiwareid`, `fecha_carg`, pollutant + meteo columns) are unchanged.
 
 There were 40+ devices installed on municipal EMT buses to capture air quality data along bus routes, together with temperature and humidity readings.
 

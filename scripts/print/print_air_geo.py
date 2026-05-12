@@ -1,60 +1,51 @@
-import re
+"""Prints `fiwareid: lat, lon` for the air-pollution stations whose objectid
+falls in the range 12..22 (the historical objectid range for layer 156).
+
+Source: Valencia geoportal ArcGIS REST, layer 156. With ``outSR=4326`` the
+feature geometry comes back as ``{x: lon, y: lat}``.
+"""
+
+import os
 
 import requests
 
-BASE = "https://valencia.opendatasoft.com/api/explore/v2.1"
-DATASET = "estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas"
-IDS = set(range(12, 23))
-LIMIT = 100
+BASE = os.environ.get(
+    "VLC_ARCGIS_BASE",
+    "https://geoportal.valencia.es/server/rest/services/OPENDATA/MedioAmbiente/MapServer",
+)
+LAYER_ID = int(os.environ.get("VLC_LAYER_ID", "156"))
+URL = f"{BASE.rstrip('/')}/{LAYER_ID}/query"
 
 
-def extract_lon_lat(geo):
-    """
-    geo_point_2d can be a dict: {"lon": ..., "lat": ...}
-    or (rarely) a WKT string like "POINT (lon lat)". Handle both.
-    """
-    if isinstance(geo, dict):
-        lon = geo.get("lon")
-        lat = geo.get("lat")
-        return (float(lon), float(lat)) if lon is not None and lat is not None else (None, None)
-    if isinstance(geo, str):
-        m = re.search(r"POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)", geo)
-        if m:
-            return float(m.group(1)), float(m.group(2))
-    return (None, None)
-
-
-def fetch_records():
+def fetch_features():
+    """Yields features whose objectid is in the configured range."""
     params = {
-        "limit": LIMIT,
-        "offset": 0,
-        # Narrow to the ID range server-side; we’ll still filter precisely client-side
         "where": "objectid >= 12 AND objectid <= 22",
-        "order_by": "objectid",
+        "outFields": "objectid,fiwareid",
+        "returnGeometry": "true",
+        "outSR": "4326",
+        "orderByFields": "objectid",
+        "resultRecordCount": "2000",
+        "f": "json",
     }
-    while True:
-        r = requests.get(f"{BASE}/catalog/datasets/{DATASET}/records", params=params, timeout=(10, 60))
-        r.raise_for_status()
-        page = r.json().get("results", [])
-        if not page:
-            break
-        for rec in page:
-            yield rec
-        if len(page) < LIMIT:
-            break
-        params["offset"] += LIMIT
+    r = requests.get(URL, params=params, timeout=(10, 60))
+    r.raise_for_status()
+    payload = r.json()
+    if isinstance(payload, dict) and "error" in payload:
+        raise SystemExit(f"ArcGIS error: {payload['error']}")
+    yield from payload.get("features", []) or []
 
 
-# Collect (objectid, fiwareid, lon, lat) and print as "fiwareid: lon, lat"
 rows = []
-for rec in fetch_records():
-    oid = rec.get("objectid")
-    if oid in IDS:
-        lon, lat = extract_lon_lat(rec.get("geo_point_2d"))
-        fiwareid = rec.get("fiwareid")
-        if fiwareid and lon is not None and lat is not None:
-            rows.append((oid, fiwareid, lon, lat))
+for feat in fetch_features():
+    attrs = feat.get("attributes") or {}
+    geom = feat.get("geometry") or {}
+    fiwareid = attrs.get("fiwareid")
+    if fiwareid and "x" in geom and "y" in geom:
+        # outSR=4326 -> x=lon, y=lat
+        rows.append((attrs.get("objectid"), fiwareid, float(geom["x"]), float(geom["y"])))
+
 # Sort by objectid (stable, predictable output)
-rows.sort(key=lambda x: x[0])
+rows.sort(key=lambda x: (x[0] is None, x[0]))
 for _, fiwareid, lon, lat in rows:
     print(f"{fiwareid}: {lat}, {lon}")

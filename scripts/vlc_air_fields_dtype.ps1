@@ -1,54 +1,53 @@
-# Base URLs
-$BASE  = 'https://valencia.opendatasoft.com/api/explore/v2.1'
-$BASE2 = 'https://valencia.opendatasoft.com/api/v2'
+# Lists the (name, type) pairs and a few useful aggregates for the air-pollution
+# layer on the Valencia geoportal ArcGIS REST endpoint (default: layer 156).
+$BASE     = if ($env:VLC_ARCGIS_BASE) { $env:VLC_ARCGIS_BASE } else { 'https://geoportal.valencia.es/server/rest/services/OPENDATA/MedioAmbiente/MapServer' }
+$LAYER_ID = if ($env:VLC_LAYER_ID) { [int]$env:VLC_LAYER_ID } else { 156 }
 
-function Get-OdsMeta {
-  param([Parameter(Mandatory)][string]$DatasetId)
-  # Try v2.1; if it fails or has no dataset, try v2 (older but sturdy)
-  try {
-    $r = irm "$BASE/catalog/datasets/$DatasetId"
-    if ($r.dataset) { return $r }
-  } catch {}
-  irm "$BASE2/catalog/datasets/$DatasetId"
+function Get-ArcGisLayerMeta {
+  param([Parameter(Mandatory)][string]$Base, [Parameter(Mandatory)][int]$LayerId)
+  $url = "$($Base.TrimEnd('/'))/$LayerId`?f=json"
+  irm $url
 }
 
-function Get-OdsFields {
-  param([Parameter(Mandatory)][string]$DatasetId)
-  $meta = Get-OdsMeta $DatasetId
-  $fields = $meta.dataset.fields
-  if ($fields) { return $fields | Select-Object name,type }
-
-  # Fallback: infer from one record’s keys (works on any dataset)
-  $rec = (irm "$BASE/catalog/datasets/$DatasetId/records?limit=1").results | Select-Object -First 1
-  if ($rec) {
-    $rec.PSObject.Properties |
-      Select-Object @{n='name';e={$_.Name}}, @{n='type';e={'(from sample)'}}
+function Get-ArcGisFields {
+  param([Parameter(Mandatory)][string]$Base, [Parameter(Mandatory)][int]$LayerId)
+  $meta = Get-ArcGisLayerMeta -Base $Base -LayerId $LayerId
+  if ($meta.fields) { return $meta.fields | Select-Object name,type,alias }
+  # Fallback: infer field names from a single feature
+  $url = "$($Base.TrimEnd('/'))/$LayerId/query`?where=1=1&outFields=*&returnGeometry=false&resultRecordCount=1&f=json"
+  $rec = (irm $url).features | Select-Object -First 1
+  if ($rec -and $rec.attributes) {
+    $rec.attributes.PSObject.Properties |
+      Select-Object @{n='name';e={$_.Name}}, @{n='type';e={'(from sample)'}}, @{n='alias';e={''}}
   }
 }
 
-function Get-OdsCount {
-  param([Parameter(Mandatory)][string]$DatasetId)
-  # Use count(*) and read the single aggregate row
-  (irm "$BASE/catalog/datasets/$DatasetId/records?select=count(*)%20as%20n&limit=1").results[0].n
+function Get-ArcGisCount {
+  param([Parameter(Mandatory)][string]$Base, [Parameter(Mandatory)][int]$LayerId)
+  $url = "$($Base.TrimEnd('/'))/$LayerId/query`?where=1=1&returnCountOnly=true&f=json"
+  (irm $url).count
 }
 
-function Get-OdsLatest {
-  param([Parameter(Mandatory)][string]$DatasetId)
-  $fields = (Get-OdsMeta $DatasetId).dataset.fields
-  $dateField = ($fields | Where-Object { $_.type -match 'date' }).name | Select-Object -First 1
+function Get-ArcGisLatest {
+  param([Parameter(Mandatory)][string]$Base, [Parameter(Mandatory)][int]$LayerId)
+  $fields = (Get-ArcGisLayerMeta -Base $Base -LayerId $LayerId).fields
+  $dateField = ($fields | Where-Object { $_.type -eq 'esriFieldTypeDate' } | Select-Object -First 1).name
+  if (-not $dateField) {
+    # Fallback to common Spanish names
+    $candidates = @('fecha_carg','update_jcd','timestamp','fechahora','fecha','updated_at','date','data','last_update')
+    $dateField = ($candidates | Where-Object { $_ -in $fields.name } | Select-Object -First 1)
+  }
   if ($dateField) {
-    return (irm "$BASE/catalog/datasets/$DatasetId/records?select=max($dateField)%20as%20last_ts&limit=1").results[0].last_ts
+    $url = "$($Base.TrimEnd('/'))/$LayerId/query`?where=1=1&outStatistics=" + `
+           [uri]::EscapeDataString('[{"statisticType":"max","onStatisticField":"' + $dateField + '","outStatisticFieldName":"last_ts"}]') + `
+           '&f=json'
+    $resp = irm $url
+    $epoch_ms = $resp.features[0].attributes.last_ts
+    if ($epoch_ms) {
+      [datetimeoffset]::FromUnixTimeMilliseconds([int64]$epoch_ms).ToString('yyyy-MM-ddTHH:mm:ssZ')
+    }
   }
-  # Fallback for ISO-ish text timestamps
-  $candidates = @('update_jcd','timestamp','fechahora','fecha','updated_at','date','data','last_update')
-  $avail = $fields.name
-  $cand = ($candidates | Where-Object { $_ -in $avail } | Select-Object -First 1)
-  if ($cand) {
-    return (irm "$BASE/catalog/datasets/$DatasetId/records?order_by=-$cand&limit=1").results[0].$cand
-  }
-  $null
 }
 
-# Air station — list fields + dtype
-$id = 'estacions-contaminacio-atmosferiques-estaciones-contaminacion-atmosfericas'
-Get-OdsFields $id | ft -a
+# Air station -- list fields + dtype
+Get-ArcGisFields -Base $BASE -LayerId $LAYER_ID | ft -a
