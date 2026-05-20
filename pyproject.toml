@@ -8,6 +8,7 @@ dependencies = [
     "certifi>=2025.11.12",
     "charset-normalizer>=3.4.4",
     "confluent-kafka[schemaregistry,json]>=2.12.2",
+    "cryptography>=46.0.7",
     "fastavro>=1.12.1",
     "idna>=3.11",
     "jsonschema>=4.23.0",
