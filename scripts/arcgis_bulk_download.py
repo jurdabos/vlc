@@ -277,9 +277,7 @@ def fetch_features(layer: dict, *, page_size: int) -> list[dict]:
     effective = max(1, min(page_size, max_record or page_size))
     advanced = meta.get("advancedQueryCapabilities") or {}
     supports_pagination = (
-        advanced.get("supportsPagination")
-        if "supportsPagination" in advanced
-        else meta.get("supportsPagination", True)
+        advanced.get("supportsPagination") if "supportsPagination" in advanced else meta.get("supportsPagination", True)
     )
     if supports_pagination is False:
         return _fetch_by_oid_window(layer)
@@ -408,9 +406,7 @@ def main() -> None:
                 )
                 continue
             try:
-                manifests.append(
-                    dump_layer(layer, output_dir, page_size=args.page_size, timestamp=timestamp)
-                )
+                manifests.append(dump_layer(layer, output_dir, page_size=args.page_size, timestamp=timestamp))
             except Exception as exc:
                 failures.append((f"{folder}/{name}/{stype}/{layer['layer_id']}", str(exc)))
                 print(f"  ! layer dump failed: {exc}")
