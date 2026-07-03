@@ -330,7 +330,50 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "age"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dtdurations"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#16697a",
+                      "value": null
+                    },
+                    {
+                      "color": "#dbf4a7",
+                      "value": 1800
+                    },
+                    {
+                      "color": "#a24936",
+                      "value": 18000
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -361,7 +404,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT DISTINCT ON (fiwareid)\n  fiwareid,\n  ts,\n  temperature_c,\n  humidity_pct,\n  pressure_hpa,\n  wind_dir_deg,\n  wind_speed_ms,\n  precip_mm,\n  lat,\n  lon\nFROM weather.hyper\nORDER BY fiwareid, ts DESC;",
+          "rawSql": "SELECT DISTINCT ON (fiwareid)\n  fiwareid,\n  ts,\n  EXTRACT(EPOCH FROM (now() - ts)) AS age,\n  temperature_c,\n  humidity_pct,\n  pressure_hpa,\n  wind_dir_deg,\n  wind_speed_ms,\n  precip_mm,\n  lat,\n  lon\nFROM weather.hyper\nORDER BY fiwareid, ts DESC;",
           "refId": "A",
           "sql": {
             "columns": [

@@ -1,0 +1,95 @@
+# Grafana-managed alert rules (file provisioning, loaded at Grafana startup).
+# Per-station staleness: fires one alert instance per fiwareid whose latest
+# reading in weather.hyper is older than 5 hours. Complements the Prometheus
+# NoWeatherDataIngested alert, which only catches whole-feed outages and
+# cannot see a single dead station (e.g. W05_VALENCIA_UPV_10m, silent since
+# 2026-02-05).
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: vlc-staleness
+    folder: VLC
+    interval: 5m
+    rules:
+      - uid: vlc-weather-station-stale
+        title: WeatherStationStale
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: timescaledb
+            model:
+              editorMode: code
+              format: table
+              intervalMs: 1000
+              maxDataPoints: 43200
+              rawQuery: true
+              rawSql: |-
+                SELECT
+                  fiwareid,
+                  EXTRACT(EPOCH FROM (now() - max(ts))) / 3600.0 AS stale_hours
+                FROM weather.hyper
+                GROUP BY fiwareid;
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 5
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Weather station {{ $labels.fiwareid }} is stale"
+          description: "Station {{ $labels.fiwareid }} has not produced a new reading in weather.hyper for {{ $values.B }} hours (threshold: 5 h). The upstream ArcGIS layer 157 snapshot is probably frozen for this station; check https://geoportal.valencia.es/server/rest/services/OPENDATA/MedioAmbiente/MapServer/157."
+        labels:
+          severity: warning
+        isPaused: false

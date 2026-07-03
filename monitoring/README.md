@@ -66,6 +66,14 @@ monitoring/
 - **NoAirDataIngested** (warning): No messages on `vlc.air` for 30m
 - **NoWeatherDataIngested** (warning): No messages on `vlc.weather` for 30m
 
+### Grafana-Managed Alerts
+- **WeatherStationStale** (warning): a station's latest `weather.hyper` reading
+  is older than 5h (one alert instance per `fiwareid`). Defined in
+  `grafana/provisioning/alerting/vlc-staleness.yml`, evaluated by Grafana
+  against TimescaleDB, and forwarded to Alertmanager
+  (`handleGrafanaManagedAlerts: true`). Catches single dead stations the
+  topic-level alerts above cannot see.
+
 ## Alertmanager Configuration
 Alerts are grouped by `alertname` and `severity`, then routed to email. Critical alerts inhibit warning alerts for the same alertname.
 

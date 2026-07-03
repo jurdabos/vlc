@@ -8,3 +8,6 @@ datasources:
     editable: true
     jsonData:
       implementation: prometheus
+      # Forwarding Grafana-managed alerts (e.g. WeatherStationStale) to this
+      # Alertmanager so they reuse the existing email routing
+      handleGrafanaManagedAlerts: true
