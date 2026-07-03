@@ -1,9 +1,14 @@
 # Grafana-managed alert rules (file provisioning, loaded at Grafana startup).
 # Per-station staleness: fires one alert instance per fiwareid whose latest
-# reading in weather.hyper is older than 5 hours. Complements the Prometheus
+# weather reading is older than 5 hours. Complements the Prometheus
 # NoWeatherDataIngested alert, which only catches whole-feed outages and
 # cannot see a single dead station (e.g. W05_VALENCIA_UPV_10m, silent since
 # 2026-02-05).
+#
+# Single source of truth: the staleness math lives in the dbt mart
+# public.data_freshness (dbt/models/marts/data_freshness.sql); this rule only
+# thresholds the mart's staleness_s column. The 5 h boundary equals the
+# mart's freshness_offline_max var (dbt/dbt_project.yml) — keep them in sync.
 apiVersion: 1
 
 groups:
@@ -30,9 +35,9 @@ groups:
               rawSql: |-
                 SELECT
                   fiwareid,
-                  EXTRACT(EPOCH FROM (now() - max(ts))) / 3600.0 AS stale_hours
-                FROM weather.hyper
-                GROUP BY fiwareid;
+                  staleness_s / 3600.0 AS stale_hours
+                FROM public.data_freshness
+                WHERE schema_name = 'weather';
               refId: A
           - refId: B
             datasourceUid: __expr__

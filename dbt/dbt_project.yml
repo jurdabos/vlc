@@ -19,6 +19,13 @@ clean-targets:
 on-run-end:
   - "{{ grant_select_to_vlc_dev() }}"
 
+# Freshness classification thresholds — the single source of truth for
+# per-station staleness boundaries. 'Offline' (> freshness_offline_max)
+# matches the 5 h WeatherStationStale Grafana alert threshold.
+vars:
+  freshness_fresh_max: "1 hour"
+  freshness_offline_max: "5 hours"
+
 models:
   vlc:
     +materialized: view

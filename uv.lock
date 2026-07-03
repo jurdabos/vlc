@@ -1000,8 +1000,10 @@ dependencies = [
     { name = "pygments" },
     { name = "pytest" },
     { name = "python-dotenv" },
+    { name = "pyyaml" },
     { name = "radon" },
     { name = "requests" },
+    { name = "rich" },
     { name = "urllib3" },
 ]
 
@@ -1052,10 +1054,12 @@ requires-dist = [
     { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.12.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "python-dotenv", marker = "extra == 'dev'", specifier = ">=1.0.0" },
+    { name = "pyyaml", specifier = ">=6.0.0" },
     { name = "pyyaml", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "radon", specifier = ">=6.0.1" },
     { name = "requests", specifier = ">=2.33.0" },
     { name = "requests", marker = "extra == 'dev'", specifier = ">=2.31.0" },
+    { name = "rich", specifier = ">=14.1.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4.0" },
     { name = "urllib3", specifier = ">=2.7.0" },
 ]

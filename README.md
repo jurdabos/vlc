@@ -141,9 +141,28 @@ uv run vlc --help
 uv run vlc push -m "feat: describe the change"
 uv run vlc push --dry-run   # preview without changing anything
 ```
-Project data commands (`status`, `latest`, `stations`) are planned; they will
-read from the dbt-managed views so the CLI and the Grafana dashboards share a
-single source of truth.
+Data commands read exclusively from the dbt-managed views/marts, so the CLI,
+the Grafana dashboards, and the alert rules share a single source of truth:
+```bash
+uv run vlc status           # per-station freshness (public.data_freshness)
+uv run vlc latest           # latest weather readings (weather.latest)
+uv run vlc latest --air     # latest air quality readings (air.latest)
+uv run vlc latest --all     # combined snapshot (public.station_snapshot)
+uv run vlc stations         # station inventory (public.stations)
+uv run vlc grafana check    # CI guardrail: no derived SQL logic in dashboards
+```
+All data commands accept `--csv` for piping. By default they reach
+TimescaleDB through `docker compose exec timescaledb psql` (the DB publishes
+no ports); set `VLC_DSN` (e.g. `postgresql://vlc_dev:REAL-PASSWORD@localhost:5432/vlc`)
+to use a direct connection instead.
+
+The SSOT contract: derived query logic (latest-per-station, staleness math,
+snapshot joins) lives once, in `dbt/models/`; Grafana panels, alert rules,
+and `src/vlc/queries.py` only SELECT from the resulting views. `vlc grafana
+check` (run in CI) fails when a dashboard or alert re-derives such logic
+against the raw hypertables. Freshness thresholds are dbt vars in
+`dbt/dbt_project.yml` (`freshness_offline_max: "5 hours"` matches the
+WeatherStationStale alert threshold).
 
 ## Quick Reference
 

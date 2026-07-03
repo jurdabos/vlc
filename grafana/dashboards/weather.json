@@ -404,7 +404,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT DISTINCT ON (fiwareid)\n  fiwareid,\n  ts,\n  EXTRACT(EPOCH FROM (now() - ts)) AS age,\n  temperature_c,\n  humidity_pct,\n  pressure_hpa,\n  wind_dir_deg,\n  wind_speed_ms,\n  precip_mm,\n  lat,\n  lon\nFROM weather.hyper\nORDER BY fiwareid, ts DESC;",
+          "rawSql": "SELECT\n  fiwareid,\n  ts,\n  age_s AS age,\n  temperature_c,\n  humidity_pct,\n  pressure_hpa,\n  wind_dir_deg,\n  wind_speed_ms,\n  precip_mm,\n  lat,\n  lon\nFROM weather.latest\nORDER BY fiwareid;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -487,7 +487,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT DISTINCT ON (fiwareid)\n  fiwareid,\n  ROUND(lat::numeric, 3) as lat,\n  ROUND(lon::numeric, 3) as lon\nFROM weather.hyper\nWHERE ST_DWithin(\n  geo,\n  ST_SetSRID(ST_MakePoint(${ref_lon}, ${ref_lat}), 4326)::geography,\n  ${radius_m}\n)\nORDER BY fiwareid, ts DESC;",
+          "rawSql": "SELECT\n  fiwareid,\n  ROUND(lat::numeric, 3) as lat,\n  ROUND(lon::numeric, 3) as lon\nFROM weather.latest\nWHERE ST_DWithin(\n  geo,\n  ST_SetSRID(ST_MakePoint(${ref_lon}, ${ref_lat}), 4326)::geography,\n  ${radius_m}\n)\nORDER BY fiwareid;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -811,8 +811,20 @@
           "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  wind_speed_ms as value\nFROM weather.hyper\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND wind_speed_ms IS NOT NULL\nORDER BY ts;",
           "refId": "A",
           "sql": {
-            "columns": [{ "parameters": [], "type": "function" }],
-            "groupBy": [{ "property": { "type": "string" }, "type": "groupBy" }],
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
             "limit": 50
           }
         }
@@ -906,8 +918,20 @@
           "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  precip_mm as value\nFROM weather.hyper\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND precip_mm IS NOT NULL\n  AND precip_mm > 0\nORDER BY ts;",
           "refId": "A",
           "sql": {
-            "columns": [{ "parameters": [], "type": "function" }],
-            "groupBy": [{ "property": { "type": "string" }, "type": "groupBy" }],
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
             "limit": 50
           }
         }
@@ -1004,8 +1028,20 @@
           "rawSql": "SELECT \n  bucket_day AS time,\n  fiwareid AS metric,\n  precip_total_mm AS value\nFROM weather.daily\nWHERE bucket_day >= NOW() - INTERVAL '30 days'\n  AND precip_total_mm IS NOT NULL\nORDER BY bucket_day;",
           "refId": "A",
           "sql": {
-            "columns": [{ "parameters": [], "type": "function" }],
-            "groupBy": [{ "property": { "type": "string" }, "type": "groupBy" }],
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
             "limit": 50
           }
         }
@@ -1017,7 +1053,10 @@
   "refresh": "30s",
   "schemaVersion": 39,
   "style": "dark",
-  "tags": ["weather", "valencia"],
+  "tags": [
+    "weather",
+    "valencia"
+  ],
   "templating": {
     "list": [
       {

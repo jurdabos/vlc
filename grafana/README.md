@@ -65,12 +65,24 @@ Alert routing and notification status.
 
 **Note:** Kafka broker metrics require JMX exporter on kafka service (planned for future phases).
 
+## Single source of truth
+Derived query logic (latest-per-station, staleness math, snapshot joins,
+station inventory) lives once, in the dbt models (`dbt/models/`), and is
+materialized as views (`weather.latest`, `air.latest`, `public.station_snapshot`,
+`public.data_freshness`, `public.stations`). Dashboard panels and alert rules
+only SELECT from those views; plain projections/counts against the raw
+hypertables (time-series panels) are fine. `uv run vlc grafana check` (also a
+CI step) fails when a panel or alert re-derives view logic against
+`air.hyper`/`weather.hyper`. After changing dbt models, apply them with
+`docker compose -f compose/docker-compose.yml --profile infra --profile dbt run --rm dbt run --profiles-dir /dbt`.
+
 ## Alerting
 `provisioning/alerting/vlc-staleness.yml` provisions the Grafana-managed rule
 **WeatherStationStale** (folder `VLC`, evaluated every 5m): one alert instance
-per `fiwareid` whose latest `weather.hyper` reading is older than 5 hours.
-It catches single dead stations (e.g. `W05_VALENCIA_UPV_10m`, silent since
-2026-02-05) that the topic-level Prometheus alerts cannot see.
+per `fiwareid` whose `public.data_freshness` staleness exceeds 5 hours (the
+mart's `freshness_offline_max` dbt var — keep the rule threshold and the var
+in sync). It catches single dead stations (e.g. `W05_VALENCIA_UPV_10m`, silent
+since 2026-02-05) that the topic-level Prometheus alerts cannot see.
 
 Grafana-managed alerts are forwarded to the existing Alertmanager
 (`handleGrafanaManagedAlerts: true` in `provisioning/datasources/alertmanager.yml`)

@@ -54,6 +54,10 @@ jobs:
     - name: Run unit tests
       run: pytest tests/unit/ -v --tb=short
 
+    - name: Grafana SSOT check
+      # Guardrail: dashboards/alert rules must not re-derive logic owned by dbt views.
+      run: vlc grafana check
+
     - name: Generate coverage report
       run: pytest tests/unit/ --cov --cov-report=xml --cov-report=html
 

@@ -233,7 +233,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT EXTRACT(EPOCH FROM MAX(ts)) * 1000 as \"Latest Reading\" FROM air.hyper;",
+          "rawSql": "SELECT EXTRACT(EPOCH FROM MAX(ts)) * 1000 as \"Latest Reading\" FROM air.latest;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -342,7 +342,10 @@
       "id": 5,
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": [
+            "mean",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -457,7 +460,11 @@
       "id": 2,
       "options": {
         "legend": {
-          "calcs": ["mean", "max", "lastNotNull"],
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -585,7 +592,10 @@
       "id": 10,
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": [
+            "mean",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -700,7 +710,11 @@
       "id": 11,
       "options": {
         "legend": {
-          "calcs": ["mean", "max", "lastNotNull"],
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -828,7 +842,10 @@
       "id": 12,
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": [
+            "mean",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -943,7 +960,11 @@
       "id": 13,
       "options": {
         "legend": {
-          "calcs": ["mean", "max", "lastNotNull"],
+          "calcs": [
+            "mean",
+            "max",
+            "lastNotNull"
+          ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
@@ -1029,44 +1050,124 @@
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "fiwareid" },
-            "properties": [{ "id": "custom.width", "value": 200 }]
+            "matcher": {
+              "id": "byName",
+              "options": "fiwareid"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "ts" },
-            "properties": [{ "id": "custom.width", "value": 200 }]
+            "matcher": {
+              "id": "byName",
+              "options": "ts"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "no2" },
-            "properties": [{ "id": "custom.width", "value": 60 }]
+            "matcher": {
+              "id": "byName",
+              "options": "no2"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "o3" },
-            "properties": [{ "id": "custom.width", "value": 60 }]
+            "matcher": {
+              "id": "byName",
+              "options": "o3"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "so2" },
-            "properties": [{ "id": "custom.width", "value": 60 }]
+            "matcher": {
+              "id": "byName",
+              "options": "so2"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "pm10" },
-            "properties": [{ "id": "custom.width", "value": 60 }]
+            "matcher": {
+              "id": "byName",
+              "options": "pm10"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "pm25" },
-            "properties": [{ "id": "custom.width", "value": 60 }]
+            "matcher": {
+              "id": "byName",
+              "options": "pm25"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "air_quality_summary" },
-            "properties": [{ "id": "custom.width", "value": 180 }]
+            "matcher": {
+              "id": "byName",
+              "options": "air_quality_summary"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 180
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "lat" },
-            "properties": [{ "id": "custom.width", "value": 80 }]
+            "matcher": {
+              "id": "byName",
+              "options": "lat"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "lon" },
-            "properties": [{ "id": "custom.width", "value": 80 }]
+            "matcher": {
+              "id": "byName",
+              "options": "lon"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
           }
         ]
       },
@@ -1099,7 +1200,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT DISTINCT ON (fiwareid)\n  fiwareid,\n  ts,\n  no2,\n  o3,\n  so2,\n  pm10,\n  pm25,\n  air_quality_summary,\n  lat,\n  lon\nFROM air.hyper\nORDER BY fiwareid, ts DESC;",
+          "rawSql": "SELECT\n  fiwareid,\n  ts,\n  no2,\n  o3,\n  so2,\n  pm10,\n  pm25,\n  air_quality_summary,\n  lat,\n  lon\nFROM air.latest\nORDER BY fiwareid;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -1153,46 +1254,156 @@
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "fiwareid" },
-            "properties": [{ "id": "custom.width", "value": 200 }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "ts" },
-            "properties": [{ "id": "custom.width", "value": 200 }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "aqi_category" },
+            "matcher": {
+              "id": "byName",
+              "options": "fiwareid"
+            },
             "properties": [
-              { "id": "custom.width", "value": 220 },
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ts"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "aqi_category"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 220
+              },
               {
                 "id": "mappings",
                 "value": [
-                  { "options": { "Good": { "color": "#16697a", "index": 0 } }, "type": "value" },
-                  { "options": { "Moderate": { "color": "#bf9f6f", "index": 1 } }, "type": "value" },
-                  { "options": { "Unhealthy for Sensitive Groups": { "color": "#e6beae", "index": 2 } }, "type": "value" },
-                  { "options": { "Unhealthy": { "color": "#a24936", "index": 3 } }, "type": "value" },
-                  { "options": { "Very Unhealthy": { "color": "#a24936", "index": 4 } }, "type": "value" },
-                  { "options": { "Hazardous": { "color": "#a24936", "index": 5 } }, "type": "value" },
-                  { "options": { "No PM Data": { "color": "#7ebce6", "index": 6 } }, "type": "value" }
+                  {
+                    "options": {
+                      "Good": {
+                        "color": "#16697a",
+                        "index": 0
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "Moderate": {
+                        "color": "#bf9f6f",
+                        "index": 1
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "Unhealthy for Sensitive Groups": {
+                        "color": "#e6beae",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "Unhealthy": {
+                        "color": "#a24936",
+                        "index": 3
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "Very Unhealthy": {
+                        "color": "#a24936",
+                        "index": 4
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "Hazardous": {
+                        "color": "#a24936",
+                        "index": 5
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "No PM Data": {
+                        "color": "#7ebce6",
+                        "index": 6
+                      }
+                    },
+                    "type": "value"
+                  }
                 ]
               }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "pm25" },
-            "properties": [{ "id": "custom.width", "value": 70 }]
+            "matcher": {
+              "id": "byName",
+              "options": "pm25"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "pm10" },
-            "properties": [{ "id": "custom.width", "value": 70 }]
+            "matcher": {
+              "id": "byName",
+              "options": "pm10"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "lat" },
-            "properties": [{ "id": "custom.width", "value": 80 }]
+            "matcher": {
+              "id": "byName",
+              "options": "lat"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "lon" },
-            "properties": [{ "id": "custom.width", "value": 80 }]
+            "matcher": {
+              "id": "byName",
+              "options": "lon"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
           }
         ]
       },
@@ -1208,7 +1419,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true
@@ -1226,8 +1439,20 @@
           "rawSql": "SELECT\n  fiwareid,\n  ts,\n  pm25,\n  pm10,\n  CASE\n    WHEN pm25 IS NULL AND pm10 IS NULL THEN 'No PM Data'\n    WHEN COALESCE(pm25, 0) <= 12 AND COALESCE(pm10, 0) <= 54 THEN 'Good'\n    WHEN COALESCE(pm25, 0) <= 35.4 OR COALESCE(pm10, 0) <= 154 THEN 'Moderate'\n    WHEN COALESCE(pm25, 0) <= 55.4 OR COALESCE(pm10, 0) <= 254 THEN 'Unhealthy for Sensitive Groups'\n    WHEN COALESCE(pm25, 0) <= 150.4 OR COALESCE(pm10, 0) <= 354 THEN 'Unhealthy'\n    WHEN COALESCE(pm25, 0) <= 250.4 OR COALESCE(pm10, 0) <= 424 THEN 'Very Unhealthy'\n    ELSE 'Hazardous'\n  END AS aqi_category,\n  lat,\n  lon\nFROM air.latest;",
           "refId": "A",
           "sql": {
-            "columns": [{ "parameters": [], "type": "function" }],
-            "groupBy": [{ "property": { "type": "string" }, "type": "groupBy" }],
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
             "limit": 50
           }
         }
@@ -1239,7 +1464,10 @@
   "refresh": "30s",
   "schemaVersion": 39,
   "style": "dark",
-  "tags": ["air-quality", "valencia"],
+  "tags": [
+    "air-quality",
+    "valencia"
+  ],
   "templating": {
     "list": []
   },

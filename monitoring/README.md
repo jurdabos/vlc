@@ -67,8 +67,10 @@ monitoring/
 - **NoWeatherDataIngested** (warning): No messages on `vlc.weather` for 30m
 
 ### Grafana-Managed Alerts
-- **WeatherStationStale** (warning): a station's latest `weather.hyper` reading
-  is older than 5h (one alert instance per `fiwareid`). Defined in
+- **WeatherStationStale** (warning): a weather station's staleness in the
+  `public.data_freshness` dbt mart exceeds 5h (one alert instance per
+  `fiwareid`); the staleness math itself lives in the mart, the rule only
+  thresholds `staleness_s`. Defined in
   `grafana/provisioning/alerting/vlc-staleness.yml`, evaluated by Grafana
   against TimescaleDB, and forwarded to Alertmanager
   (`handleGrafanaManagedAlerts: true`). Catches single dead stations the
