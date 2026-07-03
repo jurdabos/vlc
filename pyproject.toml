@@ -2,9 +2,12 @@
 name = "vlc"
 version = "0.1.0"
 description = "Valencia air quality and weather data pipeline"
-requires-python = ">=3.10"
+# acidbase requires >=3.12; the pipeline containers pin their own interpreters.
+requires-python = ">=3.12"
 dependencies = [
+    "acidbase @ git+https://github.com/jurdabos/acidbase.git",
     "authlib>=1.6.12",
+    "click>=8.3.0",
     "certifi>=2025.11.12",
     "charset-normalizer>=3.4.4",
     "confluent-kafka[schemaregistry,json]>=2.12.2",
@@ -23,8 +26,19 @@ dependencies = [
     "urllib3>=2.7.0",
 ]
 
-[tool.setuptools]
-packages = []
+[project.scripts]
+vlc = "vlc.cli:main"
+
+[build-system]
+requires = ["hatchling>=1,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vlc"]
+
+[tool.hatch.metadata]
+# Required for the `acidbase @ git+https://...` direct reference in dependencies.
+allow-direct-references = true
 
 [project.optional-dependencies]
 dev = [
@@ -59,7 +73,7 @@ omit = ["tests/*", "*/test_*.py"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N"]

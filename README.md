@@ -131,6 +131,20 @@ The script:
 - Loads both air quality and weather data from the same CSV
 - Uses `ON CONFLICT DO NOTHING` so re-runs are safe and streaming data won't duplicate
 
+## CLI
+The repo ships a `vlc` command-line interface (standard acidvuca layout:
+`src/vlc/cli.py` + `[project.scripts]`, reusing shared tooling from
+[acidbase](https://github.com/jurdabos/acidbase)). Set up with `uv sync`, then:
+```bash
+uv run vlc --help
+# Canonical commit-and-push workflow (stages, commits with pre-commit retry, pushes to origin)
+uv run vlc push -m "feat: describe the change"
+uv run vlc push --dry-run   # preview without changing anything
+```
+Project data commands (`status`, `latest`, `stations`) are planned; they will
+read from the dbt-managed views so the CLI and the Grafana dashboards share a
+single source of truth.
+
 ## Quick Reference
 
 | Action | Command |
@@ -169,6 +183,7 @@ vlc/
 ├── producer/           # air + weather Python producers
 ├── schemas/            # Avro schemas (.avsc) for air + weather
 ├── scripts/            # bootstrap, secrets, analysis utilities
+├── src/vlc/            # vlc CLI package (click group; push from acidbase)
 └── tests/              # pytest test suite
 ```
 

@@ -7,7 +7,13 @@ and this project loosely follows [Semantic Versioning](https://semver.org/spec/v
 
 ## [Unreleased]
 
+### Added
+- `src/vlc/` CLI package with the standard acidvuca interface: `src/vlc/cli.py` exposes a click group as the `vlc` console script (`[project.scripts]` in `pyproject.toml`) and mounts the shared `acidbase.push.push_command`, so `uv run vlc push` now drives the canonical stage/commit/push workflow (single mode — one `origin` remote, no `[tool.acidbase.push]` table). Verified: `uv run vlc push --dry-run` previews changes without mutations.
+- `tests/unit/test_cli.py`: CLI smoke tests (help/version output, push option surface, dry-run no-mutation guarantee in a fresh git repo).
+
 ### Changed
+- `pyproject.toml`: switched to the hatchling build backend with `[tool.hatch.build.targets.wheel] packages = ["src/vlc"]` (replaces the empty `[tool.setuptools] packages = []` stub); added `acidbase @ git+https://github.com/jurdabos/acidbase.git` (with `[tool.hatch.metadata] allow-direct-references = true`) and `click`; bumped `requires-python` from `>=3.10` to `>=3.12` (acidbase floor) and ruff `target-version` to `py312`. Pipeline containers are unaffected — they pin their own interpreters.
+- `.github/workflows/test.yml`: unit-test job Python bumped 3.10 → 3.12 to match the new `requires-python`.
 - `grafana/dashboards/weather.json`: "Current Conditions by Station" now also selects `EXTRACT(EPOCH FROM (now() - ts)) AS age` and renders it as a color-coded duration column (teal = fresh, `#dbf4a7` > 30 min, `#a24936` > 5 h), so a single dead station (e.g. `W05_VALENCIA_UPV_10m`, frozen upstream since 2026-02-05) is visible at a glance instead of being discovered via ad-hoc SQL.
 - `grafana/provisioning/datasources/alertmanager.yml`: added `handleGrafanaManagedAlerts: true` so Grafana-managed alerts are forwarded to the existing Alertmanager and reuse its email routing/inhibition rules.
 - `grafana/README.md`, `monitoring/README.md`: documented the new `age` column, the `WeatherStationStale` rule, and the Grafana→Alertmanager forwarding (alert provisioning files are loaded at Grafana startup only, so YAML changes need a container restart).
