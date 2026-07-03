@@ -8,60 +8,9 @@ docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev
 docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT DISTINCT ON (fiwareid) fiwareid, ts, temperature_c, humidity_pct, pressure_hpa, wind_dir_deg, wind_speed_ms, precip_mm, lat, lon FROM weather.hyper ORDER BY fiwareid, ts DESC;"
 
 -- Records of records
-docker compose -f compose/docker-compose.yml exec timescaledb psql -U vlc_dev -d vlc -c "
-(SELECT 'max_temperature_c' AS record_type, h.temperature_c, h.humidity_pct, h.pressure_hpa, h.wind_speed_ms, h.precip_mm, h.wind_dir_deg, h.fiwareid, h.ts
- FROM weather.hyper h
- WHERE temperature_c IS NOT NULL
- ORDER BY temperature_c DESC, ts ASC
- LIMIT 1)
-UNION ALL
-(SELECT 'min_temperature_c', h.temperature_c, h.humidity_pct, h.pressure_hpa, h.wind_speed_ms, h.precip_mm, h.wind_dir_deg, h.fiwareid, h.ts
- FROM weather.hyper h
- WHERE temperature_c IS NOT NULL
- ORDER BY temperature_c ASC, ts ASC
- LIMIT 1)
-UNION ALL
-(SELECT 'max_humidity_pct', h.temperature_c, h.humidity_pct, h.pressure_hpa, h.wind_speed_ms, h.precip_mm, h.wind_dir_deg, h.fiwareid, h.ts
- FROM weather.hyper h
- WHERE humidity_pct IS NOT NULL
- ORDER BY humidity_pct DESC, ts ASC
- LIMIT 1)
-UNION ALL
-(SELECT 'min_humidity_pct', h.temperature_c, h.humidity_pct, h.pressure_hpa, h.wind_speed_ms, h.precip_mm, h.wind_dir_deg, h.fiwareid, h.ts
- FROM weather.hyper h
- WHERE humidity_pct IS NOT NULL
- ORDER BY humidity_pct ASC, ts ASC
- LIMIT 1)
-UNION ALL
-(SELECT 'max_pressure_hpa', h.temperature_c, h.humidity_pct, h.pressure_hpa, h.wind_speed_ms, h.precip_mm, h.wind_dir_deg, h.fiwareid, h.ts
- FROM weather.hyper h
- WHERE pressure_hpa IS NOT NULL
- ORDER BY pressure_hpa DESC, ts ASC
- LIMIT 1)
-UNION ALL
-(SELECT 'min_pressure_hpa', h.temperature_c, h.humidity_pct, h.pressure_hpa, h.wind_speed_ms, h.precip_mm, h.wind_dir_deg, h.fiwareid, h.ts
- FROM weather.hyper h
- WHERE pressure_hpa IS NOT NULL
- ORDER BY pressure_hpa ASC, ts ASC
- LIMIT 1)
-UNION ALL
-(SELECT 'max_wind_speed_ms', h.temperature_c, h.humidity_pct, h.pressure_hpa, h.wind_speed_ms, h.precip_mm, h.wind_dir_deg, h.fiwareid, h.ts
- FROM weather.hyper h
- WHERE wind_speed_ms IS NOT NULL
- ORDER BY wind_speed_ms DESC, ts ASC
- LIMIT 1)
-UNION ALL
-(SELECT 'min_wind_speed_ms', h.temperature_c, h.humidity_pct, h.pressure_hpa, h.wind_speed_ms, h.precip_mm, h.wind_dir_deg, h.fiwareid, h.ts
- FROM weather.hyper h
- WHERE wind_speed_ms IS NOT NULL
- ORDER BY wind_speed_ms ASC, ts ASC
- LIMIT 1)
-UNION ALL
-(SELECT 'max_precip_mm', h.temperature_c, h.humidity_pct, h.pressure_hpa, h.wind_speed_ms, h.precip_mm, h.wind_dir_deg, h.fiwareid, h.ts
- FROM weather.hyper h
- WHERE precip_mm IS NOT NULL
- ORDER BY precip_mm DESC, ts ASC
- LIMIT 1);"
+-- Canonical definition lives in the dbt mart dbt/models/marts/weather_records.sql
+-- (materialized as public.weather_records); same data via `uv run vlc records`.
+docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "SELECT * FROM public.weather_records;"
 
 -- Avg. temperature across stations for past week of current year compared with the same period of historic averages
 docker compose -f compose/docker-compose.yml exec -T timescaledb psql -U vlc_dev -d vlc -c "

@@ -19,11 +19,12 @@ def runner():
     return CliRunner()
 
 
-def test_cli_help_lists_push(runner):
-    """`vlc --help` exits cleanly and advertises the push subcommand."""
+def test_cli_help_lists_commands(runner):
+    """`vlc --help` exits cleanly and advertises all subcommands."""
     result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
-    assert "push" in result.output
+    for command in ("push", "status", "latest", "stations", "records", "grafana"):
+        assert command in result.output
 
 
 def test_cli_version(runner):

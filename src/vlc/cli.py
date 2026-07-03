@@ -100,6 +100,13 @@ def stations_command(as_csv: bool) -> None:
     _print_rows(_fetch(queries.STATIONS), as_csv)
 
 
+@cli.command("records")
+@click.option("--csv", "as_csv", is_flag=True, help="Emit raw CSV instead of a table.")
+def records_command(as_csv: bool) -> None:
+    """Shows all-time meteorological extremes (public.weather_records mart)."""
+    _print_rows(_fetch(queries.RECORDS), as_csv)
+
+
 @cli.group("grafana")
 def grafana_group() -> None:
     """Grafana-related utilities."""

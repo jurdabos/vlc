@@ -149,6 +149,7 @@ uv run vlc latest           # latest weather readings (weather.latest)
 uv run vlc latest --air     # latest air quality readings (air.latest)
 uv run vlc latest --all     # combined snapshot (public.station_snapshot)
 uv run vlc stations         # station inventory (public.stations)
+uv run vlc records          # all-time meteorological extremes (public.weather_records)
 uv run vlc grafana check    # CI guardrail: no derived SQL logic in dashboards
 ```
 All data commands accept `--csv` for piping. By default they reach

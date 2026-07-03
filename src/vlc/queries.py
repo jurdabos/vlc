@@ -34,3 +34,8 @@ STATIONS = """\
 SELECT *
 FROM public.stations
 ORDER BY 1;"""
+
+RECORDS = """\
+SELECT record_type, temperature_c, humidity_pct, pressure_hpa, wind_speed_ms,
+       precip_mm, wind_dir_deg, fiwareid, ts
+FROM public.weather_records;"""
