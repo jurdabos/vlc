@@ -118,6 +118,11 @@ services:
 
   timescaledb:
     image: timescale/timescaledb-ha:pg16-ts2.17-all
+    # Postgres parallel workers allocate dynamic shared memory under /dev/shm;
+    # Docker's 64 MB default starves concurrent window-function queries over
+    # the validity-layer views ("could not resize shared memory segment ...
+    # No space left on device" during dbt test concurrency).
+    shm_size: 256mb
     dns:
       - 8.8.8.8
       - 1.1.1.1

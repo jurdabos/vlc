@@ -45,14 +45,22 @@ vars:
     co: {min: 0, max: 100}
     pm10: {min: 0, max: 1000}
     pm25: {min: 0, max: 500}
-  # Temperature spike rule: a reading deviating more than the delta from its
-  # previous reading (within the window) is a sensor glitch when the next
-  # reading either agrees with the previous one (V-shape) or is missing.
-  # Catches single-reading faults that static bounds cannot (e.g. the
-  # -7.8 degC reading at W02_NAZARET_10m on 2026-05-15, a 27 degC drop in
-  # 10 minutes — the only such jump in ~193k rows).
-  weather_temp_spike_max_delta_c: 10
-  weather_temp_spike_window_minutes: 30
+  # Spike rules: a reading deviating more than max_delta from the previous
+  # reading (within window_minutes) is a sensor glitch when the next reading
+  # either agrees with the previous one (V-shape) or is missing/outside the
+  # window. Catches single-reading faults that sit inside the static bounds:
+  #   * temperature_c: the -7.8 degC reading at W02_NAZARET_10m on
+  #     2026-05-15 (a 27 degC drop in 10 minutes; the only such jump in
+  #     ~193k rows).
+  #   * pressure_hpa: single-point excursions of the W02 barometer failure
+  #     of 2026-05 (e.g. 949 hPa between 928 and 966 neighbours). Real
+  #     sea-level pressure never moves 15 hPa within 30 minutes; only 8
+  #     such deltas exist in ~11k close-gap pairs, all glitches.
+  # Sustained failure episodes (sensor stuck/oscillating for hours) are NOT
+  # caught by design — they surface in public.data_quality instead.
+  weather_spike_rules:
+    temperature_c: {max_delta: 10, window_minutes: 30}
+    pressure_hpa: {max_delta: 15, window_minutes: 30}
 
 models:
   vlc:
