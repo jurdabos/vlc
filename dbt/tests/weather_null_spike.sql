@@ -1,5 +1,8 @@
--- Fails if any weather measurement column has more than 30% NULLs.
+-- Warns if any weather measurement column has more than 30% NULLs.
 -- Derived from direct_sql_queries.txt check #9.
+-- Severity warn: raw-layer monitor, same rationale as air_null_spike.
+
+{{ config(severity='warn') }}
 
 select
     'weather.hyper' as table_name,

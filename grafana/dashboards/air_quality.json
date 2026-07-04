@@ -364,7 +364,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  no2 as value\nFROM air.hyper\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND no2 IS NOT NULL\nORDER BY ts;",
+          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  no2 as value\nFROM air.clean\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND no2 IS NOT NULL\nORDER BY ts;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -483,7 +483,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT \n  ts as time,\n  no2\nFROM air.hyper\nWHERE fiwareid = 'A03_MOLISOL_60m'\n  AND ts >= NOW() - INTERVAL '7 days'\nORDER BY ts;",
+          "rawSql": "SELECT \n  ts as time,\n  no2\nFROM air.clean\nWHERE fiwareid = 'A03_MOLISOL_60m'\n  AND ts >= NOW() - INTERVAL '7 days'\nORDER BY ts;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -614,7 +614,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  pm25 as value\nFROM air.hyper\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND pm25 IS NOT NULL\nORDER BY ts;",
+          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  pm25 as value\nFROM air.clean\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND pm25 IS NOT NULL\nORDER BY ts;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -733,7 +733,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT \n  ts as time,\n  pm25\nFROM air.hyper\nWHERE fiwareid = 'A03_MOLISOL_60m'\n  AND ts >= NOW() - INTERVAL '7 days'\nORDER BY ts;",
+          "rawSql": "SELECT \n  ts as time,\n  pm25\nFROM air.clean\nWHERE fiwareid = 'A03_MOLISOL_60m'\n  AND ts >= NOW() - INTERVAL '7 days'\nORDER BY ts;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -864,7 +864,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  o3 as value\nFROM air.hyper\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND o3 IS NOT NULL\nORDER BY ts;",
+          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  o3 as value\nFROM air.clean\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND o3 IS NOT NULL\nORDER BY ts;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -983,7 +983,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT \n  ts as time,\n  o3\nFROM air.hyper\nWHERE fiwareid = 'A03_MOLISOL_60m'\n  AND ts >= NOW() - INTERVAL '7 days'\nORDER BY ts;",
+          "rawSql": "SELECT \n  ts as time,\n  o3\nFROM air.clean\nWHERE fiwareid = 'A03_MOLISOL_60m'\n  AND ts >= NOW() - INTERVAL '7 days'\nORDER BY ts;",
           "refId": "A",
           "sql": {
             "columns": [

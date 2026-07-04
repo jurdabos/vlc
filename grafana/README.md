@@ -69,12 +69,16 @@ Alert routing and notification status.
 Derived query logic (latest-per-station, staleness math, snapshot joins,
 station inventory) lives once, in the dbt models (`dbt/models/`), and is
 materialized as views (`weather.latest`, `air.latest`, `public.station_snapshot`,
-`public.data_freshness`, `public.stations`). Dashboard panels and alert rules
-only SELECT from those views; plain projections/counts against the raw
-hypertables (time-series panels) are fine. `uv run vlc grafana check` (also a
-CI step) fails when a panel or alert re-derives view logic against
-`air.hyper`/`weather.hyper`. After changing dbt models, apply them with
-`docker compose -f compose/docker-compose.yml --profile infra --profile dbt run --rm dbt run --profiles-dir /dbt`.
+`public.data_freshness`, `public.stations`, `public.weather_records`,
+`public.data_quality`). Dashboard panels and alert rules only SELECT from
+those views; plain projections/counts against the raw hypertables are
+allowed but measurement time-series panels read the validity layer
+(`weather.clean` / `air.clean`) so sensor glitches don't render as data.
+Raw-volume/liveness stats (Total Rows, Active Stations) intentionally stay
+on the hypertables. `uv run vlc grafana check` (also a CI step) fails when a
+panel or alert re-derives view logic against `air.hyper`/`weather.hyper`.
+After changing dbt models, apply them with
+`docker compose -f compose/docker-compose.yml --profile infra --profile dbt run --rm dbt build --profiles-dir /dbt`.
 
 ## Alerting
 `provisioning/alerting/vlc-staleness.yml` provisions the Grafana-managed rule

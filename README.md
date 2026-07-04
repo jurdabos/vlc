@@ -150,6 +150,7 @@ uv run vlc latest --air     # latest air quality readings (air.latest)
 uv run vlc latest --all     # combined snapshot (public.station_snapshot)
 uv run vlc stations         # station inventory (public.stations)
 uv run vlc records          # all-time meteorological extremes (public.weather_records)
+uv run vlc quality          # sensor-health: validity-layer flag counts (public.data_quality)
 uv run vlc grafana check    # CI guardrail: no derived SQL logic in dashboards
 ```
 All data commands accept `--csv` for piping. By default they reach
@@ -164,6 +165,17 @@ check` (run in CI) fails when a dashboard or alert re-derives such logic
 against the raw hypertables. Freshness thresholds are dbt vars in
 `dbt/dbt_project.yml` (`freshness_offline_max: "5 hours"` matches the
 WeatherStationStale alert threshold).
+
+Data validity follows the same principle: the raw hypertables are immutable
+(glitches included, as the audit trail), while `weather.clean` / `air.clean`
+null impossible measurements per column — static physical bounds plus a
+temperature spike rule, all dbt vars — and record reasons in
+`quality_flags`. Everything derived (latest, records, snapshot, dashboards'
+measurement panels) reads the clean layer; `vlc quality` shows what was
+flagged where. Humidity is allowed up to 105 % (supersaturation — see
+`docs/relative_humidity_above_100.txt`). Known caveat: the TimescaleDB
+continuous aggregates (`weather.daily/weekly`, `air.daily/weekly`) still
+aggregate raw data, as they cannot be defined over views.
 
 ## Quick Reference
 

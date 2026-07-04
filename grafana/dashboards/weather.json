@@ -171,7 +171,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT AVG(temperature_c) as \"Avg Temp\" FROM weather.hyper WHERE ts > NOW() - INTERVAL '1 hour';",
+          "rawSql": "SELECT AVG(temperature_c) as \"Avg Temp\" FROM weather.clean WHERE ts > NOW() - INTERVAL '1 hour';",
           "refId": "A",
           "sql": {
             "columns": [
@@ -278,7 +278,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  temperature_c as value\nFROM weather.hyper\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND temperature_c IS NOT NULL\nORDER BY ts;",
+          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  temperature_c as value\nFROM weather.clean\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND temperature_c IS NOT NULL\nORDER BY ts;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -594,7 +594,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  humidity_pct as value\nFROM weather.hyper\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND humidity_pct IS NOT NULL\nORDER BY ts;",
+          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  humidity_pct as value\nFROM weather.clean\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND humidity_pct IS NOT NULL\nORDER BY ts;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -701,7 +701,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  pressure_hpa as value\nFROM weather.hyper\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND pressure_hpa IS NOT NULL\nORDER BY ts;",
+          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  pressure_hpa as value\nFROM weather.clean\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND pressure_hpa IS NOT NULL\nORDER BY ts;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -808,7 +808,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  wind_speed_ms as value\nFROM weather.hyper\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND wind_speed_ms IS NOT NULL\nORDER BY ts;",
+          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  wind_speed_ms as value\nFROM weather.clean\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND wind_speed_ms IS NOT NULL\nORDER BY ts;",
           "refId": "A",
           "sql": {
             "columns": [
@@ -915,7 +915,7 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  precip_mm as value\nFROM weather.hyper\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND precip_mm IS NOT NULL\n  AND precip_mm > 0\nORDER BY ts;",
+          "rawSql": "SELECT \n  ts as time,\n  fiwareid as metric,\n  precip_mm as value\nFROM weather.clean\nWHERE ts >= NOW() - INTERVAL '7 days'\n  AND precip_mm IS NOT NULL\n  AND precip_mm > 0\nORDER BY ts;",
           "refId": "A",
           "sql": {
             "columns": [

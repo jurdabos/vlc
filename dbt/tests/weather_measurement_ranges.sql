@@ -1,11 +1,14 @@
--- Failing rows: weather readings outside physical measurement bounds.
--- Derived from direct_sql_queries.txt check #5.
+-- Failing rows: measurements in the CLEAN layer outside the validity
+-- bounds (weather_validity_bounds in dbt_project.yml). The clean layer's
+-- contract is to null such values, so any row here is a bug in
+-- stg_weather__clean. Raw-layer violations are expected and observable
+-- via the data_quality mart instead.
+
+{% set bounds = var("weather_validity_bounds") %}
 
 select *
-from {{ source('weather', 'hyper') }}
-where temperature_c < -40 or temperature_c > 60
-   or humidity_pct < 0 or humidity_pct > 105
-   or pressure_hpa < 800 or pressure_hpa > 1100
-   or wind_speed_ms < 0 or wind_speed_ms > 100
-   or wind_dir_deg < 0 or wind_dir_deg > 360
-   or precip_mm < 0 or precip_mm > 500
+from {{ ref('stg_weather__clean') }}
+where
+{% for metric in bounds %}
+    {{ out_of_bounds(metric, bounds[metric]) }}{% if not loop.last %} or{% endif %}
+{% endfor %}

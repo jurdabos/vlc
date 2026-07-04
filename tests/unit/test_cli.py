@@ -23,7 +23,7 @@ def test_cli_help_lists_commands(runner):
     """`vlc --help` exits cleanly and advertises all subcommands."""
     result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
-    for command in ("push", "status", "latest", "stations", "records", "grafana"):
+    for command in ("push", "status", "latest", "stations", "records", "quality", "grafana"):
         assert command in result.output
 
 

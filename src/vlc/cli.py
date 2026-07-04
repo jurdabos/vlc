@@ -107,6 +107,13 @@ def records_command(as_csv: bool) -> None:
     _print_rows(_fetch(queries.RECORDS), as_csv)
 
 
+@cli.command("quality")
+@click.option("--csv", "as_csv", is_flag=True, help="Emit raw CSV instead of a table.")
+def quality_command(as_csv: bool) -> None:
+    """Shows validity-layer flag counts per station and month (public.data_quality mart)."""
+    _print_rows(_fetch(queries.QUALITY), as_csv)
+
+
 @cli.group("grafana")
 def grafana_group() -> None:
     """Grafana-related utilities."""

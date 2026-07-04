@@ -25,6 +25,34 @@ on-run-end:
 vars:
   freshness_fresh_max: "1 hour"
   freshness_offline_max: "5 hours"
+  # Physical plausibility bounds — the single source of truth for measurement
+  # validity, consumed by the stg_*__clean models and the range tests.
+  # Readings outside a bound are nulled (not dropped) in the clean layer.
+  # humidity_pct max is 105, not 100: supersaturation and sensor calibration
+  # tolerance make values up to ~105 % legitimate — see
+  # docs/relative_humidity_above_100.txt.
+  weather_validity_bounds:
+    temperature_c: {min: -10, max: 50}
+    humidity_pct: {min: 1, max: 105}
+    pressure_hpa: {min: 940, max: 1070}
+    wind_speed_ms: {min: 0, max: 60}
+    wind_dir_deg: {min: 0, max: 360}
+    precip_mm: {min: 0, max: 120}
+  air_validity_bounds:
+    no2: {min: 0, max: 1000}
+    o3: {min: 0, max: 500}
+    so2: {min: 0, max: 2000}
+    co: {min: 0, max: 100}
+    pm10: {min: 0, max: 1000}
+    pm25: {min: 0, max: 500}
+  # Temperature spike rule: a reading deviating more than the delta from its
+  # previous reading (within the window) is a sensor glitch when the next
+  # reading either agrees with the previous one (V-shape) or is missing.
+  # Catches single-reading faults that static bounds cannot (e.g. the
+  # -7.8 degC reading at W02_NAZARET_10m on 2026-05-15, a 27 degC drop in
+  # 10 minutes — the only such jump in ~193k rows).
+  weather_temp_spike_max_delta_c: 10
+  weather_temp_spike_window_minutes: 30
 
 models:
   vlc:

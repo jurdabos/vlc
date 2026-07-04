@@ -39,3 +39,8 @@ RECORDS = """\
 SELECT record_type, temperature_c, humidity_pct, pressure_hpa, wind_speed_ms,
        precip_mm, wind_dir_deg, fiwareid, ts
 FROM public.weather_records;"""
+
+QUALITY = """\
+SELECT schema_name, fiwareid, month, flag, flagged_count, total_readings, flagged_pct
+FROM public.data_quality
+ORDER BY month DESC, flagged_pct DESC, schema_name, fiwareid;"""
