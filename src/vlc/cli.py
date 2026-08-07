@@ -22,6 +22,7 @@ import csv
 import sys
 
 import click
+from acidbase.cli_utils import group
 from acidbase.push import ensure_unicode_safe_streams, get_project_root, push_command
 
 from vlc import db, queries
@@ -30,7 +31,7 @@ from vlc import db, queries
 _STATUS_STYLES = {"Fresh": "green", "Stale": "yellow", "Offline": "red"}
 
 
-@click.group()
+@group()
 @click.version_option(package_name="vlc")
 def cli() -> None:
     """CLI tools for the vlc data pipeline project."""
