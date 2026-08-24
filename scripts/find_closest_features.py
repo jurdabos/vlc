@@ -18,9 +18,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Optional, Tuple
 
-# Default reference coordinates (Ikon)
-DEFAULT_LAT = 39.493804279841314
-DEFAULT_LON = -0.4026670632153834
+# Default reference coordinates (MSLT_HM)
+DEFAULT_LAT = 39.48071826206511
+DEFAULT_LON = -0.4178228695471457
 
 logger = logging.getLogger(__name__)
 
