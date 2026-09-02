@@ -24,6 +24,7 @@ import sys
 import click
 from acidbase.cli_utils import group
 from acidbase.push import ensure_unicode_safe_streams, get_project_root, push_command
+from acidbase.versioning import bump_command
 
 from vlc import db, queries
 
@@ -38,6 +39,7 @@ def cli() -> None:
     ensure_unicode_safe_streams()
 
 
+cli.add_command(bump_command)
 cli.add_command(push_command)
 
 
