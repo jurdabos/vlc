@@ -1,6 +1,6 @@
 [project]
 name = "vlc"
-version = "0.1.0"
+version = "0.1.1"
 description = "Valencia air quality and weather data pipeline"
 # acidbase requires >=3.12; the pipeline containers pin their own interpreters.
 requires-python = ">=3.12"
