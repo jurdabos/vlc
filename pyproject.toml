@@ -26,6 +26,7 @@ dependencies = [
     "requests>=2.33.0",
     "rich>=14.1.0",
     "urllib3>=2.7.0",
+    "anyio>=4.14.2",
 ]
 
 [project.scripts]
