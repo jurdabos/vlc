@@ -8,7 +8,7 @@ dependencies = [
     "acidbase @ git+https://github.com/jurdabos/acidbase.git",
     "authlib>=1.6.12",
     "click>=8.3.0",
-    "certifi>=2025.11.12",
+    "certifi>=2026.10.18",
     "charset-normalizer>=3.4.4",
     "confluent-kafka[schemaregistry,json]>=2.12.2",
     "cryptography>=50.0.0",
