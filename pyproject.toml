@@ -6,7 +6,7 @@ description = "Valencia air quality and weather data pipeline"
 requires-python = ">=3.12"
 dependencies = [
     "acidbase @ git+https://github.com/jurdabos/acidbase.git",
-    "authlib>=1.6.12",
+    "authlib>=1.9.0",
     "click>=8.3.0",
     "certifi>=2026.10.18",
     "charset-normalizer>=3.4.4",

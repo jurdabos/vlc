@@ -12,7 +12,7 @@ attrs==25.4.0
     #   confluent-kafka
     #   jsonschema
     #   referencing
-authlib==1.7.2
+authlib==1.9.1
     # via
     #   confluent-kafka
     #   vlc
