@@ -7,6 +7,7 @@ and this project loosely follows [Semantic Versioning](https://semver.org/spec/v
 
 ## [Unreleased]
 ### Changed
+- Aligned with the canonical acidbase ruff setup: `pyproject.toml` drops `[tool.isort]` and takes the canonical `[tool.ruff]` tables, keeping `N` (pep8-naming) in the selection. `.github/workflows/lint.yml` and the missing `.gitignore` rules arrive through `acidbase scaffold`, and `.python-version` is committed so CI tests a chosen Python.
 - Adopted the canonical non-truncating CLI help from acidbase: the top-level command group is now built with `acidbase.cli_utils.group` (a `click.Group` subclass) instead of `click.group`. Click's default group listing truncates each command's short help at 45 characters, so longer descriptions ended in `...`; the shared group wraps the full first paragraph onto aligned continuation lines instead. `RichGroup.main` also routes output through `ensure_unicode_safe_streams()`, so non-ASCII help (em dashes, accented words) survives on Windows consoles using a legacy code page. `uv.lock` pins acidbase at the commit providing `cli_utils`.
 
 ### Added

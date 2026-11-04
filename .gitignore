@@ -39,7 +39,6 @@ db.sqlite3
 db.sqlite3-journal
 # Enving
 .env
-.python-version
 .venv
 .venv/
 ENV/
@@ -148,3 +147,17 @@ dbt/logs/
 # WebDriver files
 webdrivers/
 .wdm
+
+# --- appended by acidbase scaffold ---
+*.npy
+*.sql
+.env.*
+.junie/
+.serena/
+.wdm/
+/.quarto/
+/_site/
+/Backup.egg-info/
+/backup.log
+AGENTS.md
+!.env.example

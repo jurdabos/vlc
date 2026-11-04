@@ -77,14 +77,29 @@ omit = ["tests/*", "*/test_*.py"]
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+extend-exclude = [
+    ".venv",
+    "build",
+    "dist",
+    "__pycache__",
+    ".eggs",
+    "*.egg-info",
+]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N"]
-ignore = []
+# The canonical selection, broadened with N (pep8-naming), which this repo passes.
+select = ["E", "W", "F", "I", "N"]
+# E203 conflicts with the ruff formatter.
+ignore = ["E203"]
 
-[tool.isort]
-profile = "black"
-line_length = 120
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["E501", "F401"]
+"**/__init__.py" = ["F401"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
 
 [dependency-groups]
 dev = [
