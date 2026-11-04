@@ -1,0 +1,123 @@
+version: 2
+
+sources:
+  - name: air
+    schema: air
+    description: "Air quality data from Valencia FIWARE sensors."
+    tables:
+      - name: hyper
+        description: "Raw air quality hypertable — one row per station per timestamp."
+        loaded_at_field: ts
+        freshness:
+          warn_after: {count: 1, period: hour}
+          error_after: {count: 6, period: hour}
+        columns:
+          - name: fiwareid
+            description: "FIWARE station identifier (e.g. A01_AVFRANCIA_60m)."
+            tests:
+              - not_null
+          - name: ts
+            description: "Observation timestamp (timestamptz)."
+            tests:
+              - not_null
+          - name: no2
+            description: "Nitrogen dioxide concentration (µg/m³)."
+          - name: o3
+            description: "Ozone concentration (µg/m³)."
+          - name: so2
+            description: "Sulfur dioxide concentration (µg/m³)."
+          - name: co
+            description: "Carbon monoxide concentration (mg/m³)."
+          - name: pm10
+            description: "Particulate matter ≤10 µm (µg/m³)."
+          - name: pm25
+            description: "Particulate matter ≤2.5 µm (µg/m³)."
+          - name: air_quality_summary
+            description: "Categorical air quality label from the API."
+          - name: lat
+            description: "Station latitude."
+          - name: lon
+            description: "Station longitude."
+        tests:
+          - dbt_utils.unique_combination_of_columns:
+              combination_of_columns:
+                - fiwareid
+                - ts
+
+      - name: daily
+        description: "TimescaleDB continuous aggregate — daily averages per station."
+        columns:
+          - name: fiwareid
+          - name: bucket_day
+
+      - name: weekly
+        description: "TimescaleDB continuous aggregate — weekly averages per station."
+        columns:
+          - name: fiwareid
+          - name: bucket_week
+
+  - name: weather
+    schema: weather
+    description: "Weather data from Valencia FIWARE sensors."
+    tables:
+      - name: hyper
+        description: "Raw weather hypertable — one row per station per timestamp."
+        loaded_at_field: ts
+        freshness:
+          warn_after: {count: 1, period: hour}
+          error_after: {count: 6, period: hour}
+        columns:
+          - name: fiwareid
+            description: "FIWARE station identifier (e.g. W01_AVFRANCIA_10m)."
+            tests:
+              - not_null
+          - name: ts
+            description: "Observation timestamp (timestamptz)."
+            tests:
+              - not_null
+          - name: temperature_c
+            description: "Temperature in degrees Celsius."
+          - name: humidity_pct
+            description: "Relative humidity (%)."
+          - name: pressure_hpa
+            description: "Atmospheric pressure (hPa)."
+          - name: wind_dir_deg
+            description: "Wind direction in degrees."
+          - name: wind_speed_ms
+            description: "Wind speed (m/s)."
+          - name: precip_mm
+            description: "Precipitation (mm)."
+          - name: lat
+            description: "Station latitude."
+          - name: lon
+            description: "Station longitude."
+        tests:
+          - dbt_utils.unique_combination_of_columns:
+              combination_of_columns:
+                - fiwareid
+                - ts
+
+      - name: daily
+        description: "TimescaleDB continuous aggregate — daily weather averages per station."
+        columns:
+          - name: fiwareid
+          - name: bucket_day
+
+      - name: weekly
+        description: "TimescaleDB continuous aggregate — weekly weather averages per station."
+        columns:
+          - name: fiwareid
+          - name: bucket_week
+
+  - name: public
+    schema: public
+    description: "Shared reference tables."
+    tables:
+      - name: station_mapping
+        description: "Station reference data (FIWARE ID ↔ display name, coordinates, type)."
+        columns:
+          - name: fiwareid
+            description: "FIWARE station identifier (PK)."
+            tests:
+              - unique
+              - not_null

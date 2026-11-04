@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: station_snapshot
+    description: "Combined air + weather snapshot — one row per station via FULL OUTER JOIN."
+    columns:
+      - name: fiwareid
+        description: "FIWARE station identifier (from air or weather)."
+        tests:
+          - unique
+          - not_null
+
+  - name: stations
+    description: "Station inventory — first/last seen, record counts, avg coordinates for air and weather."
+    columns:
+      - name: fiwareid
+        tests:
+          - not_null
+      - name: data_type
+        tests:
+          - accepted_values:
+              values: ["air", "weather"]
+
+  - name: data_freshness
+    description: "Per-station staleness monitoring — Fresh / Stale / Offline."
+    columns:
+      - name: fiwareid
+        tests:
+          - not_null
+      - name: status
+        tests:
+          - accepted_values:
+              values: ["Fresh", "Stale", "Offline"]
+
+  - name: data_quality
+    description: "Flagged-value counts from the validity layer per schema, station, month and flag — sensor-health observability (`vlc quality`)."
+    columns:
+      - name: schema_name
+        tests:
+          - accepted_values:
+              values: ["air", "weather"]
+      - name: fiwareid
+        tests:
+          - not_null
+      - name: flagged_count
+        tests:
+          - not_null
+
+  - name: weather_records
+    description: "Records of records — the row holding each meteorological extreme, read from the validity layer (ties resolved by earliest ts)."
+    columns:
+      - name: record_type
+        tests:
+          - not_null
+          - unique
+          - accepted_values:
+              values:
+                - "max_temperature_c"
+                - "min_temperature_c"
+                - "max_humidity_pct"
+                - "min_humidity_pct"
+                - "max_pressure_hpa"
+                - "min_pressure_hpa"
+                - "max_wind_speed_ms"
+                - "min_wind_speed_ms"
+                - "max_precip_mm"
+      - name: fiwareid
+        tests:
+          - not_null

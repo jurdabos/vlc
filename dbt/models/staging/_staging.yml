@@ -1,0 +1,46 @@
+version: 2
+
+models:
+  - name: stg_air__clean
+    description: "Validity layer over air.hyper — impossible pollutant readings nulled per column, reasons in quality_flags. Bounds: air_validity_bounds var."
+    columns:
+      - name: fiwareid
+        tests:
+          - not_null
+      - name: ts
+        tests:
+          - not_null
+
+  - name: stg_weather__clean
+    description: "Validity layer over weather.hyper — impossible measurements nulled per column (static bounds + temperature spike rule), reasons in quality_flags."
+    columns:
+      - name: fiwareid
+        tests:
+          - not_null
+      - name: ts
+        tests:
+          - not_null
+
+  - name: stg_air__latest
+    description: "Most recent air quality reading per station (DISTINCT ON fiwareid)."
+    columns:
+      - name: fiwareid
+        description: "FIWARE station identifier."
+        tests:
+          - unique
+          - not_null
+      - name: ts
+        tests:
+          - not_null
+
+  - name: stg_weather__latest
+    description: "Most recent weather reading per station (DISTINCT ON fiwareid)."
+    columns:
+      - name: fiwareid
+        description: "FIWARE station identifier."
+        tests:
+          - unique
+          - not_null
+      - name: ts
+        tests:
+          - not_null

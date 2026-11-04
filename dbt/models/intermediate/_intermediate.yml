@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: int_air__aqi_status
+    description: "AQI categorization (Good → Hazardous) based on latest PM2.5/PM10 per station."
+    columns:
+      - name: fiwareid
+        tests:
+          - unique
+          - not_null
+      - name: aqi_category
+        tests:
+          - not_null
+          - accepted_values:
+              values:
+                - "Good"
+                - "Moderate"
+                - "Unhealthy for Sensitive Groups"
+                - "Unhealthy"
+                - "Very Unhealthy"
+                - "Hazardous"
+
+  - name: int_air__daily_trends
+    description: "Day-over-day air quality averages with PM2.5 delta from air.daily continuous aggregate."
+    columns:
+      - name: fiwareid
+        tests:
+          - not_null
+      - name: day
+        tests:
+          - not_null
+
+  - name: int_weather__daily_trends
+    description: "Day-over-day weather averages with temperature delta from weather.daily continuous aggregate."
+    columns:
+      - name: fiwareid
+        tests:
+          - not_null
+      - name: day
+        tests:
+          - not_null
