@@ -60,12 +60,29 @@ EOF
 chmod 600 db/init/020-vlc-password.override.sql
 
 # --- 4) Alertmanager config ---
+# The shared Gmail sender: the address from email/.env and the app password from the WSL keyring.
+# The generated file is the one plain copy, a documented exception, because Alertmanager reads its
+# password only from a file. It stays 600, so the container runs as its owner.
 log "Creating monitoring/alertmanager/alertmanager.generated.yml (SMTP credentials) ..."
-mkdir -p monitoring/alertmanager
-envsubst '${SMTP_HOST} ${SMTP_PORT} ${SMTP_FROM} ${SMTP_USER} ${SMTP_PASSWORD}' \
+EMAIL_ENV="${EMAIL_ENV:-/mnt/c/acidvuca/email/.env}"
+[ -f "$EMAIL_ENV" ] || err "$EMAIL_ENV not found: it holds GMAIL_2_USER, the alert sender. Set EMAIL_ENV to its path."
+SMTP_USER="$(sed -n 's/^GMAIL_2_USER=//p' "$EMAIL_ENV" | tr -d '\r')"
+[ -n "$SMTP_USER" ] || err "GMAIL_2_USER not set in $EMAIL_ENV"
+[ -n "${SMTP_TO:-}" ] || err "SMTP_TO not set in .env: alerts need a recipient."
+command -v keyring >/dev/null || err "keyring not found on PATH: the Gmail app password lives there."
+log "Reading the Gmail app password; the keyring asks for its master password ..."
+SMTP_PASSWORD="$(keyring get email gmail_2_password || true)"
+SMTP_PASSWORD="${SMTP_PASSWORD// /}"  # to drop the spaces Google displays
+[ -n "$SMTP_PASSWORD" ] || err "No gmail_2_password under the email service in the keyring."
+mkdir -p monitoring/alertmanager/data
+# Restricting the file before it holds the password
+: > monitoring/alertmanager/alertmanager.generated.yml
+chmod 600 monitoring/alertmanager/alertmanager.generated.yml
+SMTP_USER="$SMTP_USER" SMTP_TO="$SMTP_TO" SMTP_PASSWORD="$SMTP_PASSWORD" \
+  envsubst '${SMTP_USER} ${SMTP_TO} ${SMTP_PASSWORD}' \
   < monitoring/alertmanager/alertmanager.yml \
   > monitoring/alertmanager/alertmanager.generated.yml
-chmod 644 monitoring/alertmanager/alertmanager.generated.yml  # readable by nobody in the container
+unset SMTP_PASSWORD
 
 # --- 5) Producer .env (if needed for local testing) ---
 if [ -d producer ]; then

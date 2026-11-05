@@ -255,14 +255,19 @@ services:
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
+    # The generated config holds the Gmail app password and stays 600, so the container runs as its owner.
+    user: "1000:1000"
     dns:
       - 8.8.8.8
       - 1.1.1.1
-    networks: [vlc_internal]
+    # vlc_frontend is the route out to Gmail, which vlc_internal does not have.
+    networks: [vlc_internal, vlc_frontend]
     volumes:
       - ../monitoring/alertmanager/alertmanager.generated.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ../monitoring/alertmanager/data:/alertmanager
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
     restart: unless-stopped
     profiles: ["ui"]
 

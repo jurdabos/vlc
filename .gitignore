@@ -113,6 +113,7 @@ compose/.htpasswd
 connect/secrets
 connect/secrets/
 monitoring/alertmanager/alertmanager.generated.yml
+monitoring/alertmanager/data/
 secrets.properties
 # Sphinx documentation
 docs/_build/
@@ -150,7 +151,6 @@ webdrivers/
 
 # --- appended by acidbase scaffold ---
 *.npy
-*.sql
 .env.*
 .junie/
 .serena/
@@ -162,12 +162,6 @@ webdrivers/
 AGENTS.md
 !.env.example
 
-# dbt source code: `models/` and `*.sql` above must not hide it. Build output stays out through `dbt/target/`,
+# dbt source code: `models/` above must not hide it. Build output stays out through `dbt/target/`,
 # `dbt/dbt_packages/` and `dbt/logs/`, because Git cannot re-include files under an excluded directory.
 !dbt/models/
-!dbt/**/*.sql
-
-# Hand-written SQL: `*.sql` above must not hide it. The generated password file stays out, so keep its line below these.
-!db/**/*.sql
-!backfill/*.sql
-db/init/020-vlc-password.override.sql

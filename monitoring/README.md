@@ -79,8 +79,12 @@ monitoring/
 ## Alertmanager Configuration
 Alerts are grouped by `alertname` and `severity`, then routed to email. Critical alerts inhibit warning alerts for the same alertname.
 
-SMTP configuration is provided via environment variables:
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_USER`, `SMTP_PASSWORD`
+Email goes through the shared Gmail sender, on `smtp.gmail.com:465`. `scripts/sync-dev-secrets.sh` renders `alertmanager.yml` from:
+- **Sender:** `GMAIL_2_USER` in the file named by `EMAIL_ENV`, by default `/mnt/c/acidvuca/email/.env`.
+- **App password:** the WSL keyring, service `email`, user `gmail_2_password`. The script asks for the master password.
+- **Recipient:** `SMTP_TO` in `.env`.
+
+`alertmanager.generated.yml` is the one plain copy of that password, a documented exception to the shared setup, because Alertmanager reads its password only from a file. It is gitignored and stays `600`, so the container runs as UID 1000, its owner, and keeps its state in the gitignored `monitoring/alertmanager/data/`. Alertmanager also joins `vlc_frontend`, because `vlc_internal` has no route out to Gmail.
 
 ## Starting Monitoring Stack
 ```bash

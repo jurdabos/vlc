@@ -1,11 +1,13 @@
 # Alertmanager configuration template
-# Secrets are injected via envsubst by sync-dev-secrets.sh
+# scripts/sync-dev-secrets.sh renders this into alertmanager.generated.yml with envsubst.
 global:
-  smtp_smarthost: "${SMTP_HOST}:${SMTP_PORT}"
-  smtp_from: "${SMTP_FROM}"
+  smtp_smarthost: "smtp.gmail.com:465"
+  smtp_from: "${SMTP_USER}"
   smtp_auth_username: "${SMTP_USER}"
   smtp_auth_password: "${SMTP_PASSWORD}"
-  smtp_require_tls: true
+  # Port 465 is encrypted from the first byte and offers no STARTTLS, which require_tls demands.
+  # So this skips that upgrade only: the connection stays encrypted.
+  smtp_require_tls: false
 
 route:
   group_by: ["alertname", "severity"]
@@ -22,12 +24,12 @@ route:
 receivers:
   - name: "default"
     email_configs:
-      - to: "${SMTP_USER}"
+      - to: "${SMTP_TO}"
         send_resolved: true
 
   - name: "critical"
     email_configs:
-      - to: "${SMTP_USER}"
+      - to: "${SMTP_TO}"
         send_resolved: true
 
 inhibit_rules:

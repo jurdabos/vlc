@@ -1,1 +1,5 @@
 fd090bcf0f33a73d74423da1aad6dc51939317a9:grafana/README.md:curl-auth-user:85
+32f9587dd0be9e7121c701e6c9ab45a38945f502:docs/rotate_password.txt:sql-password-literal:24
+f17d5ea94e0014161981133f0687fe0ca6595326:db/init/020-vlc-password.override.sql:sql-password-literal:2
+f17d5ea94e0014161981133f0687fe0ca6595326:docs/rotate_password.txt:sql-password-literal:24
+e01e6cb59f2cc2bbafcd2a31cc9bf28cbc47d0fe:db/init/020-vlc-password.override.sql:sql-password-literal:1
