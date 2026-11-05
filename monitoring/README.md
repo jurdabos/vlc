@@ -92,6 +92,8 @@ docker compose -f compose/docker-compose.yml --profile ui up -d prometheus alert
 ```
 
 ## Verification
-- Prometheus targets: http://localhost:9090/targets
-- Alertmanager status: http://localhost:9093
+- Prometheus targets: http://localhost:8080/prometheus/targets
+- Alertmanager status: http://localhost:8080/alertmanager/
 - Grafana System Metrics dashboard: http://localhost:8080/grafana/
+
+All three sit behind the reverse proxy's basic auth. The links in alert emails point here too, set by `--web.external-url` in `compose/docker-compose.yml`, so they open only on this machine.

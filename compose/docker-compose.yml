@@ -170,6 +170,9 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.retention.time=7d'
+      # The address in alert emails. It keeps serving from / for internal callers, and nginx strips the prefix.
+      - '--web.external-url=http://localhost:8080/prometheus/'
+      - '--web.route-prefix=/'
     restart: unless-stopped
     profiles: ["ui"]
 
@@ -243,7 +246,7 @@ services:
 
   reverse-proxy:
     image: nginx:1.27-alpine
-    depends_on: [grafana, kafka-ui]
+    depends_on: [grafana, kafka-ui, alertmanager, prometheus]
     networks: [vlc_frontend]
     ports:
       - "8080:8080"  # single entry point
@@ -268,6 +271,9 @@ services:
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
+      # The address in alert emails. It keeps serving from / for internal callers, and nginx strips the prefix.
+      - '--web.external-url=http://localhost:8080/alertmanager/'
+      - '--web.route-prefix=/'
     restart: unless-stopped
     profiles: ["ui"]
 
