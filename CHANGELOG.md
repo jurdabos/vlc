@@ -16,6 +16,7 @@ and this project loosely follows [Semantic Versioning](https://semver.org/spec/v
 - `monitoring/alertmanager/alertmanager.generated.yml` is the one plain copy of the Gmail app password, a documented exception to the shared setup, because Alertmanager reads its password only from a file. `scripts/sync-dev-secrets.sh` reads it from the keyring, so `.env` never holds it, and restricts the file to `600` before writing it.
 
 ### Changed
+- `.env.example`: says where secrets go here, and why the acidbase keyring move does not apply.
 - `tests/README.md`: setup now uses `uv sync --extra dev` and tests run through `uv run`, replacing the `uv pip` and `pip` steps. It also warns that plain `uv sync` removes what only the `dev` extra provides, such as `pytest-docker`.
 - `.gitignore`, `.gitleaks.toml`: dropped the blanket `*.sql` ignore, which kept new SQL files out of Git without a word, and added the `sql-password-literal` rule, because the upstream rules miss a password written as a SQL literal. The `db/`, `backfill/` and `dbt/` re-includes went with it.
 - `.github/workflows/lint.yml`: the gitleaks download retries with `--retry 5`, because a transient 504 from GitHub's release host failed `lint` on code that was fine.
