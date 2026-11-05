@@ -62,55 +62,51 @@ tests/
 
 ### Install Dependencies
 
-Using `uv`:
 ```
-uv pip install -e ".[dev]"
+uv sync --extra dev
 ```
 
-Or using pip:
-```
-pip install -e ".[dev]"
-```
+Plain `uv sync` removes what only the `dev` extra provides, such as `pytest-docker`.
 
 ### Run All Tests
 
 ```
-pytest
+uv run pytest
 ```
 
 ### Run Specific Test Files
 
 ```
 # Topic tests only
-pytest tests/unit/test_kafka_topics.py
+uv run pytest tests/unit/test_kafka_topics.py
 
 # Kafka Connect tests only
-pytest tests/unit/test_kafka_connect.py
+uv run pytest tests/unit/test_kafka_connect.py
 
 # Docker image tests only
-pytest tests/unit/test_docker_image.py
+uv run pytest tests/unit/test_docker_image.py
 ```
 
 ### Run Tests with Coverage
 
 ```powershell
-pytest --cov
+uv run pytest --cov
 ```
 
 ### Run Tests Verbosely
 
 ```powershell
-pytest -v
+uv run pytest -v
 ```
 
 ### Run Specific Test Cases
 
 ```powershell
 # Run a specific test class
-pytest tests/unit/test_kafka_topics.py::TestKafkaDataTopics
+uv run pytest tests/unit/test_kafka_topics.py::TestKafkaDataTopics
 
 # Run a specific test method
-pytest tests/unit/test_kafka_topics.py::TestKafkaDataTopics::test_bootstrap_script_creates_air_topic
+uv run pytest tests/unit/test_kafka_topics.py::TestKafkaDataTopics::test_bootstrap_script_creates_air_topic
 ```
 
 ## Test Requirements
@@ -138,10 +134,10 @@ These tests should be run in CI/CD pipelines before deploying infrastructure cha
 Example GitHub Actions workflow:
 ```yaml
 - name: Install dependencies
-  run: uv pip install -e ".[dev]"
+  run: uv sync --extra dev
 
 - name: Run unit tests
-  run: pytest tests/unit/
+  run: uv run pytest tests/unit/
 ```
 
 ## Troubleshooting
@@ -149,7 +145,7 @@ Example GitHub Actions workflow:
 ### Import Errors
 If you see import errors, ensure you've installed the package in development mode:
 ```powershell
-uv pip install -e ".[dev]"
+uv sync --extra dev
 ```
 
 ### YAML Parser Errors
