@@ -30,6 +30,15 @@ repos:
         language: system
         files: ^(uv\.lock|pyproject\.toml|uv\.toml)$
         pass_filenames: false
+      # Repo-local: the producer images install this file with plain pip, so it must not name
+      # the project or acidbase. Keep the entry identical to the command stamped in the file's
+      # header, because `acidbase` security patching reruns that command.
+      - id: uv-export-producer
+        name: uv export (producer/requirements.txt)
+        entry: uv export --frozen --no-hashes --no-dev --no-emit-project --no-emit-package acidbase -o producer/requirements.txt
+        language: system
+        files: ^(uv\.lock|pyproject\.toml|uv\.toml|producer/requirements\.txt)$
+        pass_filenames: false
 
       # Single unified linter + formatter (replaces black + isort + flake8).
       # ruff must be in [dependency-groups].dev so uv.lock resolves it.

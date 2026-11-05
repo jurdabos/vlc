@@ -65,7 +65,7 @@ mkdir -p monitoring/alertmanager
 envsubst '${SMTP_HOST} ${SMTP_PORT} ${SMTP_FROM} ${SMTP_USER} ${SMTP_PASSWORD}' \
   < monitoring/alertmanager/alertmanager.yml \
   > monitoring/alertmanager/alertmanager.generated.yml
-chmod 600 monitoring/alertmanager/alertmanager.generated.yml
+chmod 644 monitoring/alertmanager/alertmanager.generated.yml  # readable by nobody in the container
 
 # --- 5) Producer .env (if needed for local testing) ---
 if [ -d producer ]; then
