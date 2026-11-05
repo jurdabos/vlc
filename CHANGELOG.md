@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project loosely follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Removed
+- `docs/palettes.json`: a stale copy with 6 palettes that no code read. Design values now live in the `cosmetics` repo. Grafana dashboards keep their literal colours, because dashboard JSON has to embed them.
+
 ### Security
 - `db/init/020-vlc-password.override.sql` is no longer tracked: `scripts/sync-dev-secrets.sh` generates it, and the
   dev password it carried has been rotated. `.gitignore` keeps the file out.
