@@ -166,3 +166,8 @@ AGENTS.md
 # `dbt/dbt_packages/` and `dbt/logs/`, because Git cannot re-include files under an excluded directory.
 !dbt/models/
 !dbt/**/*.sql
+
+# Hand-written SQL: `*.sql` above must not hide it. The generated password file stays out, so keep its line below these.
+!db/**/*.sql
+!backfill/*.sql
+db/init/020-vlc-password.override.sql
