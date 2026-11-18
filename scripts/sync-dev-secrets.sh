@@ -60,7 +60,8 @@ EOF
 chmod 600 db/init/020-vlc-password.override.sql
 
 # --- 4) Alertmanager config ---
-# The shared Gmail sender: the address from email/.env and the app password from the WSL keyring.
+# The shared Gmail sender: the address from email/.env and the app password from the keyring, which
+# in WSL is the Windows store, reached through acidbase's bridge once `acidbase keyring wsl-setup` has run.
 # The generated file is the one plain copy, a documented exception, because Alertmanager reads its
 # password only from a file. It stays 600, so the container runs as its owner.
 log "Creating monitoring/alertmanager/alertmanager.generated.yml (SMTP credentials) ..."
@@ -70,10 +71,10 @@ SMTP_USER="$(sed -n 's/^GMAIL_2_USER=//p' "$EMAIL_ENV" | tr -d '\r')"
 [ -n "$SMTP_USER" ] || err "GMAIL_2_USER not set in $EMAIL_ENV"
 [ -n "${SMTP_TO:-}" ] || err "SMTP_TO not set in .env: alerts need a recipient."
 command -v keyring >/dev/null || err "keyring not found on PATH: the Gmail app password lives there."
-log "Reading the Gmail app password; the keyring asks for its master password ..."
+log "Reading the Gmail app password from the keyring ..."
 SMTP_PASSWORD="$(keyring get email gmail_2_password || true)"
 SMTP_PASSWORD="${SMTP_PASSWORD// /}"  # to drop the spaces Google displays
-[ -n "$SMTP_PASSWORD" ] || err "No gmail_2_password under the email service in the keyring."
+[ -n "$SMTP_PASSWORD" ] || err "No gmail_2_password under the email service in the keyring. In WSL, run acidbase keyring wsl-setup first."
 mkdir -p monitoring/alertmanager/data
 # Restricting the file before it holds the password
 : > monitoring/alertmanager/alertmanager.generated.yml
