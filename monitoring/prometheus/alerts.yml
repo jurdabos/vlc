@@ -58,19 +58,19 @@ groups:
   - name: vlc-topics
     rules:
       - alert: NoAirDataIngested
-        expr: increase(kafka_topic_messages_in_total{topic="vlc.air"}[30m]) == 0
-        for: 30m
+        expr: increase(kafka_topic_messages_in_total{topic="vlc.air"}[60m]) == 0
+        for: 60m
         labels:
           severity: warning
         annotations:
-          summary: "No air quality data in 30 minutes"
+          summary: "No air quality data in 60 minutes"
           description: "vlc.air topic has received no messages. Check air-producer."
 
       - alert: NoWeatherDataIngested
-        expr: increase(kafka_topic_messages_in_total{topic="vlc.weather"}[30m]) == 0
-        for: 30m
+        expr: increase(kafka_topic_messages_in_total{topic="vlc.weather"}[60m]) == 0
+        for: 60m
         labels:
           severity: warning
         annotations:
-          summary: "No weather data in 30 minutes"
+          summary: "No weather data in 60 minutes"
           description: "vlc.weather topic has received no messages. Check weather-producer."

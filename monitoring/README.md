@@ -63,8 +63,8 @@ monitoring/
 - **ConnectDown** (critical): Connect unreachable for 1m
 
 ### Data Ingestion Alerts
-- **NoAirDataIngested** (warning): No messages on `vlc.air` for 30m
-- **NoWeatherDataIngested** (warning): No messages on `vlc.weather` for 30m
+- **NoAirDataIngested** (warning): No messages on `vlc.air` for 60m
+- **NoWeatherDataIngested** (warning): No messages on `vlc.weather` for 60m
 
 ### Grafana-Managed Alerts
 - **WeatherStationStale** (warning): a weather station's staleness in the
