@@ -22,6 +22,7 @@ import csv
 import sys
 
 import click
+from acidbase.clean import clean_command
 from acidbase.cli_utils import group
 from acidbase.push import ensure_unicode_safe_streams, get_project_root, push_command
 from acidbase.versioning import bump_command
@@ -40,6 +41,7 @@ def cli() -> None:
 
 
 cli.add_command(bump_command)
+cli.add_command(clean_command)
 cli.add_command(push_command)
 
 
