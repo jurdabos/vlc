@@ -16,6 +16,9 @@ and this project loosely follows [Semantic Versioning](https://semver.org/spec/v
 - `monitoring/alertmanager/alertmanager.generated.yml` is the one plain copy of the Gmail app password, a documented exception to the shared setup, because Alertmanager reads its password only from a file. `scripts/sync-dev-secrets.sh` reads it from the keyring, so `.env` never holds it, and restricts the file to `600` before writing it.
 
 ### Changed
+- `pyproject.toml`, `uv.lock`: pins acidbase to its release tag `v0.3.0` instead of the mirror's default branch.
+  uv ignores a version floor such as `acidbase>=0.3.0` on a git source, so the tag is what states the acidbase this repo needs, starting with the shared `clean` command it imports.
+  A later tag change relocks on the next `uv run`.
 - `scripts/sync-dev-secrets.sh`, `docs/rotate_password.txt`, `monitoring/README.md`: the Gmail app password no longer needs a master password. WSL's keyring now reads the Windows store through acidbase's bridge, after `acidbase keyring wsl-setup`, and a missing password says to run it.
 - `.env.example`: says where secrets go here, and why the acidbase keyring move does not apply.
 - `tests/README.md`: setup now uses `uv sync --extra dev` and tests run through `uv run`, replacing the `uv pip` and `pip` steps. It also warns that plain `uv sync` removes what only the `dev` extra provides, such as `pytest-docker`.

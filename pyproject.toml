@@ -5,7 +5,7 @@ description = "Valencia air quality and weather data pipeline"
 # acidbase requires >=3.12; the pipeline containers pin their own interpreters.
 requires-python = ">=3.12"
 dependencies = [
-    "acidbase @ git+https://github.com/jurdabos/acidbase.git",
+    "acidbase @ git+https://github.com/jurdabos/acidbase.git@v0.3.0",
     "authlib>=1.9.0",
     "click>=8.3.0",
     "certifi>=2026.10.18",
